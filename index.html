@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.8">
+<meta name="x-cards-version" content="1.9">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,7 +91,8 @@
   .field:focus{outline:none;border-color:var(--blue)}
   .field.hide{display:none}
   .warnnote{font-size:13px;color:var(--muted);line-height:1.45;margin:4px 2px 12px}
-  .err{color:var(--red);font-size:15px;font-weight:500;min-height:22px;margin:0 2px 8px}
+  .err{color:var(--red);font-size:15px;font-weight:500;line-height:1.4;margin:0 2px 4px}
+  .hintline{color:var(--muted);font-size:14px;font-weight:500;min-height:20px;margin:0 2px 8px}
 
   /* best scores */
   .scores{display:flex;flex-direction:column;gap:6px}
@@ -361,7 +362,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.8</p>
+  <p class="foot">v1.9</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -384,11 +385,12 @@
     <input class="field" id="newName" type="text" autocomplete="off" autocapitalize="words"
            placeholder="Your name" maxlength="24">
     <input class="field" id="pinField" type="password" autocomplete="off"
-           inputmode="text" placeholder="Password" maxlength="64">
+           inputmode="text" placeholder="Password, 4 or more" maxlength="64">
     <p class="warnnote">Pick something easy to remember and <b>not</b> a password you use
       anywhere else. This only guards your scores on this game.</p>
     <p class="err" id="authErr"></p>
-    <button type="button" class="start" id="authGo">Go</button>
+    <p class="hintline" id="authHint"></p>
+    <button type="button" class="start" id="authGo" disabled>Go</button>
     <button type="button" class="link" id="authBack">Back to the names</button>
   </div>
 
@@ -497,7 +499,9 @@
   function apiCall(path, opts){
     var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var killer = setTimeout(function(){ if (ctl) ctl.abort(); }, 9000);
-    var cfg = { method: (opts && opts.method) || 'GET' };
+    // no-store because the name list and the leaderboard are live: a kid who
+    // signs up on the iPad must show up on the phone straight away
+    var cfg = { method: (opts && opts.method) || 'GET', cache: 'no-store' };
     if (ctl) cfg.signal = ctl.signal;
     if (opts && opts.body){
       cfg.headers = { 'Content-Type': 'application/json' };
@@ -550,7 +554,7 @@
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
-   'newName','pinField','authErr','authGo','authBack','skipAuth','signOutBtn',
+   'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn',
    'scoreBlock','scorePace','scoreList','scoreNote',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
@@ -843,25 +847,53 @@
     el.authErr.textContent = '';
     el.pinField.value = '';
     el.newName.classList.toggle('hide', mode === 'login');
-    el.pinLabel.textContent = mode === 'login' ? 'Password for ' + name : 'Make yourself a player';
+    el.pinLabel.textContent = mode === 'login'
+      ? 'Password for ' + name
+      : 'Make yourself a player';
     el.authGo.textContent = mode === 'login' ? 'Sign in' : 'Create player';
+    gateAuthGo();
     setTimeout(function(){ (mode === 'login' ? el.pinField : el.newName).focus(); }, 60);
   }
 
+  /* The button stays dead until what is typed would actually be accepted, so
+     nobody submits something we are only going to bounce back at them. */
+  function authReady(){
+    var name = authMode === 'login' ? authName : el.newName.value.trim();
+    return name.length >= 2 && el.pinField.value.length >= 4;
+  }
+  function gateAuthGo(){
+    var ok = authReady();
+    el.authGo.disabled = !ok;
+    if (!ok && !el.pinField.value && authMode === 'signup' && !el.newName.value.trim()){
+      el.authHint.textContent = 'Pick a name, then a password of 4 or more';
+    } else if (el.pinField.value.length && el.pinField.value.length < 4){
+      el.authHint.textContent = 'A bit longer, 4 characters or more';
+    } else if (authMode === 'signup' && el.newName.value.trim().length < 2){
+      el.authHint.textContent = 'Type your name first';
+    } else {
+      el.authHint.textContent = ok ? '' : 'Password needs 4 characters or more';
+    }
+  }
+
   function doAuth(){
+    if (!authReady()) return;
     var pin = el.pinField.value;
     var name = authMode === 'login' ? authName : el.newName.value.trim();
-    if (!name){ el.authErr.textContent = 'Type a name first'; return; }
-    if (pin.length < 4){ el.authErr.textContent = 'Password needs 4 characters or more'; return; }
     el.authErr.textContent = '';
     el.authGo.disabled = true;
     el.authGo.textContent = 'Just a second...';
     apiCall(authMode === 'login' ? '/login' : '/signup', { method: 'POST', body: { name: name, pin: pin } })
       .then(function(res){
-        el.authGo.disabled = false;
         el.authGo.textContent = authMode === 'login' ? 'Sign in' : 'Create player';
+        gateAuthGo();
         if (!res){ el.authErr.textContent = 'Cannot reach the scoreboard, check the wifi'; return; }
-        if (!res.ok){ el.authErr.textContent = res.data.error || 'That did not work'; return; }
+        if (!res.ok){
+          el.authErr.textContent = res.data.error || 'That did not work';
+          // the dead end that caught Andrew out: tapping a name that is not
+          // yours leaves you guessing at somebody else's password
+          if (authMode === 'login') el.authErr.textContent += '. Not your name? Go back and make a new one.';
+          return;
+        }
         me.token = res.data.token; me.name = res.data.name; me.bests = res.data.bests || [];
         saveMe(); paintWho(); refreshBoard();
         sfx.right();
@@ -873,6 +905,8 @@
   el.newPlayerBtn.addEventListener('click', function(){ sfx.tap(); showAuthPin('signup', ''); });
   el.authBack.addEventListener('click', function(){ sfx.tap(); showAuthPick(); });
   el.authGo.addEventListener('click', doAuth);
+  el.pinField.addEventListener('input', gateAuthGo);
+  el.newName.addEventListener('input', gateAuthGo);
   el.pinField.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') doAuth(); });
   el.newName.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') el.pinField.focus(); });
   el.skipAuth.addEventListener('click', function(){ sfx.tap(); show('home'); });
