@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.4">
+<meta name="x-cards-version" content="2.5">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -93,6 +93,12 @@
   .warnnote{font-size:13px;color:var(--muted);line-height:1.45;margin:4px 2px 12px}
   .err{color:var(--red);font-size:15px;font-weight:500;line-height:1.4;margin:0 2px 4px}
   .hintline{color:var(--muted);font-size:14px;font-weight:500;min-height:20px;margin:0 2px 8px}
+  .pickfile{display:inline-block;margin-top:10px;font-size:14px;font-weight:500;
+    color:var(--blue);text-decoration:underline}
+  .pickfile input{display:none}
+  #recBtn.recording{background:var(--red);border-color:var(--red);color:#fff}
+  @keyframes pulsered{0%,100%{opacity:1}50%{opacity:.55}}
+  #recBtn.recording{animation:pulsered 1s ease-in-out infinite}
 
   /* best scores */
   .grand{display:flex;align-items:baseline;justify-content:center;gap:9px;
@@ -400,7 +406,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.4</p>
+  <p class="foot">v2.5</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -430,6 +436,22 @@
     <p class="hintline" id="authHint"></p>
     <button type="button" class="start" id="authGo" disabled>Go</button>
     <button type="button" class="link" id="authBack">Back to the names</button>
+  </div>
+
+  <div class="block hide" id="cheerBlock">
+    <p class="label">Grown ups: a well done message</p>
+    <p class="warnnote" id="cheerWhat">Record yourself saying well done and <b id="cheerWho">they</b>
+      will hear it when the whole session is finished. A few seconds is plenty.</p>
+    <div class="quick">
+      <button type="button" id="recBtn">🎙 Record</button>
+      <button type="button" id="playCheerBtn" class="hide">▶︎ Listen</button>
+      <button type="button" id="delCheerBtn" class="warn hide">Delete it</button>
+    </div>
+    <label class="pickfile" id="pickFileLabel">
+      or choose an audio file
+      <input type="file" id="cheerFile" accept="audio/*">
+    </label>
+    <p class="hintline" id="cheerMsg"></p>
   </div>
 
   <button type="button" class="link" id="skipAuth">Play without saving scores</button>
@@ -520,7 +542,7 @@
      a child from doing their times tables.
      ========================================================= */
   var API = 'https://api.jobhubgo.com/api/mathcards';
-  var me = { token: '', name: '', bests: [], leaders: [] };
+  var me = { token: '', name: '', bests: [], leaders: [], hasCheer: false };
 
   function loadMe(){
     try {
@@ -638,6 +660,7 @@
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
+   'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
    'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
@@ -740,7 +763,8 @@
      forgot the leaderboard. Both were invisible only because the scoreboard
      hides itself when signed out, which is luck, not design. */
   function forgetPlayer(){
-    me.token = ''; me.name = ''; me.bests = []; me.leaders = [];
+    me.token = ''; me.name = ''; me.bests = []; me.leaders = []; me.hasCheer = false;
+    cheerData = null; cheerAudio = null;
     saveMe();
     loadRecord();          // back to the guest record on this device
     paintWho();
@@ -998,6 +1022,7 @@
     // the record is per player, so it has to be repainted whenever the player
     // changes, or the last child's mistakes stay on screen after a sign out
     paintTrouble();
+    paintCheer();
   }
   function fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function esc(s){
@@ -1090,6 +1115,7 @@
           return;
         }
         me.token = res.data.token; me.name = res.data.name; me.bests = res.data.bests || [];
+        me.hasCheer = !!res.data.hasCheer; cheerData = null;
         saveMe(); adoptRecord(res.data.misses); paintWho(); refreshBoard();
         sfx.right();
         show('home');
@@ -1109,6 +1135,136 @@
     forgetPlayer(); sfx.tap(); show('home');
   });
 
+  /* ---------- the grown up's well done message ----------
+     Recorded straight into the phone where the browser allows it, with a file
+     picker as the fallback. One clip per child, kept on their player row, so
+     it plays wherever they sign in. */
+  var cheerAudio = null, cheerData = null, recorder = null, recChunks = [], recStop = null;
+
+  function canRecord(){
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
+              typeof MediaRecorder !== 'undefined');
+  }
+
+  function paintCheer(){
+    var on = !!me.token;
+    el.cheerBlock.classList.toggle('hide', !on);
+    if (!on) return;
+    el.cheerWho.textContent = me.name ? me.name : 'they';
+    el.playCheerBtn.classList.toggle('hide', !me.hasCheer);
+    el.delCheerBtn.classList.toggle('hide', !me.hasCheer);
+    el.recBtn.textContent = me.hasCheer ? '🎙 Record a new one' : '🎙 Record';
+    el.recBtn.classList.toggle('hide', !canRecord());
+    if (!canRecord() && !el.cheerMsg.textContent){
+      el.cheerMsg.textContent = 'This browser will not record, so pick an audio file instead.';
+    }
+  }
+
+  function saveCheer(dataUrl){
+    el.cheerMsg.textContent = 'Saving...';
+    apiCall('/cheer', { method: 'POST', body: { token: me.token, audio: dataUrl } })
+      .then(function(res){
+        if (!res){ el.cheerMsg.textContent = 'Could not reach the scoreboard'; return; }
+        if (!res.ok){ el.cheerMsg.textContent = res.data.error || 'That did not save'; return; }
+        me.hasCheer = dataUrl !== null;
+        cheerData = dataUrl;
+        el.cheerMsg.textContent = dataUrl === null ? 'Deleted.' : 'Saved. They will hear it when they finish.';
+        paintCheer();
+      });
+  }
+
+  function blobToDataUrl(blob, done){
+    var r = new FileReader();
+    r.onload = function(){ done(String(r.result)); };
+    r.onerror = function(){ el.cheerMsg.textContent = 'Could not read that recording'; };
+    r.readAsDataURL(blob);
+  }
+
+  function startRec(){
+    if (!canRecord()) return;
+    el.cheerMsg.textContent = 'Asking for the microphone...';
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      recChunks = [];
+      try { recorder = new MediaRecorder(stream); }
+      catch(e){ el.cheerMsg.textContent = 'This browser will not record, pick a file instead'; return; }
+      recorder.ondataavailable = function(ev){ if (ev.data && ev.data.size) recChunks.push(ev.data); };
+      recorder.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        el.recBtn.classList.remove('recording');
+        var blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+        if (!blob.size){ el.cheerMsg.textContent = 'Nothing was recorded, try again'; paintCheer(); return; }
+        blobToDataUrl(blob, saveCheer);
+      };
+      recorder.start();
+      el.recBtn.classList.add('recording');
+      el.recBtn.textContent = '⏹ Stop';
+      el.cheerMsg.textContent = 'Recording, say your bit then tap stop.';
+      // a hard ceiling so a pocket recording cannot run away with itself
+      clearTimeout(recStop);
+      recStop = setTimeout(function(){ if (recorder && recorder.state === 'recording') recorder.stop(); }, 15000);
+    }).catch(function(){
+      el.cheerMsg.textContent = 'No microphone permission, pick an audio file instead';
+    });
+  }
+
+  el.recBtn.addEventListener('click', function(){
+    if (recorder && recorder.state === 'recording'){ clearTimeout(recStop); recorder.stop(); return; }
+    startRec();
+  });
+  el.cheerFile.addEventListener('change', function(){
+    var f = el.cheerFile.files && el.cheerFile.files[0];
+    if (!f) return;
+    if (f.size > 280 * 1024){
+      el.cheerMsg.textContent = 'That file is too big, a few seconds of audio is plenty';
+      el.cheerFile.value = ''; return;
+    }
+    blobToDataUrl(f, saveCheer);
+    el.cheerFile.value = '';
+  });
+  el.delCheerBtn.addEventListener('click', function(){ saveCheer(null); });
+  el.playCheerBtn.addEventListener('click', function(){
+    fetchCheer(function(url){
+      if (!url){ el.cheerMsg.textContent = 'Nothing recorded yet'; return; }
+      var a = new Audio(url); a.play().catch(function(){});
+    });
+  });
+
+  function fetchCheer(done){
+    if (cheerData){ done(cheerData); return; }
+    if (!me.token || !me.hasCheer){ done(null); return; }
+    apiCall('/cheer?token=' + encodeURIComponent(me.token)).then(function(res){
+      cheerData = (res && res.ok && res.data.audio) || null;
+      done(cheerData);
+    });
+  }
+
+  /* iOS will not let a page play audio unless the sound started life inside a
+     real tap. The finish screen arrives on a timer, well after the last tap,
+     so the clip is loaded and primed when the child taps Start instead. */
+  function primeCheer(){
+    if (!me.hasCheer) return;
+    fetchCheer(function(url){
+      if (!url) return;
+      if (!cheerAudio) cheerAudio = new Audio();
+      cheerAudio.src = url;
+      cheerAudio.muted = true;
+      var p = cheerAudio.play();
+      if (p && p.then) p.then(function(){
+        cheerAudio.pause(); cheerAudio.currentTime = 0; cheerAudio.muted = false;
+      }).catch(function(){ cheerAudio.muted = false; });
+      else { cheerAudio.pause(); cheerAudio.muted = false; }
+    });
+  }
+  function playCheer(){
+    if (!me.hasCheer || !state.sound) return;
+    if (cheerAudio && cheerAudio.src){ cheerAudio.currentTime = 0; cheerAudio.play().catch(function(){}); return; }
+    fetchCheer(function(url){
+      if (!url) return;
+      cheerAudio = new Audio(url);
+      cheerAudio.play().catch(function(){});
+    });
+  }
+
   /* ---------- the scoreboard ---------- */
   function refreshMe(){
     if (!me.token) return;
@@ -1116,6 +1272,7 @@
       if (!res) return;                       // offline, keep what we have
       if (!res.ok){ forgetPlayer(); return; }
       me.name = res.data.name; me.bests = res.data.bests || [];
+      me.hasCheer = !!res.data.hasCheer;
       saveMe(); adoptRecord(res.data.misses); paintWho();
     });
   }
@@ -1680,6 +1837,7 @@
 
   function startRun(rounds, isPractice){
     unlock();
+    primeCheer();
     state.rounds = rounds || buildRounds();
     state.practice = !!isPractice;
     if (!state.rounds.length || !state.rounds[0].cards.length) return;
@@ -1930,6 +2088,8 @@
 
     if (!state.caught) sfx.done();
     show('done');
+    // the grown up gets the last word, after the fanfare
+    setTimeout(playCheer, state.caught ? 700 : 1500);
   }
 
   el.startBtn.addEventListener('click', function(){ startRun(null, false); });
