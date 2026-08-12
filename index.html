@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.0">
+<meta name="x-cards-version" content="2.1">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -97,7 +97,12 @@
   /* best scores */
   .grand{display:flex;align-items:baseline;justify-content:center;gap:9px;
     background:var(--blue-soft);border:2px solid #cfdcff;border-radius:16px;
-    padding:14px 16px;margin-bottom:10px}
+    padding:14px 16px;margin:10px 0}
+  .pacehead{display:flex;align-items:baseline;justify-content:space-between;
+    font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);margin:12px 2px 2px}
+  .pacehead b{color:var(--blue);font-size:15px;letter-spacing:0;
+    font-variant-numeric:tabular-nums}
   .grand b{font-size:34px;font-weight:700;color:var(--blue);line-height:1;
     font-variant-numeric:tabular-nums}
   .grand span{font-size:14px;font-weight:600;color:var(--blue-dark);
@@ -298,8 +303,12 @@
   </button>
 
   <div class="block hide" id="scoreBlock">
-    <p class="label">Your best at <span id="scorePace">10s</span> a card</p>
-    <div class="grand" id="grand"><b id="grandTotal">0</b><span>total points</span></div>
+    <p class="label" id="scoreLabel">Your best at 10s a card</p>
+    <div class="opts" id="viewOpts">
+      <button type="button" class="opt on" data-view="pace">This difficulty</button>
+      <button type="button" class="opt" data-view="all">See all scores</button>
+    </div>
+    <div class="grand" id="grand"><b id="grandTotal">0</b><span id="grandLabel">total points</span></div>
     <div class="scores" id="scoreList"></div>
     <p class="note" id="scoreNote"></p>
   </div>
@@ -370,7 +379,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.0</p>
+  <p class="foot">v2.1</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -404,6 +413,8 @@
 
   <button type="button" class="link" id="skipAuth">Play without saving scores</button>
   <button type="button" class="link hide" id="signOutBtn">Sign out</button>
+  <p class="warnnote hide" id="signOutNote">Signing out only forgets you on this device.
+    Your scores stay safe under your name, and come back the moment you sign in again.</p>
 </div>
 
 <!-- ================= play ================= -->
@@ -554,7 +565,7 @@
     queue: [], total: 0, cleared: 0,
     revealed: false, answered: false,
     right: 0, wrong: 0, streak: 0, bestStreak: 0,
-    missed: [], startedAt: 0, caught: false, practice: false
+    missed: [], startedAt: 0, caught: false, practice: false, scoreView: 'pace'
   };
 
   var el = {};
@@ -562,8 +573,8 @@
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
-   'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn',
-   'scoreBlock','scorePace','scoreList','scoreNote','grand','grandTotal',
+   'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
+   'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
@@ -811,6 +822,7 @@
       ? 'Playing as <b>' + esc(me.name) + '</b>'
       : 'Sign in to save your scores';
     el.signOutBtn.classList.toggle('hide', !me.name);
+    el.signOutNote.classList.toggle('hide', !me.name);
     paintScores();
   }
   function fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -941,45 +953,104 @@
     });
   }
 
+  // one row of the scoreboard. `showPace` is for the all-difficulties view,
+  // where the same table appears once per difficulty it was played at.
+  function scoreRow(b, top, showPace){
+    var lead = top[b.table];
+    var mineLead = lead && lead.name === me.name && lead.total === b.total;
+    var holder = lead && lead.name !== me.name ? lead.name + ' leads with ' + fmt(lead.total) : '';
+    var row = document.createElement('div');
+    row.className = 'srow';
+    row.innerHTML =
+      '<span class="tbl">' + b.table + 's</span>' +
+      '<span class="tot">' + fmt(b.total) + '</span>' +
+      '<span class="det">' +
+        (showPace ? b.pace + 's a card &middot; ' : 'of ' + fmt(b.table * 1000) + ' &middot; ') +
+        clock(b.seconds) + ', ' +
+        (b.misses === 0 ? 'no misses' : b.misses + (b.misses === 1 ? ' miss' : ' misses')) +
+        (!showPace && holder ? ' &middot; ' + esc(holder) : '') +
+      '</span>' +
+      (!showPace && mineLead ? '<span class="crown">👑</span>' : '');
+    return row;
+  }
+
   function paintScores(){
     var on = !!me.token;
     el.scoreBlock.classList.toggle('hide', !on);
     if (!on) return;
-    el.scorePace.textContent = state.pace + 's';
-    var mine = {}, top = {};
-    me.bests.forEach(function(b){ if (b.pace === state.pace) mine[b.table] = b; });
-    me.leaders.forEach(function(l){ top[l.table] = l; });
 
+    var all = state.scoreView === 'all';
+    var list = el.viewOpts.querySelectorAll('.opt');
+    for (var i = 0; i < list.length; i++){
+      list[i].classList.toggle('on', (list[i].getAttribute('data-view') === 'all') === all);
+    }
+    el.scoreLabel.textContent = all ? 'Every score you have set' : 'Your best at ' + state.pace + 's a card';
+    el.grandLabel.textContent = all ? 'total points, everything' : 'total points';
+
+    var top = {};
+    me.leaders.forEach(function(l){ top[l.table] = l; });
     el.scoreList.innerHTML = '';
-    var shown = 0, grand = 0;
-    for (var t = MIN; t <= MAX; t++){
-      var b = mine[t]; if (!b) continue;
-      shown++; grand += b.total;
-      var lead = top[t];
-      var row = document.createElement('div');
-      row.className = 'srow';
-      var holder = lead && lead.name !== me.name ? lead.name + ' leads with ' + fmt(lead.total) : '';
-      row.innerHTML =
-        '<span class="tbl">' + t + 's</span>' +
-        '<span class="tot">' + fmt(b.total) + '</span>' +
-        '<span class="det">of ' + fmt(t * 1000) + ' &middot; ' + clock(b.seconds) + ', ' +
-          (b.misses === 0 ? 'no misses' : b.misses + (b.misses === 1 ? ' miss' : ' misses')) +
-          (holder ? ' &middot; ' + esc(holder) : '') + '</span>' +
-        (lead && lead.name === me.name ? '<span class="crown">👑</span>' : '');
-      el.scoreList.appendChild(row);
+    var grand = 0, shown = 0;
+
+    if (all){
+      // grouped by difficulty, hardest first, since that is the prize
+      var byPace = {};
+      me.bests.forEach(function(b){ (byPace[b.pace] = byPace[b.pace] || []).push(b); });
+      Object.keys(byPace).map(Number).sort(function(a, b){ return a - b; }).forEach(function(p){
+        var rows = byPace[p].sort(function(a, b){ return a.table - b.table; });
+        var sub = rows.reduce(function(n, b){ return n + b.total; }, 0);
+        grand += sub; shown += rows.length;
+        var h = document.createElement('div');
+        h.className = 'pacehead';
+        h.innerHTML = '<span>' + p + 's a card</span><b>' + fmt(sub) + '</b>';
+        el.scoreList.appendChild(h);
+        rows.forEach(function(b){ el.scoreList.appendChild(scoreRow(b, top, true)); });
+      });
+      if (!shown){
+        var e0 = document.createElement('div');
+        e0.className = 'srow empty';
+        e0.textContent = 'No scores yet. Finish a chase to set your first.';
+        el.scoreList.appendChild(e0);
+      }
+    } else {
+      var mine = {};
+      me.bests.forEach(function(b){ if (b.pace === state.pace) mine[b.table] = b; });
+      for (var t = MIN; t <= MAX; t++){
+        var b = mine[t]; if (!b) continue;
+        shown++; grand += b.total;
+        el.scoreList.appendChild(scoreRow(b, top, false));
+      }
+      if (!shown){
+        // Bests are kept per difficulty, so moving the slider can make a real
+        // scoreboard look empty. Say where the scores actually are rather than
+        // letting it read as though they have gone.
+        var elsewhere = {};
+        me.bests.forEach(function(x){ if (x.pace !== state.pace) elsewhere[x.pace] = true; });
+        var paces = Object.keys(elsewhere).sort(function(a, c){ return a - c; });
+        var e = document.createElement('div');
+        e.className = 'srow empty';
+        e.textContent = paces.length
+          ? 'Nothing at ' + state.pace + 's a card yet. Tap See all scores.'
+          : 'Finish a chase at ' + state.pace + 's a card to set your first score';
+        el.scoreList.appendChild(e);
+      }
     }
-    if (!shown){
-      var e = document.createElement('div');
-      e.className = 'srow empty';
-      e.textContent = 'Finish a chase at ' + state.pace + 's a card to set your first score';
-      el.scoreList.appendChild(e);
-    }
+
     el.grandTotal.textContent = fmt(grand);
     el.grand.style.display = shown ? '' : 'none';
-    el.scoreNote.textContent = 'The bigger tables are worth more: a flawless run is 1000 times '
-      + 'the table, so the 12s are worth twelve times the 1s. Getting them all right first go is '
-      + 'most of it, and the time left on the clock is the rest.';
+    el.scoreNote.textContent = all
+      ? 'Every difficulty you have played, added up. An easier setting gives you more clock, '
+        + 'so these are only worth comparing within the same row of the same difficulty.'
+      : 'The bigger tables are worth more: a flawless run is 1000 times the table, so the 12s '
+        + 'are worth twelve times the 1s. Getting them all right first go is most of it, and '
+        + 'the time left on the clock is the rest.';
   }
+
+  el.viewOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.scoreView = b.getAttribute('data-view');
+    sfx.tap(); paintScores();
+  });
 
   // Called when a chase round is cleared. Silent on failure by design.
   function postScore(tableNo, seconds, right, wrong, onResult){
