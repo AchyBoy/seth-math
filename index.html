@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.1">
+<meta name="x-cards-version" content="2.2">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -110,7 +110,7 @@
   .scores{display:flex;flex-direction:column;gap:6px}
   .srow{display:flex;align-items:center;gap:10px;font-size:15px;
     border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px}
-  .srow .tbl{font-weight:600;width:42px;flex:none}
+  .srow .tbl{font-weight:600;width:48px;flex:none}
   .srow .tot{font-weight:700;color:var(--blue);width:52px;flex:none;
     text-align:right;font-variant-numeric:tabular-nums}
   .srow .det{color:var(--muted);font-size:13px;flex:1;
@@ -224,6 +224,9 @@
     -webkit-backface-visibility:hidden;backface-visibility:hidden}
   .face.back{transform:rotateY(180deg);background:var(--blue-soft);border-color:#cfdcff}
   .q{font-size:clamp(46px,15vw,84px);font-weight:600;letter-spacing:.01em;line-height:1}
+  body.wordy .q{font-size:clamp(40px,13vw,72px)}
+  body.wordy .a{font-size:clamp(38px,11vw,64px)}
+  body.wordy .ch{font-size:22px}
   .a{font-size:clamp(64px,22vw,120px);font-weight:700;color:var(--blue);line-height:1}
   .qsmall{font-size:20px;font-weight:500;color:var(--muted);margin-bottom:14px}
 
@@ -323,12 +326,30 @@
   </div>
 
   <div class="block">
+    <p class="label">What are we studying</p>
+    <div class="opts" id="subjectOpts">
+      <button type="button" class="opt on" data-subject="times">✖️ Times tables</button>
+      <button type="button" class="opt" data-subject="blends">🔤 Blends</button>
+    </div>
+  </div>
+
+  <div class="block" id="tablesBlock">
     <p class="label">Tables</p>
     <div class="chips" id="chips"></div>
     <div class="quick">
       <button type="button" id="allBtn">All</button>
       <button type="button" id="noneBtn">None</button>
     </div>
+  </div>
+
+  <div class="block hide" id="setsBlock">
+    <p class="label">Sound sets</p>
+    <div class="chips" id="setChips"></div>
+    <div class="quick">
+      <button type="button" id="allSetsBtn">All</button>
+      <button type="button" id="noSetsBtn">None</button>
+    </div>
+    <p class="note" id="setsNote"></p>
   </div>
 
   <div class="block">
@@ -379,7 +400,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.1</p>
+  <p class="foot">v2.2</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -540,6 +561,48 @@
      that and it makes the hole, run over and the cat has it.
      A miss sends the card to the back of the queue to come round again, so
      it costs you an extra card, paid in the only currency here: time. */
+  /* ------------------------------------------------------------------ *
+   * Abeka special sounds, taken from the class set Seth is working from.
+   * Order is Abeka's, not alphabetical, because that is the order he is
+   * taught them. Several sounds carry more than one word on purpose (th
+   * is both thick and this), and a few letters appear twice with two
+   * different sounds (y in fly and y in baby), which is the whole point
+   * of the card.
+   *
+   * A question shows the sound and offers four words. The right one is
+   * one of this card's words; the wrong three are real words off OTHER
+   * cards, never random, and never a word that happens to contain the
+   * sound being asked about. See buildBlendCard().
+   * ------------------------------------------------------------------ */
+  var SOUNDS = [
+    ['ck','duck'], ['e','me'], ['o','go'], ['y','fly'], ['ay','pray'],
+    ['st','stop'], ['pl','plane'], ['fr','frog'], ['tr','train'], ['sh','ship'],
+    ['th','thick','this'], ['bl','block'], ['cl','clock'], ['fl','flame'], ['gl','glue'],
+    ['br','bride'], ['dr','drum'], ['pr','pray'], ['gr','grin'], ['sm','smoke'],
+    ['sc','scat'], ['sk','skate'], ['sp','spade'], ['cr','crab'], ['tw','twins'],
+    ['spl','splash'], ['spr','sprain'], ['scr','scream'], ['squ','squeak'], ['sn','snack'],
+    ['sl','sleep'], ['str','stream'], ['sw','swim'], ['thr','three'], ['ar','stars'],
+    ['ch','church'], ['or','morning'], ['ou','out'], ['ow','owl','bowl'], ['er','verse'],
+    ['ur','nurse'], ['ir','bird'], ['oi','coin'], ['oy','boy'], ['oo','book','tooth'],
+    ['wor','worms'], ['igh','night'], ['all','ball'], ['alk','walk'], ['-ing','pointing'],
+    ['kn','knot'], ['gn','gnat'], ['ang','bang'], ['ing','king'], ['ong','long'],
+    ['ung','strung'], ['ank','bank'], ['ink','wink'], ['onk','honk'], ['unk','trunk'],
+    ['wa','wash'], ['a','adopt'], ['y','baby'], ['le','little'],
+    ['-ed','wanted','looked','played'], ['wh','whale','who'], ['tch','patch'],
+    ['ear','ear','bear','earth'], ['old','gold'], ['mb','lamb'], ['ew','flew','few'],
+    ['-y','rainy'], ['-er','bigger'], ['-est','biggest'], ['-ly','slowly'],
+    ['-en','sharpen'], ['-es','peaches'], ['ild','child'], ['ind','kind'],
+    ['o','shovel'], ['a','banana'], ['c','city'], ['au','faucet'], ['aw','saw'],
+    ['ea','leaf','thread','steak'], ['ie','brownie'], ['ey','key'], ['ey','obey'],
+    ['ph','phone'], ['ch','chorus'], ['ought','thought'], ['aught','caught'],
+    ['g','giant'], ['dge','fudge'], ['a-','asleep'], ['al-','also'],
+    ['be-','because'], ['en-','enjoy'], ['un-','unbutton'], ['wr','wrinkle']
+  ];
+  var SOUNDS_PER_SET = 12;
+  function soundSets(){ return Math.ceil(SOUNDS.length / SOUNDS_PER_SET); }
+  // the dash only marks where the sound sits in a word, so drop it to match
+  function soundLetters(s){ return s.replace(/-/g, ''); }
+
   var HEAD = 22;          // the runner's head start, in track units
   var LANE_L = 3, HOLE = 88;   // HOLE must match .lane .hole{left:} in the CSS
 
@@ -559,7 +622,7 @@
   }
 
   var state = {
-    tables: [], mode: 'flip', shuffle: true,
+    subject: 'times', tables: [], sets: [1], mode: 'flip', shuffle: true,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -572,6 +635,7 @@
   ['home','play','doneScreen','chips','allBtn','noneBtn','modeOpts','orderOpts','timerOpts',
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
+   'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
@@ -672,6 +736,18 @@
     return limit ? out.slice(0, limit) : out;
   }
   function keyToPair(k){ var p = k.split('×'); return [parseInt(p[0],10), parseInt(p[1],10)]; }
+  // 's:ck:duck' is a sound card, '7×8' is a times card
+  function isSoundKey(k){ return k.slice(0, 2) === 's:'; }
+  function prettyKey(k){
+    if (!isSoundKey(k)) return k.replace('×', ' × ');
+    var p = k.split(':');
+    return p[1] + ' \u2192 ' + p[2];
+  }
+  function keyToCard(k){
+    if (!isSoundKey(k)) return keyToPair(k);
+    var p = k.split(':');
+    return { s: p[1], w: [p[2]], pick: p[2] };
+  }
   function pairKey(a, b){ return a + '×' + b; }
 
   /* ---------- settings ---------- */
@@ -681,7 +757,9 @@
     try {
       var s = JSON.parse(localStorage.getItem(STORE));
       if (s){
+        if (s.subject === 'times' || s.subject === 'blends') state.subject = s.subject;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
+        if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
         if (s.mode === 'flip' || s.mode === 'choice') state.mode = s.mode;
         if (typeof s.shuffle === 'boolean') state.shuffle = s.shuffle;
         if (s.timer === 'off' || s.timer === 'card' || s.timer === 'chase') state.timer = s.timer;
@@ -695,7 +773,8 @@
   function saveSettings(){
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        tables: state.tables, mode: state.mode, shuffle: state.shuffle,
+        subject: state.subject, tables: state.tables, sets: state.sets,
+        mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
         pair: state.pair, sound: state.sound
       }));
@@ -718,6 +797,32 @@
       if (i === -1) state.tables.push(n); else state.tables.splice(i, 1);
       sfx.tap(); paintHome(); saveSettings();
     });
+
+    for (var k = 1; k <= soundSets(); k++){
+      var c = document.createElement('button');
+      c.type = 'button'; c.className = 'chip';
+      c.setAttribute('data-set', String(k));
+      c.textContent = String(k);
+      el.setChips.appendChild(c);
+    }
+    el.setChips.addEventListener('click', function(ev){
+      var b = ev.target.closest('.chip'); if (!b) return;
+      var n = parseInt(b.getAttribute('data-set'), 10);
+      var i = state.sets.indexOf(n);
+      if (i === -1) state.sets.push(n); else state.sets.splice(i, 1);
+      sfx.tap(); paintHome(); saveSettings();
+    });
+  }
+
+  // what is in each sound set, so you can see which one he is on
+  function setsSummary(){
+    var picked = state.sets.slice().sort(function(a, b){ return a - b; });
+    if (!picked.length) return 'Pick at least one set.';
+    return picked.slice(0, 3).map(function(n){
+      var from = (n - 1) * SOUNDS_PER_SET;
+      var rows = SOUNDS.slice(from, from + SOUNDS_PER_SET);
+      return 'Set ' + n + ': ' + rows.map(function(r){ return r[0]; }).join(' ');
+    }).join('  ·  ') + (picked.length > 3 ? '  ·  and ' + (picked.length - 3) + ' more' : '');
   }
 
   function setOn(box, attr, val){
@@ -734,18 +839,28 @@
     for (var i = 0; i < worst.length; i++){
       var s = document.createElement('span');
       s.className = 'miss';
-      s.innerHTML = worst[i].key.replace('×', ' × ') + '<em>' + worst[i].m + '</em>';
+      s.innerHTML = esc(prettyKey(worst[i].key)) + '<em>' + worst[i].m + '</em>';
       el.troubleList.appendChild(s);
     }
     el.practiceBtn.textContent = 'Practice just these (' + troubleList().length + ')';
   }
 
   function paintHome(){
+    var blends = state.subject === 'blends';
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
         state.tables.indexOf(parseInt(list[i].getAttribute('data-n'), 10)) !== -1);
     }
+    list = el.setChips.querySelectorAll('.chip');
+    for (i = 0; i < list.length; i++){
+      list[i].classList.toggle('on',
+        state.sets.indexOf(parseInt(list[i].getAttribute('data-set'), 10)) !== -1);
+    }
+    setOn(el.subjectOpts, 'data-subject', state.subject);
+    el.tablesBlock.classList.toggle('hide', blends);
+    el.setsBlock.classList.toggle('hide', !blends);
+    el.setsNote.textContent = setsSummary();
     setOn(el.modeOpts, 'data-mode', state.mode);
     setOn(el.orderOpts, 'data-shuffle', state.shuffle ? '1' : '0');
     setOn(el.timerOpts, 'data-timer', state.timer);
@@ -757,12 +872,32 @@
     paintPairs();
     paintPace();
 
-    var count = state.tables.length * PER_TABLE;
-    el.startBtn.disabled = state.tables.length === 0;
-    el.startBtn.textContent = state.tables.length === 0
-      ? 'Pick at least one table' : 'Start ' + count + ' cards';
+    var chosen = blends ? state.sets.length : state.tables.length;
+    var count = blends
+      ? state.sets.reduce(function(n, k){
+          return n + SOUNDS.slice((k - 1) * SOUNDS_PER_SET, k * SOUNDS_PER_SET).length;
+        }, 0)
+      : state.tables.length * PER_TABLE;
+    el.startBtn.disabled = chosen === 0;
+    el.startBtn.textContent = chosen === 0
+      ? (blends ? 'Pick at least one set' : 'Pick at least one table')
+      : 'Start ' + count + ' cards';
     paintTrouble();
   }
+
+  el.subjectOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.subject = b.getAttribute('data-subject');
+    sfx.tap(); paintHome(); saveSettings(); refreshBoard();
+  });
+  el.allSetsBtn.addEventListener('click', function(){
+    state.sets = [];
+    for (var k = 1; k <= soundSets(); k++) state.sets.push(k);
+    sfx.tap(); paintHome(); saveSettings();
+  });
+  el.noSetsBtn.addEventListener('click', function(){
+    state.sets = []; sfx.tap(); paintHome(); saveSettings();
+  });
 
   el.allBtn.addEventListener('click', function(){
     state.tables = [];
@@ -947,7 +1082,7 @@
     });
   }
   function refreshBoard(){
-    apiCall('/board?pace=' + state.pace).then(function(res){
+    apiCall('/board?pace=' + state.pace + '&subject=' + state.subject).then(function(res){
       if (res && res.ok) me.leaders = res.data.leaders || [];
       paintScores();
     });
@@ -962,10 +1097,11 @@
     var row = document.createElement('div');
     row.className = 'srow';
     row.innerHTML =
-      '<span class="tbl">' + b.table + 's</span>' +
+      '<span class="tbl">' + (state.subject === 'blends' ? 'Set ' + b.table : b.table + 's') + '</span>' +
       '<span class="tot">' + fmt(b.total) + '</span>' +
       '<span class="det">' +
-        (showPace ? b.pace + 's a card &middot; ' : 'of ' + fmt(b.table * 1000) + ' &middot; ') +
+        (showPace ? b.pace + 's a card &middot; '
+                  : 'of ' + fmt(state.subject === 'blends' ? 1000 : b.table * 1000) + ' &middot; ') +
         clock(b.seconds) + ', ' +
         (b.misses === 0 ? 'no misses' : b.misses + (b.misses === 1 ? ' miss' : ' misses')) +
         (!showPace && holder ? ' &middot; ' + esc(holder) : '') +
@@ -995,7 +1131,10 @@
     if (all){
       // grouped by difficulty, hardest first, since that is the prize
       var byPace = {};
-      me.bests.forEach(function(b){ (byPace[b.pace] = byPace[b.pace] || []).push(b); });
+      me.bests.forEach(function(b){
+        if ((b.subject || 'times') !== state.subject) return;
+        (byPace[b.pace] = byPace[b.pace] || []).push(b);
+      });
       Object.keys(byPace).map(Number).sort(function(a, b){ return a - b; }).forEach(function(p){
         var rows = byPace[p].sort(function(a, b){ return a.table - b.table; });
         var sub = rows.reduce(function(n, b){ return n + b.total; }, 0);
@@ -1014,7 +1153,9 @@
       }
     } else {
       var mine = {};
-      me.bests.forEach(function(b){ if (b.pace === state.pace) mine[b.table] = b; });
+      me.bests.forEach(function(b){
+        if (b.pace === state.pace && (b.subject || 'times') === state.subject) mine[b.table] = b;
+      });
       for (var t = MIN; t <= MAX; t++){
         var b = mine[t]; if (!b) continue;
         shown++; grand += b.total;
@@ -1041,9 +1182,12 @@
     el.scoreNote.textContent = all
       ? 'Every difficulty you have played, added up. An easier setting gives you more clock, '
         + 'so these are only worth comparing within the same row of the same difficulty.'
-      : 'The bigger tables are worth more: a flawless run is 1000 times the table, so the 12s '
-        + 'are worth twelve times the 1s. Getting them all right first go is most of it, and '
-        + 'the time left on the clock is the rest.';
+      : state.subject === 'blends'
+        ? 'Each set of sounds is worth up to 1000. Getting them all right first go is most of '
+          + 'it, and the time left on the clock is the rest.'
+        : 'The bigger tables are worth more: a flawless run is 1000 times the table, so the 12s '
+          + 'are worth twelve times the 1s. Getting them all right first go is most of it, and '
+          + 'the time left on the clock is the rest.';
   }
 
   el.viewOpts.addEventListener('click', function(ev){
@@ -1056,7 +1200,7 @@
   function postScore(tableNo, seconds, right, wrong, onResult){
     if (!me.token || !chaseOn()){ onResult(null); return; }
     apiCall('/score', { method: 'POST', body: {
-      token: me.token, table: tableNo, pace: state.pace,
+      token: me.token, subject: state.subject, table: tableNo, pace: state.pace,
       right: right, wrong: wrong, seconds: Math.round(seconds * 10) / 10
     }}).then(function(res){
       // A rejected session used to vanish silently and the child would finish
@@ -1079,7 +1223,8 @@
   function paintPace(){
     el.paceLabel.textContent = state.pace + 's a card';
     el.chaseNote.textContent =
-      'One chase per table. ' + PER_TABLE + ' cards at ' + state.pace + 's each, so the ' +
+      'One chase per ' + (state.subject === 'blends' ? 'set' : 'table') + '. ' + PER_TABLE +
+      ' cards at ' + state.pace + 's each, so the ' +
       pair().runnerName + ' has ' + clock(state.pace * PER_TABLE) + ' to get home. ' +
       'Only a right answer moves it along. Get one wrong and that card goes to the back of ' +
       'the queue to come round again, which costs you time.';
@@ -1102,7 +1247,7 @@
   el.practiceBtn.addEventListener('click', function(){
     var worst = troubleList();
     if (!worst.length) return;
-    var cards = worst.map(function(w){ return keyToPair(w.key); });
+    var cards = worst.map(function(w){ return keyToCard(w.key); });
     shuffle(cards);
     startRun([{label: 'Trouble spots', cards: cards}], true);
   });
@@ -1125,7 +1270,31 @@
 
   // With the chase on, tables stay whole so each one is a round.
   // Otherwise it is one long round and shuffling can cross tables.
+  // Phonics rounds: each set is 12 sounds in Abeka's own order, and a card
+  // picks one of that sound's words as the answer for this run.
+  function buildSoundRounds(){
+    var sets = state.sets.slice().sort(function(a, b){ return a - b; });
+    if (state.shuffle && state.timer === 'chase') shuffle(sets);
+    var rounds = [];
+    sets.forEach(function(n){
+      var from = (n - 1) * SOUNDS_PER_SET;
+      var cards = SOUNDS.slice(from, from + SOUNDS_PER_SET).map(function(row){
+        return { s: row[0], w: row.slice(1), pick: row[1 + Math.floor(Math.random() * (row.length - 1))] };
+      });
+      if (state.shuffle) shuffle(cards);
+      rounds.push({ label: 'Set ' + n, table: n, cards: cards });
+    });
+    if (state.timer !== 'chase'){
+      var all = [];
+      rounds.forEach(function(r){ all = all.concat(r.cards); });
+      if (state.shuffle) shuffle(all);
+      return [{ label: '', table: 0, cards: all }];
+    }
+    return rounds;
+  }
+
   function buildRounds(){
+    if (state.subject === 'blends') return buildSoundRounds();
     var tables = state.tables.slice().sort(function(x, y){ return x - y; });
     var rounds = [], i, m;
     if (state.timer === 'chase'){
@@ -1145,6 +1314,42 @@
       rounds.push({label: '', table: 0, cards: all});
     }
     return rounds;
+  }
+
+  /* ---------- a card, whichever subject it belongs to ----------
+     Times cards are [3, 7]. Sound cards are {s:'ck', w:['duck']}. Everything
+     below the queue treats a card as opaque and goes through these. */
+  function isSound(c){ return !!(c && c.s); }
+  function cardFace(c){ return isSound(c) ? c.s : c[0] + ' × ' + c[1]; }
+  function cardAnswer(c){ return isSound(c) ? c.pick : String(c[0] * c[1]); }
+  function cardKey(c){ return isSound(c) ? 's:' + c.s + ':' + c.pick : pairKey(c[0], c[1]); }
+
+  // Four words: this sound's word, plus three real words off other cards that
+  // do NOT contain the sound being asked about, or they would also be right.
+  function soundOptions(c){
+    var want = soundLetters(c.s).toLowerCase();
+    var pool = [];
+    SOUNDS.forEach(function(row){
+      if (row[0] === c.s) return;                       // never the same card
+      for (var i = 1; i < row.length; i++){
+        var w = row[i].toLowerCase();
+        if (w !== c.pick.toLowerCase() && w.indexOf(want) === -1) pool.push(row[i]);
+      }
+    });
+    shuffle(pool);
+    var out = [], i;
+    for (i = 0; i < pool.length && out.length < 3; i++){
+      if (out.indexOf(pool[i]) === -1) out.push(pool[i]);
+    }
+    out.splice(Math.floor(Math.random() * (out.length + 1)), 0, c.pick);
+    return out;
+  }
+
+  function cardOptions(c){
+    if (isSound(c)) return soundOptions(c);
+    var opts = distractors(c[0], c[1]).map(String);
+    opts.splice(Math.floor(Math.random() * 4), 0, String(c[0] * c[1]));
+    return opts;
   }
 
   function distractors(a, b){
@@ -1459,21 +1664,22 @@
   }
 
   function paintCard(){
-    var pair = card();
-    var text = pair[0] + ' × ' + pair[1];
-    var answer = pair[0] * pair[1];
+    var c = card();
+    var text = cardFace(c);
+    var answer = cardAnswer(c);
 
     state.revealed = false; state.answered = false;
     el.card.classList.remove('flip');
     el.count.textContent = (state.cleared + 1) + ' / ' + state.total;
     el.q.textContent = text;
     el.qsmall.textContent = text;
-    el.a.textContent = String(answer);
+    el.a.textContent = answer;
+    // sounds and their words are words, not big numerals, so ease the size off
+    document.body.classList.toggle('wordy', isSound(c));
     paintScore();
 
     if (state.mode === 'choice'){
-      var opts = distractors(pair[0], pair[1]);
-      opts.splice(Math.floor(Math.random() * 4), 0, answer);
+      var opts = cardOptions(c);
       el.choices.innerHTML = '';
       for (var i = 0; i < opts.length; i++){
         var b = document.createElement('button');
@@ -1502,8 +1708,7 @@
   }
 
   function bump(correct){
-    var pair = card();
-    var key = pairKey(pair[0], pair[1]);
+    var key = cardKey(card());
     noteResult(key, correct);
 
     if (correct){
@@ -1531,12 +1736,11 @@
     stopTimer(); chasePause();
     el.track.classList.add('hidden');
 
-    var pair = card();
-    var answer = pair[0] * pair[1];
+    var answer = cardAnswer(card());
     var correct = picked === answer;
     var btns = el.choices.querySelectorAll('.ch');
     for (var i = 0; i < btns.length; i++){
-      var v = parseInt(btns[i].getAttribute('data-v'), 10);
+      var v = btns[i].getAttribute('data-v');
       if (v === answer) btns[i].classList.add('good');
       else if (v === picked) btns[i].classList.add('bad');
       else btns[i].classList.add('dim');
@@ -1553,7 +1757,7 @@
     var b = ev.target.closest('.ch'); if (!b) return;
     unlock();
     if (state.answered){ clearTimeout(advanceId); step(); return; }
-    settle(parseInt(b.getAttribute('data-v'), 10));
+    settle(b.getAttribute('data-v'));
   });
 
   /* --- flip --- */
@@ -1648,7 +1852,7 @@
     for (var i = 0; i < keys.length; i++){
       var s = document.createElement('span');
       s.className = 'miss';
-      s.textContent = keys[i].replace('×', ' × ');
+      s.textContent = prettyKey(keys[i]);
       list.appendChild(s);
     }
   }
