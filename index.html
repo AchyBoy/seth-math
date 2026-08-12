@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.6">
+<meta name="x-cards-version" content="2.7">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,6 +47,13 @@
   .block.hide{display:none}
   .note{font-size:14px;color:var(--muted);margin-top:10px;line-height:1.45}
 
+  .topics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .topics button{border:2px solid var(--line);background:#fff;border-radius:14px;
+    padding:13px 10px;font-size:16px;font-weight:600;color:var(--muted);text-align:left;
+    transition:transform .12s ease,background .18s ease,border-color .18s ease,color .18s ease}
+  .topics button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .topics button:active{transform:scale(.96)}
+  .topics button em{display:block;font-style:normal;font-size:12px;font-weight:500;opacity:.7}
   .chips{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
   .chip{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
     border:2px solid var(--line);border-radius:14px;background:#fff;
@@ -117,6 +124,8 @@
   .srow{display:flex;align-items:center;gap:10px;font-size:15px;
     border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px}
   .srow .tbl{font-weight:600;width:48px;flex:none}
+  .srow .tbl.wide{width:auto;min-width:96px;max-width:120px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .srow .tot{font-weight:700;color:var(--blue);width:52px;flex:none;
     text-align:right;font-variant-numeric:tabular-nums}
   .srow .det{color:var(--muted);font-size:13px;flex:1;
@@ -230,6 +239,12 @@
     -webkit-backface-visibility:hidden;backface-visibility:hidden}
   .face.back{transform:rotateY(180deg);background:var(--blue-soft);border-color:#cfdcff}
   .q{font-size:clamp(46px,15vw,84px);font-weight:600;letter-spacing:.01em;line-height:1}
+  body.versey .q{font-size:clamp(19px,4.6vw,26px);font-weight:500;line-height:1.42;
+    letter-spacing:0;padding:0 20px;text-align:center}
+  body.versey .a{font-size:clamp(17px,4.2vw,23px);font-weight:500;line-height:1.45;
+    letter-spacing:0;padding:0 20px;color:var(--ink);text-align:center}
+  body.versey .qsmall{font-size:17px;font-weight:600;color:var(--blue);margin-bottom:12px}
+  body.versey .ch{font-size:17px;font-weight:600;padding:14px 6px;line-height:1.25}
   body.wordy .q{font-size:clamp(40px,13vw,72px)}
   body.wordy .a{font-size:clamp(38px,11vw,64px)}
   body.wordy .ch{font-size:22px}
@@ -264,13 +279,17 @@
   .gbtn.no{background:#8d8981;box-shadow:0 6px 0 #6f6c65}
   .gbtn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 
-  /* sits over the card, well clear of the speech bubbles up in the lane */
-  .toast{position:fixed;left:50%;top:38%;transform:translate(-50%,-14px);z-index:50;
+  /* Near the top, where the card is emptiest. It cannot sit mid screen: a
+     scripture card is a paragraph and the toast landed in the middle of the
+     verse. When the chase lane is showing it drops below it, so it does not
+     cover the animals or their speech either. */
+  .toast{position:fixed;left:50%;top:74px;transform:translate(-50%,-14px);z-index:50;
     background:var(--ink);color:#fff;font-size:16px;font-weight:600;
     padding:11px 22px;border-radius:999px;opacity:0;pointer-events:none;
     transition:opacity .25s ease,transform .25s cubic-bezier(.2,.9,.3,1)}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   .toast.big{font-size:19px;padding:15px 28px;background:var(--green)}
+  body.chasing .toast{top:186px}
 
   /* ---------- done ---------- */
   .done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
@@ -336,7 +355,20 @@
     <div class="opts" id="subjectOpts">
       <button type="button" class="opt on" data-subject="times">✖️ Times tables</button>
       <button type="button" class="opt" data-subject="blends">🔤 Blends</button>
+      <button type="button" class="opt" data-subject="scripture">📖 Scriptures</button>
     </div>
+  </div>
+
+  <div class="block hide" id="topicsBlock">
+    <p class="label">Subjects</p>
+    <div class="topics" id="topicChips"></div>
+    <div class="quick">
+      <button type="button" id="allTopicsBtn">All</button>
+      <button type="button" id="noTopicsBtn">None</button>
+    </div>
+    <p class="note">King James, so the words are the ones he will hear read aloud.
+      Flip the card to check yourself, or switch to Pick the answer and match the verse
+      to where it is found.</p>
   </div>
 
   <div class="block" id="tablesBlock">
@@ -406,7 +438,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.6</p>
+  <p class="foot">v2.7</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -620,6 +652,198 @@
     ['g','giant'], ['dge','fudge'], ['a-','asleep'], ['al-','also'],
     ['be-','because'], ['en-','enjoy'], ['un-','unbutton'], ['wr','wrinkle']
   ];
+  /* ------------------------------------------------------------------ *
+   * Scriptures by subject, King James Version.
+   *
+   * KJV because it is public domain, so the full text can sit in the page
+   * with no licensing question; a modern translation could not. The text was
+   * fetched verse by verse from a public domain KJV rather than typed from
+   * memory, because misquoting scripture in a study tool is not a small
+   * mistake. Andrew is to check the selections; the wording is verified.
+   * ------------------------------------------------------------------ */
+  var SCRIPTURES = [
+    { c: "One God", v: [
+      { r: "Deuteronomy 6:4",
+        t: "Hear, O Israel: The LORD our God is one LORD:" },
+      { r: "Isaiah 43:10",
+        t: "Ye are my witnesses, saith the LORD, and my servant whom I have chosen: that ye may know and believe me, and understand that I am he: before me there was no God formed, neither shall there be after me." },
+      { r: "Isaiah 43:11",
+        t: "I, even I, am the LORD; and beside me there is no saviour." },
+      { r: "Isaiah 44:6",
+        t: "Thus saith the LORD the King of Israel, and his redeemer the LORD of hosts; I am the first, and I am the last; and beside me there is no God." },
+      { r: "Isaiah 45:5",
+        t: "I am the LORD, and there is none else, there is no God beside me: I girded thee, though thou hast not known me:" },
+      { r: "Zechariah 14:9",
+        t: "And the LORD shall be king over all the earth: in that day shall there be one LORD, and his name one." },
+      { r: "Mark 12:29",
+        t: "And Jesus answered him, The first of all the commandments is, Hear, O Israel; The Lord our God is one Lord:" },
+      { r: "John 10:30",
+        t: "I and my Father are one." },
+      { r: "John 14:9",
+        t: "Jesus saith unto him, Have I been so long time with you, and yet hast thou not known me, Philip? he that hath seen me hath seen the Father; and how sayest thou then, Shew us the Father?" },
+      { r: "Colossians 2:9",
+        t: "For in him dwelleth all the fulness of the Godhead bodily." },
+      { r: "1 Timothy 3:16",
+        t: "And without controversy great is the mystery of godliness: God was manifest in the flesh, justified in the Spirit, seen of angels, preached unto the Gentiles, believed on in the world, received up into glory." },
+      { r: "Revelation 1:8",
+        t: "I am Alpha and Omega, the beginning and the ending, saith the Lord, which is, and which was, and which is to come, the Almighty." },
+    ] },
+    { c: "Baptism", v: [
+      { r: "Acts 2:38",
+        t: "Then Peter said unto them, Repent, and be baptized every one of you in the name of Jesus Christ for the remission of sins, and ye shall receive the gift of the Holy Ghost." },
+      { r: "Acts 8:16",
+        t: "(For as yet he was fallen upon none of them: only they were baptized in the name of the Lord Jesus.)" },
+      { r: "Acts 10:48",
+        t: "And he commanded them to be baptized in the name of the Lord. Then prayed they him to tarry certain days." },
+      { r: "Acts 19:5",
+        t: "When they heard this, they were baptized in the name of the Lord Jesus." },
+      { r: "Acts 22:16",
+        t: "And now why tarriest thou? arise, and be baptized, and wash away thy sins, calling on the name of the Lord." },
+      { r: "Romans 6:4",
+        t: "Therefore we are buried with him by baptism into death: that like as Christ was raised up from the dead by the glory of the Father, even so we also should walk in newness of life." },
+      { r: "Galatians 3:27",
+        t: "For as many of you as have been baptized into Christ have put on Christ." },
+      { r: "Colossians 2:12",
+        t: "Buried with him in baptism, wherein also ye are risen with him through the faith of the operation of God, who hath raised him from the dead." },
+      { r: "Colossians 3:17",
+        t: "And whatsoever ye do in word or deed, do all in the name of the Lord Jesus, giving thanks to God and the Father by him." },
+      { r: "1 Peter 3:21",
+        t: "The like figure whereunto even baptism doth also now save us (not the putting away of the filth of the flesh, but the answer of a good conscience toward God,) by the resurrection of Jesus Christ:" },
+      { r: "Mark 16:16",
+        t: "He that believeth and is baptized shall be saved; but he that believeth not shall be damned." },
+      { r: "John 3:5",
+        t: "Jesus answered, Verily, verily, I say unto thee, Except a man be born of water and of the Spirit, he cannot enter into the kingdom of God." },
+    ] },
+    { c: "Holy Ghost", v: [
+      { r: "Acts 2:4",
+        t: "And they were all filled with the Holy Ghost, and began to speak with other tongues, as the Spirit gave them utterance." },
+      { r: "Acts 1:8",
+        t: "But ye shall receive power, after that the Holy Ghost is come upon you: and ye shall be witnesses unto me both in Jerusalem, and in all Judaea, and in Samaria, and unto the uttermost part of the earth." },
+      { r: "Acts 8:17",
+        t: "Then laid they their hands on them, and they received the Holy Ghost." },
+      { r: "Acts 10:44",
+        t: "While Peter yet spake these words, the Holy Ghost fell on all them which heard the word." },
+      { r: "Acts 10:46",
+        t: "For they heard them speak with tongues, and magnify God. Then answered Peter," },
+      { r: "Acts 19:6",
+        t: "And when Paul had laid his hands upon them, the Holy Ghost came on them; and they spake with tongues, and prophesied." },
+      { r: "Joel 2:28",
+        t: "And it shall come to pass afterward, that I will pour out my spirit upon all flesh; and your sons and your daughters shall prophesy, your old men shall dream dreams, your young men shall see visions:" },
+      { r: "John 14:26",
+        t: "But the Comforter, which is the Holy Ghost, whom the Father will send in my name, he shall teach you all things, and bring all things to your remembrance, whatsoever I have said unto you." },
+      { r: "John 16:13",
+        t: "Howbeit when he, the Spirit of truth, is come, he will guide you into all truth: for he shall not speak of himself; but whatsoever he shall hear, that shall he speak: and he will shew you things to come." },
+      { r: "Romans 8:9",
+        t: "But ye are not in the flesh, but in the Spirit, if so be that the Spirit of God dwell in you. Now if any man have not the Spirit of Christ, he is none of his." },
+      { r: "Ephesians 1:13",
+        t: "In whom ye also trusted, after that ye heard the word of truth, the gospel of your salvation: in whom also after that ye believed, ye were sealed with that holy Spirit of promise," },
+      { r: "1 Corinthians 12:13",
+        t: "For by one Spirit are we all baptized into one body, whether we be Jews or Gentiles, whether we be bond or free; and have been all made to drink into one Spirit." },
+    ] },
+    { c: "Repentance", v: [
+      { r: "Luke 13:3",
+        t: "I tell you, Nay: but, except ye repent, ye shall all likewise perish." },
+      { r: "Acts 3:19",
+        t: "Repent ye therefore, and be converted, that your sins may be blotted out, when the times of refreshing shall come from the presence of the Lord;" },
+      { r: "Acts 17:30",
+        t: "And the times of this ignorance God winked at; but now commandeth all men every where to repent:" },
+      { r: "Acts 26:20",
+        t: "But shewed first unto them of Damascus, and at Jerusalem, and throughout all the coasts of Judaea, and then to the Gentiles, that they should repent and turn to God, and do works meet for repentance." },
+      { r: "2 Corinthians 7:10",
+        t: "For godly sorrow worketh repentance to salvation not to be repented of: but the sorrow of the world worketh death." },
+      { r: "2 Peter 3:9",
+        t: "The Lord is not slack concerning his promise, as some men count slackness; but is longsuffering to us-ward, not willing that any should perish, but that all should come to repentance." },
+      { r: "Matthew 4:17",
+        t: "From that time Jesus began to preach, and to say, Repent: for the kingdom of heaven is at hand." },
+      { r: "Mark 1:15",
+        t: "And saying, The time is fulfilled, and the kingdom of God is at hand: repent ye, and believe the gospel." },
+    ] },
+    { c: "Salvation", v: [
+      { r: "John 3:3",
+        t: "Jesus answered and said unto him, Verily, verily, I say unto thee, Except a man be born again, he cannot see the kingdom of God." },
+      { r: "Mark 16:16",
+        t: "He that believeth and is baptized shall be saved; but he that believeth not shall be damned." },
+      { r: "Titus 3:5",
+        t: "Not by works of righteousness which we have done, but according to his mercy he saved us, by the washing of regeneration, and renewing of the Holy Ghost;" },
+      { r: "Ephesians 2:8",
+        t: "For by grace are ye saved through faith; and that not of yourselves: it is the gift of God:" },
+      { r: "Romans 10:9",
+        t: "That if thou shalt confess with thy mouth the Lord Jesus, and shalt believe in thine heart that God hath raised him from the dead, thou shalt be saved." },
+      { r: "Romans 10:13",
+        t: "For whosoever shall call upon the name of the Lord shall be saved." },
+      { r: "Acts 4:12",
+        t: "Neither is there salvation in any other: for there is none other name under heaven given among men, whereby we must be saved." },
+      { r: "1 Peter 1:23",
+        t: "Being born again, not of corruptible seed, but of incorruptible, by the word of God, which liveth and abideth for ever." },
+      { r: "2 Corinthians 5:17",
+        t: "Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new." },
+      { r: "John 14:6",
+        t: "Jesus saith unto him, I am the way, the truth, and the life: no man cometh unto the Father, but by me." },
+    ] },
+    { c: "Holiness", v: [
+      { r: "1 Peter 1:15",
+        t: "But as he which hath called you is holy, so be ye holy in all manner of conversation;" },
+      { r: "1 Peter 1:16",
+        t: "Because it is written, Be ye holy; for I am holy." },
+      { r: "Hebrews 12:14",
+        t: "Follow peace with all men, and holiness, without which no man shall see the Lord:" },
+      { r: "Romans 12:1",
+        t: "I beseech you therefore, brethren, by the mercies of God, that ye present your bodies a living sacrifice, holy, acceptable unto God, which is your reasonable service." },
+      { r: "Romans 12:2",
+        t: "And be not conformed to this world: but be ye transformed by the renewing of your mind, that ye may prove what is that good, and acceptable, and perfect, will of God." },
+      { r: "2 Corinthians 6:17",
+        t: "Wherefore come out from among them, and be ye separate, saith the Lord, and touch not the unclean thing; and I will receive you," },
+      { r: "1 Thessalonians 4:7",
+        t: "For God hath not called us unto uncleanness, but unto holiness." },
+      { r: "1 John 2:15",
+        t: "Love not the world, neither the things that are in the world. If any man love the world, the love of the Father is not in him." },
+      { r: "Titus 2:11",
+        t: "For the grace of God that bringeth salvation hath appeared to all men," },
+      { r: "Titus 2:12",
+        t: "Teaching us that, denying ungodliness and worldly lusts, we should live soberly, righteously, and godly, in this present world;" },
+    ] },
+    { c: "Faith", v: [
+      { r: "Hebrews 11:1",
+        t: "Now faith is the substance of things hoped for, the evidence of things not seen." },
+      { r: "Hebrews 11:6",
+        t: "But without faith it is impossible to please him: for he that cometh to God must believe that he is, and that he is a rewarder of them that diligently seek him." },
+      { r: "Romans 10:17",
+        t: "So then faith cometh by hearing, and hearing by the word of God." },
+      { r: "James 2:17",
+        t: "Even so faith, if it hath not works, is dead, being alone." },
+      { r: "James 2:20",
+        t: "But wilt thou know, O vain man, that faith without works is dead?" },
+      { r: "Mark 11:22",
+        t: "And Jesus answering saith unto them, Have faith in God." },
+      { r: "Mark 11:24",
+        t: "Therefore I say unto you, What things soever ye desire, when ye pray, believe that ye receive them, and ye shall havethem." },
+      { r: "2 Corinthians 5:7",
+        t: "(For we walk by faith, not by sight:)" },
+      { r: "Romans 5:1",
+        t: "Therefore being justified by faith, we have peace with God through our Lord Jesus Christ:" },
+    ] },
+    { c: "His Coming", v: [
+      { r: "1 Thessalonians 4:16",
+        t: "For the Lord himself shall descend from heaven with a shout, with the voice of the archangel, and with the trump of God: and the dead in Christ shall rise first:" },
+      { r: "1 Thessalonians 4:17",
+        t: "Then we which are alive and remain shall be caught up together with them in the clouds, to meet the Lord in the air: and so shall we ever be with the Lord." },
+      { r: "Acts 1:11",
+        t: "Which also said, Ye men of Galilee, why stand ye gazing up into heaven? this same Jesus, which is taken up from you into heaven, shall so come in like manner as ye have seen him go into heaven." },
+      { r: "Matthew 24:36",
+        t: "But of that day and hour knoweth no man, no, not the angels of heaven, but my Father only." },
+      { r: "Matthew 24:42",
+        t: "Watch therefore: for ye know not what hour your Lord doth come." },
+      { r: "John 14:3",
+        t: "And if I go and prepare a place for you, I will come again, and receive you unto myself; that where I am, there ye may be also." },
+      { r: "Revelation 22:12",
+        t: "And, behold, I come quickly; and my reward is with me, to give every man according as his work shall be." },
+      { r: "1 Corinthians 15:52",
+        t: "In a moment, in the twinkling of an eye, at the last trump: for the trumpet shall sound, and the dead shall be raised incorruptible, and we shall be changed." },
+      { r: "Titus 2:13",
+        t: "Looking for that blessed hope, and the glorious appearing of the great God and our Saviour Jesus Christ;" },
+    ] },
+  ];
+
   var SOUNDS_PER_SET = 12;
   function soundSets(){ return Math.ceil(SOUNDS.length / SOUNDS_PER_SET); }
   // the dash only marks where the sound sits in a word, so drop it to match
@@ -644,7 +868,7 @@
   }
 
   var state = {
-    subject: 'times', tables: [], sets: [1], mode: 'flip', shuffle: true,
+    subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -658,6 +882,7 @@
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
+   'topicsBlock','topicChips','allTopicsBtn','noTopicsBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
@@ -820,6 +1045,7 @@
         if (s.subject === 'times' || s.subject === 'blends') state.subject = s.subject;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
+        if (Array.isArray(s.topics) && s.topics.length) state.topics = s.topics;
         if (s.mode === 'flip' || s.mode === 'choice') state.mode = s.mode;
         if (typeof s.shuffle === 'boolean') state.shuffle = s.shuffle;
         if (s.timer === 'off' || s.timer === 'card' || s.timer === 'chase') state.timer = s.timer;
@@ -833,7 +1059,7 @@
   function saveSettings(){
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        subject: state.subject, tables: state.tables, sets: state.sets,
+        subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
         pair: state.pair, sound: state.sound
@@ -865,6 +1091,28 @@
       c.textContent = String(k);
       el.setChips.appendChild(c);
     }
+    SCRIPTURES.forEach(function(cat, i){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('data-topic', String(i));
+      b.innerHTML = esc(cat.c) + '<em>' + cat.v.length + ' verses</em>';
+      el.topicChips.appendChild(b);
+    });
+    el.topicChips.addEventListener('click', function(ev){
+      var b = ev.target.closest('button'); if (!b) return;
+      var i = parseInt(b.getAttribute('data-topic'), 10);
+      var at = state.topics.indexOf(i);
+      if (at === -1) state.topics.push(i); else state.topics.splice(at, 1);
+      sfx.tap(); paintHome(); saveSettings();
+    });
+    el.allTopicsBtn.addEventListener('click', function(){
+      state.topics = SCRIPTURES.map(function(_, i){ return i; });
+      sfx.tap(); paintHome(); saveSettings();
+    });
+    el.noTopicsBtn.addEventListener('click', function(){
+      state.topics = []; sfx.tap(); paintHome(); saveSettings();
+    });
+
     el.setChips.addEventListener('click', function(ev){
       var b = ev.target.closest('.chip'); if (!b) return;
       var n = parseInt(b.getAttribute('data-set'), 10);
@@ -907,6 +1155,7 @@
 
   function paintHome(){
     var blends = state.subject === 'blends';
+    var verses = state.subject === 'scripture';
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
@@ -917,9 +1166,15 @@
       list[i].classList.toggle('on',
         state.sets.indexOf(parseInt(list[i].getAttribute('data-set'), 10)) !== -1);
     }
+    var tl = el.topicChips.querySelectorAll('button');
+    for (i = 0; i < tl.length; i++){
+      tl[i].classList.toggle('on',
+        state.topics.indexOf(parseInt(tl[i].getAttribute('data-topic'), 10)) !== -1);
+    }
     setOn(el.subjectOpts, 'data-subject', state.subject);
-    el.tablesBlock.classList.toggle('hide', blends);
+    el.tablesBlock.classList.toggle('hide', blends || verses);
     el.setsBlock.classList.toggle('hide', !blends);
+    el.topicsBlock.classList.toggle('hide', !verses);
     el.setsNote.textContent = setsSummary();
     setOn(el.modeOpts, 'data-mode', state.mode);
     setOn(el.orderOpts, 'data-shuffle', state.shuffle ? '1' : '0');
@@ -932,15 +1187,17 @@
     paintPairs();
     paintPace();
 
-    var chosen = blends ? state.sets.length : state.tables.length;
-    var count = blends
+    var chosen = verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
+    var count = verses
+      ? state.topics.reduce(function(n, i){ return n + (SCRIPTURES[i] ? SCRIPTURES[i].v.length : 0); }, 0)
+      : blends
       ? state.sets.reduce(function(n, k){
           return n + SOUNDS.slice((k - 1) * SOUNDS_PER_SET, k * SOUNDS_PER_SET).length;
         }, 0)
       : state.tables.length * PER_TABLE;
     el.startBtn.disabled = chosen === 0;
     el.startBtn.textContent = chosen === 0
-      ? (blends ? 'Pick at least one set' : 'Pick at least one table')
+      ? (verses ? 'Pick at least one subject' : blends ? 'Pick at least one set' : 'Pick at least one table')
       : 'Start ' + count + ' cards';
     paintTrouble();
   }
@@ -1297,11 +1554,14 @@
     var row = document.createElement('div');
     row.className = 'srow';
     row.innerHTML =
-      '<span class="tbl">' + (state.subject === 'blends' ? 'Set ' + b.table : b.table + 's') + '</span>' +
+      '<span class="tbl' + (state.subject === 'scripture' ? ' wide' : '') + '">' +
+        esc(state.subject === 'times' ? b.table + 's'
+          : state.subject === 'blends' ? 'Set ' + b.table
+          : ((SCRIPTURES[b.table - 1] || {}).c || ('#' + b.table))) + '</span>' +
       '<span class="tot">' + fmt(b.total) + '</span>' +
       '<span class="det">' +
         (showPace ? b.pace + 's a card &middot; '
-                  : 'of ' + fmt(state.subject === 'blends' ? 1000 : b.table * 1000) + ' &middot; ') +
+                  : 'of ' + fmt(state.subject === 'times' ? b.table * 1000 : 1000) + ' &middot; ') +
         clock(b.seconds) + ', ' +
         (b.misses === 0 ? 'no misses' : b.misses + (b.misses === 1 ? ' miss' : ' misses')) +
         (!showPace && holder ? ' &middot; ' + esc(holder) : '') +
@@ -1382,8 +1642,8 @@
     el.scoreNote.textContent = all
       ? 'Every difficulty you have played, added up. An easier setting gives you more clock, '
         + 'so these are only worth comparing within the same row of the same difficulty.'
-      : state.subject === 'blends'
-        ? 'Each set of sounds is worth up to 1000. Getting them all right first go is most of '
+      : state.subject !== 'times'
+        ? 'Each set is worth up to 1000. Getting them all right first go is most of '
           + 'it, and the time left on the clock is the rest.'
         : 'The bigger tables are worth more: a flawless run is 1000 times the table, so the 12s '
           + 'are worth twelve times the 1s. Getting them all right first go is most of it, and '
@@ -1401,6 +1661,7 @@
     if (!me.token || !chaseOn()){ onResult(null); return; }
     apiCall('/score', { method: 'POST', body: {
       token: me.token, subject: state.subject, table: tableNo, pace: state.pace,
+      cards: state.total,
       right: right, wrong: wrong, seconds: Math.round(seconds * 10) / 10
     }}).then(function(res){
       // A rejected session used to vanish silently and the child would finish
@@ -1423,7 +1684,7 @@
   function paintPace(){
     el.paceLabel.textContent = state.pace + 's a card';
     el.chaseNote.textContent =
-      'One chase per ' + (state.subject === 'blends' ? 'set' : 'table') + '. ' + PER_TABLE +
+      'One chase per ' + (state.subject === 'times' ? 'table' : state.subject === 'blends' ? 'set' : 'subject') + '. ' + PER_TABLE +
       ' cards at ' + state.pace + 's each, so the ' +
       pair().runnerName + ' has ' + clock(state.pace * PER_TABLE) + ' to get home. ' +
       'Only a right answer moves it along. Get one wrong and that card goes to the back of ' +
@@ -1493,7 +1754,28 @@
     return rounds;
   }
 
+  // one category is one round, however many verses are under it
+  function buildVerseRounds(){
+    var picked = state.topics.slice().sort(function(a, b){ return a - b; });
+    if (state.shuffle && state.timer === 'chase') shuffle(picked);
+    var rounds = [];
+    picked.forEach(function(i){
+      var cat = SCRIPTURES[i]; if (!cat) return;
+      var cards = cat.v.slice();
+      if (state.shuffle) shuffle(cards);
+      rounds.push({ label: cat.c, table: i + 1, cards: cards });
+    });
+    if (state.timer !== 'chase'){
+      var all = [];
+      rounds.forEach(function(r){ all = all.concat(r.cards); });
+      if (state.shuffle) shuffle(all);
+      return [{ label: '', table: 0, cards: all }];
+    }
+    return rounds;
+  }
+
   function buildRounds(){
+    if (state.subject === 'scripture') return buildVerseRounds();
     if (state.subject === 'blends') return buildSoundRounds();
     var tables = state.tables.slice().sort(function(x, y){ return x - y; });
     var rounds = [], i, m;
@@ -1520,9 +1802,37 @@
      Times cards are [3, 7]. Sound cards are {s:'ck', w:['duck']}. Everything
      below the queue treats a card as opaque and goes through these. */
   function isSound(c){ return !!(c && c.s); }
-  function cardFace(c){ return isSound(c) ? c.s : c[0] + ' × ' + c[1]; }
-  function cardAnswer(c){ return isSound(c) ? c.pick : String(c[0] * c[1]); }
-  function cardKey(c){ return isSound(c) ? 's:' + c.s + ':' + c.pick : pairKey(c[0], c[1]); }
+  function isVerse(c){ return !!(c && c.r && c.t); }
+  /* A verse is drilled both ways round. Flipping shows the reference and asks
+     you to recall the words; the four button mode has to go the other way,
+     since four whole verses will not fit on a phone but four references will. */
+  function cardFace(c){
+    if (isVerse(c)) return state.mode === 'choice' ? c.t : c.r;
+    return isSound(c) ? c.s : c[0] + ' × ' + c[1];
+  }
+  function cardAnswer(c){
+    if (isVerse(c)) return state.mode === 'choice' ? c.r : c.t;
+    return isSound(c) ? c.pick : String(c[0] * c[1]);
+  }
+  function cardKey(c){
+    if (isVerse(c)) return 'v:' + c.r;
+    return isSound(c) ? 's:' + c.s + ':' + c.pick : pairKey(c[0], c[1]);
+  }
+
+  // four references, one of them this verse's
+  function verseOptions(c){
+    var pool = [];
+    SCRIPTURES.forEach(function(cat){
+      cat.v.forEach(function(v){ if (v.r !== c.r) pool.push(v.r); });
+    });
+    shuffle(pool);
+    var out = [];
+    for (var i = 0; i < pool.length && out.length < 3; i++){
+      if (out.indexOf(pool[i]) === -1) out.push(pool[i]);
+    }
+    out.splice(Math.floor(Math.random() * (out.length + 1)), 0, c.r);
+    return out;
+  }
 
   // Four words: this sound's word, plus three real words off other cards that
   // do NOT contain the sound being asked about, or they would also be right.
@@ -1546,6 +1856,7 @@
   }
 
   function cardOptions(c){
+    if (isVerse(c)) return verseOptions(c);
     if (isSound(c)) return soundOptions(c);
     var opts = distractors(c[0], c[1]).map(String);
     opts.splice(Math.floor(Math.random() * 4), 0, String(c[0] * c[1]));
@@ -1759,6 +2070,7 @@
     chaseStop();
     chase.spent = 0;
     el.lane.classList.toggle('on', chaseOn());
+    document.body.classList.toggle('chasing', chaseOn());
     if (!chaseOn()) return;
     var duo = pair();
     el.cat.textContent = duo.chaser;
@@ -1877,6 +2189,7 @@
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
     document.body.classList.toggle('wordy', isSound(c));
+    document.body.classList.toggle('versey', isVerse(c));
     paintScore();
 
     if (state.mode === 'choice'){
