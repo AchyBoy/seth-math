@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.3">
+<meta name="x-cards-version" content="2.4">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -400,7 +400,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.3</p>
+  <p class="foot">v2.4</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -735,6 +735,17 @@
       apiCall('/misses', { method: 'POST', body: { token: me.token, misses: record } });
     }, 1500);
   }
+  /* Everything belonging to a child is dropped in one place. Three separate
+     hand-written clears had already drifted apart: one forgot the bests, one
+     forgot the leaderboard. Both were invisible only because the scoreboard
+     hides itself when signed out, which is luck, not design. */
+  function forgetPlayer(){
+    me.token = ''; me.name = ''; me.bests = []; me.leaders = [];
+    saveMe();
+    loadRecord();          // back to the guest record on this device
+    paintWho();
+  }
+
   // called whenever the signed-in player changes
   function adoptRecord(fromServer){
     if (fromServer && typeof fromServer === 'object' && Object.keys(fromServer).length){
@@ -1095,8 +1106,7 @@
   el.newName.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') el.pinField.focus(); });
   el.skipAuth.addEventListener('click', function(){ sfx.tap(); show('home'); });
   el.signOutBtn.addEventListener('click', function(){
-    me.token = ''; me.name = ''; me.bests = []; me.leaders = [];
-    saveMe(); loadRecord(); paintWho(); sfx.tap(); show('home');
+    forgetPlayer(); sfx.tap(); show('home');
   });
 
   /* ---------- the scoreboard ---------- */
@@ -1104,7 +1114,7 @@
     if (!me.token) return;
     apiCall('/me?token=' + encodeURIComponent(me.token)).then(function(res){
       if (!res) return;                       // offline, keep what we have
-      if (!res.ok){ me.token = ''; me.name = ''; saveMe(); loadRecord(); paintWho(); return; }
+      if (!res.ok){ forgetPlayer(); return; }
       me.name = res.data.name; me.bests = res.data.bests || [];
       saveMe(); adoptRecord(res.data.misses); paintWho();
     });
@@ -1234,7 +1244,7 @@
       // A rejected session used to vanish silently and the child would finish
       // table after table with nothing saved. Say so instead.
       if (res && res.status === 401){
-        me.token = ''; me.name = ''; me.bests = []; saveMe(); loadRecord(); paintWho();
+        forgetPlayer();
         toast('Signed out, sign in again to save scores');
         onResult(null); return;
       }
