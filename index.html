@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.2">
+<meta name="x-cards-version" content="1.3">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,7 +79,8 @@
   /* difficulty slider */
   .slide{display:flex;align-items:center;gap:14px}
   .slide input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:10px;
-    border-radius:999px;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));outline:none}
+    border-radius:999px;outline:none;
+    background:linear-gradient(90deg,var(--red),var(--amber),var(--green))}
   .slide input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
     width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid var(--ink);
     box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer}
@@ -113,11 +114,14 @@
   .lane.on{display:block}
   .lane .ground{position:absolute;left:0;right:0;bottom:12px;height:3px;border-radius:2px;
     background:repeating-linear-gradient(90deg,var(--line) 0 10px,transparent 10px 18px)}
-  .lane .hole{position:absolute;bottom:9px;right:2px;width:44px;height:26px;border-radius:50%;
+  /* left matches HOLE in the script, so the mouse finishes dead centre of it */
+  .lane .hole{position:absolute;bottom:9px;left:88%;transform:translateX(-50%);
+    width:46px;height:26px;border-radius:50%;
     background:#3a3730;box-shadow:inset 0 3px 5px rgba(0,0,0,.5)}
   .lane .runner{position:absolute;bottom:12px;font-size:29px;line-height:1;
-    transform:translateX(-50%);transition:none;will-change:left}
-  .lane .mouse{z-index:2}
+    transform:translateX(-50%);will-change:left}
+  /* the mouse only moves when a card is answered, so let it scurry */
+  .lane .mouse{z-index:2;transition:left .45s cubic-bezier(.3,.8,.35,1)}
   .lane .cat{z-index:1}
   .lane.close .ground{background:repeating-linear-gradient(90deg,#f2c9c6 0 10px,transparent 10px 18px)}
   .lane.close .cat{animation:lunge .5s ease-in-out infinite}
@@ -270,16 +274,16 @@
   </div>
 
   <div class="block hide" id="chaseBlock">
-    <p class="label">How fast is the cat</p>
+    <p class="label">How long per card</p>
     <div class="slide">
-      <input type="range" min="1" max="10" step="1" id="level" aria-label="Cat speed">
-      <span class="lvl" id="levelLabel">Just right</span>
+      <input type="range" min="3" max="20" step="1" id="pace" aria-label="Seconds per card">
+      <span class="lvl" id="paceLabel">10s a card</span>
     </div>
     <p class="note" id="chaseNote"></p>
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.2</p>
+  <p class="foot">v1.3</p>
 </div>
 
 <!-- ================= play ================= -->
@@ -349,19 +353,23 @@
   'use strict';
 
   var MIN = 1, MAX = 12, PER_TABLE = MAX - MIN + 1;
-  var STORE = 'seth-cards-settings-v3';
+  var STORE = 'seth-cards-settings-v4';
   var MISSES = 'seth-cards-misses-v1';
 
-  // chase tuning. REWIND is how far a right answer shoves the cat back,
-  // POUNCE is what a wrong one costs. The slider only changes the cat's speed.
-  var REWIND = 4, POUNCE = 4, MOUSE_AT = 77, CAT_FROM = 3;
-  var LEVEL_NAMES = ['Sleepy','Slow','Easy','Gentle','Just right',
-                     'Quick','Sharp','Tricky','Fierce','Ferocious'];
-  function crossSeconds(level){ return 150 - (level - 1) * (115 / 9); }
+  /* The chase is a straight race down one track, both starting on the left.
+     The MOUSE is how far through the cards you are, so it only moves when
+     you answer. The CAT is how much of the time budget you have burned.
+     Budget is seconds-per-card times the cards in the round, so at 10s a
+     card the mouse has 120 seconds to get home over 12 cards. Finish under
+     that and it makes the hole, run over and the cat has it. A miss costs
+     the mouse half a card of time. */
+  var HEAD = 22;          // the mouse's head start, in track units
+  var LANE_L = 3, HOLE = 88;   // HOLE must match .lane .hole{left:} in the CSS
+  var MISS_COST = 0.5;    // in cards
 
   var state = {
     tables: [], mode: 'flip', shuffle: true,
-    timer: 'off', secs: 5, level: 5, sound: true,
+    timer: 'off', secs: 5, pace: 10, sound: true,
     rounds: [], roundIdx: 0, idx: 0,
     revealed: false, answered: false,
     right: 0, wrong: 0, streak: 0, bestStreak: 0,
@@ -370,7 +378,7 @@
 
   var el = {};
   ['home','play','doneScreen','chips','allBtn','noneBtn','modeOpts','orderOpts','timerOpts',
-   'secsBlock','secsOpts','chaseBlock','level','levelLabel','chaseNote',
+   'secsBlock','secsOpts','chaseBlock','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
@@ -483,7 +491,7 @@
         if (typeof s.shuffle === 'boolean') state.shuffle = s.shuffle;
         if (s.timer === 'off' || s.timer === 'card' || s.timer === 'chase') state.timer = s.timer;
         if (typeof s.secs === 'number' && s.secs > 0) state.secs = s.secs;
-        if (typeof s.level === 'number' && s.level >= 1 && s.level <= 10) state.level = s.level;
+        if (typeof s.pace === 'number' && s.pace >= 3 && s.pace <= 20) state.pace = s.pace;
         if (typeof s.sound === 'boolean') state.sound = s.sound;
       }
     } catch(e){}
@@ -492,7 +500,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         tables: state.tables, mode: state.mode, shuffle: state.shuffle,
-        timer: state.timer, secs: state.secs, level: state.level, sound: state.sound
+        timer: state.timer, secs: state.secs, pace: state.pace, sound: state.sound
       }));
     } catch(e){}
   }
@@ -548,13 +556,8 @@
 
     el.secsBlock.classList.toggle('hide', state.timer !== 'card');
     el.chaseBlock.classList.toggle('hide', state.timer !== 'chase');
-    el.level.value = String(state.level);
-    el.levelLabel.textContent = LEVEL_NAMES[state.level - 1];
-    el.chaseNote.textContent =
-      'One chase per table, so each set of ' + PER_TABLE + ' is its own escape. ' +
-      'The mouse starts well ahead. The cat takes about ' +
-      Math.round(crossSeconds(state.level)) + ' seconds to cross if you never answer, ' +
-      'and every right answer knocks it back.';
+    el.pace.value = String(state.pace);
+    paintPace();
 
     var count = state.tables.length * PER_TABLE;
     el.startBtn.disabled = state.tables.length === 0;
@@ -587,14 +590,20 @@
     var b = ev.target.closest('.opt'); if (!b) return;
     state.secs = parseInt(b.getAttribute('data-secs'), 10); sfx.tap(); paintHome(); saveSettings();
   });
-  el.level.addEventListener('input', function(){
-    state.level = parseInt(el.level.value, 10);
-    el.levelLabel.textContent = LEVEL_NAMES[state.level - 1];
+  function clock(secs){
+    var m = Math.floor(secs / 60), s = Math.round(secs % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function paintPace(){
+    el.paceLabel.textContent = state.pace + 's a card';
     el.chaseNote.textContent =
-      'One chase per table, so each set of ' + PER_TABLE + ' is its own escape. ' +
-      'The mouse starts well ahead. The cat takes about ' +
-      Math.round(crossSeconds(state.level)) + ' seconds to cross if you never answer, ' +
-      'and every right answer knocks it back.';
+      'One chase per table. ' + PER_TABLE + ' cards at ' + state.pace + 's each, so the mouse has ' +
+      clock(state.pace * PER_TABLE) + ' to reach the hole. Get through them in under that and it ' +
+      'gets away, go over and the cat has it. A miss costs half a card of time.';
+  }
+  el.pace.addEventListener('input', function(){
+    state.pace = parseInt(el.pace.value, 10);
+    paintPace();
     saveSettings();
   });
 
@@ -689,35 +698,51 @@
   /* ---------- the chase ----------
      One chase per round. It runs across cards rather than resetting
      with each one, and it holds still while an answer is on screen. */
-  var chase = {p: 0, last: 0, id: null, running: false};
+  var chase = {spent: 0, penalty: 0, done: 0, last: 0, id: null, running: false};
 
   function chaseOn(){ return state.timer === 'chase'; }
+  function budget(){ return state.pace * round().cards.length; }
+  // where each of them is along the track, 0 at the start line and 100 at the hole
+  function mouseU(){ return HEAD + (100 - HEAD) * (chase.done / round().cards.length); }
+  function catU(){ return 100 * ((chase.spent + chase.penalty) / budget()); }
+
+  function place(node, u){
+    node.style.left = (LANE_L + Math.max(0, Math.min(100, u)) / 100 * (HOLE - LANE_L)) + '%';
+  }
 
   function paintLane(){
-    var p = Math.max(0, Math.min(100, chase.p));
-    el.cat.style.left = (CAT_FROM + p / 100 * (MOUSE_AT - CAT_FROM)) + '%';
-    el.mouse.style.left = MOUSE_AT + '%';
-    var close = p > 66;
-    el.lane.classList.toggle('close', close);
-    el.gapTag.textContent = Math.max(0, Math.round(100 - p)) + '% ahead';
+    var mu = mouseU(), cu = catU();
+    place(el.mouse, mu);
+    place(el.cat, cu);
+    el.lane.classList.toggle('close', mu - cu < 9);
+    el.gapTag.textContent = clock(Math.max(0, budget() - chase.spent - chase.penalty)) + ' left';
+  }
+
+  // the mouse is home the moment the last card is answered, so it cannot be
+  // caught on the line. Ties go to the mouse, hence the strict >.
+  function chaseCheck(){
+    if (!chaseOn() || state.caught) return;
+    if (chase.done >= round().cards.length){ chasePause(); return; }
+    if (catU() > mouseU()) caught();
   }
 
   function chaseFrame(now){
     if (!chase.running) return;
     var dt = Math.min(0.06, (now - chase.last) / 1000);
     chase.last = now;
-    chase.p += (100 / crossSeconds(state.level)) * dt;
-    if (chase.p >= 100){ chase.p = 100; paintLane(); chase.running = false; caught(); return; }
+    chase.spent += dt;
     paintLane();
+    if (catU() > mouseU()){ chase.running = false; caught(); return; }
     chase.id = requestAnimationFrame(chaseFrame);
   }
 
   function chaseStart(){
     chaseStop();
-    chase.p = 0;
+    chase.spent = 0; chase.penalty = 0; chase.done = 0;
     el.lane.classList.toggle('on', chaseOn());
     if (!chaseOn()) return;
     el.roundTag.textContent = state.rounds[state.roundIdx].label;
+    el.lane.classList.remove('close');
     paintLane();
     chaseResume();
   }
@@ -735,14 +760,16 @@
 
   function chaseNudge(correct){
     if (!chaseOn()) return;
-    chase.p = Math.max(0, chase.p + (correct ? -REWIND : POUNCE));
-    paintLane();
+    chase.done++;                                   // the mouse scurries on
     if (!correct){
+      chase.penalty += state.pace * MISS_COST;      // and a miss buys the cat time
       sfx.pounce();
       el.cat.classList.remove('pounce');
-      void el.cat.offsetWidth;          // restart the animation
+      void el.cat.offsetWidth;                      // restart the animation
       el.cat.classList.add('pounce');
     }
+    paintLane();
+    chaseCheck();
   }
 
   function caught(){
