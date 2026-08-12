@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.5">
+<meta name="x-cards-version" content="1.6">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -122,7 +122,7 @@
   .track.hidden{display:none}
 
   /* ---------- the chase ---------- */
-  .lane{position:relative;height:64px;margin-top:10px;display:none}
+  .lane{position:relative;height:98px;margin-top:10px;display:none}
   .lane.on{display:block}
   .lane .ground{position:absolute;left:0;right:0;bottom:12px;height:3px;border-radius:2px;
     background:repeating-linear-gradient(90deg,var(--line) 0 10px,transparent 10px 18px)}
@@ -141,9 +141,24 @@
   .lane.close .ground{background:repeating-linear-gradient(90deg,#f2c9c6 0 10px,transparent 10px 18px)}
   .lane.close .cat{animation:lunge .5s ease-in-out infinite}
   @keyframes lunge{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.16)}}
-  .lane .roundtag{position:absolute;top:-2px;left:0;font-size:13px;font-weight:600;color:var(--muted)}
-  .lane .gap{position:absolute;top:-2px;right:0;font-size:13px;font-weight:600;color:var(--muted);
+  .lane .roundtag{position:absolute;top:0;left:0;font-size:13px;font-weight:600;color:var(--muted)}
+  .lane .gap{position:absolute;top:0;right:0;font-size:13px;font-weight:600;color:var(--muted);
     font-variant-numeric:tabular-nums}
+
+  /* whichever animal is talking gets the one speech bubble, so they never
+     overlap each other and it reads like they are taking turns */
+  .lane .bubble{position:absolute;bottom:48px;z-index:5;
+    background:#fff;border:2px solid var(--line);border-radius:14px;
+    padding:6px 11px;font-size:13px;font-weight:500;white-space:nowrap;
+    max-width:78%;overflow:hidden;text-overflow:ellipsis;
+    box-shadow:0 3px 10px rgba(32,36,46,.12);
+    opacity:0;pointer-events:none;transform:translate(-50%,7px);
+    transition:opacity .2s ease,transform .25s cubic-bezier(.2,.9,.3,1)}
+  .lane .bubble.show{opacity:1;transform:translate(-50%,0)}
+  .lane .bubble::after{content:"";position:absolute;left:50%;bottom:-7px;
+    width:10px;height:10px;margin-left:-5px;background:#fff;
+    border-right:2px solid var(--line);border-bottom:2px solid var(--line);
+    transform:rotate(45deg)}
   .lane.close .gap{color:var(--red)}
   .pounce{animation:pounce .45s ease-out}
   @keyframes pounce{0%{transform:translateX(-50%) rotate(0)}
@@ -301,7 +316,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.5</p>
+  <p class="foot">v1.6</p>
 </div>
 
 <!-- ================= play ================= -->
@@ -322,6 +337,7 @@
     <span class="gap" id="gapTag"></span>
     <div class="ground"></div>
     <div class="hole" id="hole"></div>
+    <div class="bubble" id="bubble"></div>
     <div class="runner mouse" id="mouse">🐭</div>
     <div class="runner cat" id="cat">🐱</div>
   </div>
@@ -414,7 +430,7 @@
   ['home','play','doneScreen','chips','allBtn','noneBtn','modeOpts','orderOpts','timerOpts',
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
-   'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','roundTag','gapTag',
+   'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
    'missBox','missList','againBtn','changeBtn'
@@ -764,6 +780,51 @@
      with each one, and it holds still while an answer is on screen. */
   var chase = {spent: 0, last: 0, id: null, running: false};
 
+  /* What the animals say. Which pool gets used is decided by the actual
+     state of the race, the line inside it is picked at random. */
+  var LINES = {
+    startChaser: ['Here I come!', 'You cannot outrun me', 'I am right behind you', 'Off we go'],
+    startRunner: ['Keep up, Seth!', 'Help me out here', 'Ready when you are', 'Let us go!'],
+    right:       ['Nice one!', 'Yes!', 'Thanks Seth!', 'Keep them coming', 'That is the way'],
+    streak:      ['You are on fire!', 'Nobody can stop us', 'Brilliant, Seth!'],
+    wrongChaser: ['Ha, slowing down', 'Take your time', 'That is my chance', 'Closer and closer'],
+    wrongRunner: ['Uh oh', 'That one was tricky', 'Shake it off', 'Get the next one'],
+    aheadRunner: ['Easy!', 'Cannot catch me', 'Miles ahead', 'This is fun'],
+    aheadChaser: ['Slow down!', 'Not fair', 'Wait for me', 'My legs hurt'],
+    closeChaser: ['Almost got you!', 'So close now', 'I can smell lunch', 'Any second'],
+    closeRunner: ['Faster, Seth!', 'Too close!', 'Hurry!', 'Do not stop now'],
+    nearlyHome:  ['Nearly there!', 'I can see it!', 'Almost home', 'One more push'],
+    escape:      ['Made it!', 'Safe!', 'Woohoo!', 'Told you we could'],
+    caught:      ['Got you!', 'Dinner time', 'Told you so', 'Too slow']
+  };
+
+  var spoke = 0;                      // when the last bubble went up
+  function pick(pool){ return pool[Math.floor(Math.random() * pool.length)]; }
+
+  // who is 'chaser' or 'runner'; the bubble sits over whoever is talking
+  function say(who, pool, force){
+    if (!chaseOn() || (state.caught && pool !== LINES.caught)) return;
+    var now = Date.now();
+    if (!force && now - spoke < 2600) return;
+    spoke = now;
+    var node = who === 'chaser' ? el.cat : el.mouse;
+    var at = parseFloat(node.style.left) || LANE_L;
+    el.bubble.textContent = pick(pool);
+    // keep it on screen: clamp by the bubble's real width, not a guessed
+    // percentage, or a long line hangs off the edge of the lane
+    el.bubble.style.left = at + '%';
+    var lw = el.lane.clientWidth, half = el.bubble.offsetWidth / 2 + 2;
+    if (lw > half * 2){
+      var px = Math.max(half, Math.min(lw - half, at / 100 * lw));
+      el.bubble.style.left = (px / lw * 100) + '%';
+    }
+    el.bubble.classList.add('show');
+    clearTimeout(sayId);
+    sayId = setTimeout(function(){ el.bubble.classList.remove('show'); }, 2300);
+  }
+  var sayId = null;
+  function hush(){ clearTimeout(sayId); el.bubble.classList.remove('show'); }
+
   function chaseOn(){ return state.timer === 'chase'; }
   function budget(){ return state.pace * state.total; }
   // where each of them is along the track, 0 at the start line and 100 at the hole
@@ -790,6 +851,18 @@
     if (catU() > mouseU()) caught();
   }
 
+  // a running remark about how the race is actually going, throttled hard
+  // so they are not chattering over every card
+  function patter(){
+    if (Date.now() - spoke < 9000) return;
+    var lead = mouseU() - catU();
+    if (state.total - state.cleared <= 2 && lead > 6) say('runner', LINES.nearlyHome);
+    else if (lead < 13) say(Math.random() < 0.5 ? 'chaser' : 'runner',
+                            Math.random() < 0.5 ? LINES.closeChaser : LINES.closeRunner);
+    else if (lead > 34) say(Math.random() < 0.5 ? 'runner' : 'chaser',
+                            Math.random() < 0.5 ? LINES.aheadRunner : LINES.aheadChaser);
+  }
+
   function chaseFrame(now){
     if (!chase.running) return;
     var dt = Math.min(0.06, (now - chase.last) / 1000);
@@ -797,6 +870,7 @@
     chase.spent += dt;
     paintLane();
     if (catU() > mouseU()){ chase.running = false; caught(); return; }
+    patter();
     chase.id = requestAnimationFrame(chaseFrame);
   }
 
@@ -812,8 +886,16 @@
     el.hole.classList.toggle('emoji', !!duo.home);
     el.roundTag.textContent = state.rounds[state.roundIdx].label;
     el.lane.classList.remove('close');
+    hush(); spoke = 0;
     paintLane();
     chaseResume();
+    // a beat after the lane appears, so it does not land on top of the toast
+    setTimeout(function(){
+      if (!state.caught && chase.running){
+        say(Math.random() < 0.5 ? 'chaser' : 'runner',
+            Math.random() < 0.5 ? LINES.startChaser : LINES.startRunner, true);
+      }
+    }, 700);
   }
   function chaseResume(){
     if (!chaseOn() || chase.running) return;
@@ -837,6 +919,14 @@
       el.cat.classList.add('pounce');
     }
     paintLane();
+    // a miss always gets a remark, mostly from the chaser enjoying it.
+    // A right answer only gets one now and then, so they are not chattering.
+    if (!correct){
+      if (Math.random() < 0.65) say('chaser', LINES.wrongChaser, true);
+      else say('runner', LINES.wrongRunner, true);
+    } else if (Math.random() < 0.4){
+      say('runner', LINES.right);
+    }
     chaseCheck();
   }
 
@@ -844,7 +934,9 @@
     chaseStop(); stopTimer(); clearTimeout(advanceId);
     state.caught = true;
     sfx.caught();
-    finish();
+    // let the chaser gloat over the lane for a beat before the results
+    say('chaser', LINES.caught, true);
+    setTimeout(finish, 1200);
   }
 
   /* ---------- play ---------- */
@@ -954,6 +1046,7 @@
     if (correct && state.streak >= 3 && state.streak % 3 === 0){
       setTimeout(function(){ sfx.streak(); }, 340);
       toast(state.streak + ' in a row!');
+      say('runner', LINES.streak, true);
     }
   }
 
@@ -961,7 +1054,7 @@
   var advanceId = null;
 
   function settle(picked){
-    if (state.answered) return;
+    if (state.answered || state.caught) return;
     state.answered = true;
     stopTimer(); chasePause();
     el.track.classList.add('hidden');
@@ -1029,6 +1122,7 @@
     if (chaseOn()){
       chasePause();
       sfx.escape();
+      say('runner', LINES.escape, true);
       toast(round().label + ' got away! ' + pair().runner, true);
     }
     if (state.roundIdx + 1 >= state.rounds.length){
@@ -1047,7 +1141,7 @@
 
   function cardTap(){
     unlock();
-    if (state.mode === 'choice') return;
+    if (state.caught || state.mode === 'choice') return;
     if (!state.revealed){ reveal(); return; }
     if (state.answered) step();
   }
@@ -1066,7 +1160,7 @@
   }
 
   function finish(){
-    stopTimer(); chaseStop(); clearTimeout(advanceId);
+    stopTimer(); chaseStop(); clearTimeout(advanceId); hush();
     var graded = state.right + state.wrong;
     var secs = Math.round((Date.now() - state.startedAt) / 1000);
     var m = Math.floor(secs / 60), s = secs % 60;
