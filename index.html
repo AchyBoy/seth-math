@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
-<meta name="description" content="Multiplication flash cards, 1 through 12. Shuffle the deck, set a timer, and hear how you did.">
-<meta name="x-cards-version" content="1.1">
+<meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
+<meta name="x-cards-version" content="1.2">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,6 +44,8 @@
   .label{font-size:13px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
     color:var(--muted);margin-bottom:12px}
   .block{margin-bottom:26px}
+  .block.hide{display:none}
+  .note{font-size:14px;color:var(--muted);margin-top:10px;line-height:1.45}
 
   .chips{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
   .chip{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
@@ -52,19 +54,38 @@
     transition:transform .12s ease,background .18s ease,border-color .18s ease,color .18s ease}
   .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
   .chip:active{transform:scale(.93)}
-  .quick{display:flex;gap:10px;margin-top:12px}
+  .quick{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
   .quick button{font-size:14px;font-weight:500;color:var(--blue);
     border:2px solid var(--line);border-radius:999px;padding:7px 16px;background:#fff}
   .quick button:active{background:var(--blue-soft)}
+  .quick button.warn{color:var(--muted)}
 
   .opts{display:flex;flex-wrap:wrap;gap:8px}
-  .opts.five{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .opts.four{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
   .opt{border:2px solid var(--line);border-radius:999px;background:#fff;
     padding:11px 18px;font-size:16px;font-weight:500;color:var(--muted);
     transition:transform .12s ease,background .18s ease,border-color .18s ease,color .18s ease}
   .opt.on{background:var(--blue);border-color:var(--blue);color:#fff}
   .opt:active{transform:scale(.95)}
-  .opts.five .opt{padding:11px 4px;text-align:center}
+  .opts.four .opt{padding:11px 4px;text-align:center}
+
+  /* trouble spots */
+  .misses{display:flex;flex-wrap:wrap;gap:8px}
+  .miss{border:2px solid #f3cdc9;background:var(--red-soft);color:#a8352e;
+    border-radius:12px;padding:8px 13px;font-size:16px;font-weight:600}
+  .miss em{font-style:normal;font-size:12px;font-weight:600;margin-left:8px;
+    background:#d9605780;color:#fff;border-radius:999px;padding:1px 7px;vertical-align:1px}
+
+  /* difficulty slider */
+  .slide{display:flex;align-items:center;gap:14px}
+  .slide input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:10px;
+    border-radius:999px;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));outline:none}
+  .slide input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid var(--ink);
+    box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer}
+  .slide input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;
+    background:#fff;border:3px solid var(--ink);cursor:pointer}
+  .slide .lvl{flex:none;width:96px;text-align:right;font-size:15px;font-weight:600}
 
   .start{margin-top:auto;background:var(--blue);color:#fff;border-radius:20px;
     padding:20px;font-size:21px;font-weight:600;width:100%;
@@ -85,7 +106,30 @@
   .track{height:8px;border-radius:999px;background:var(--line);margin-top:12px;overflow:hidden}
   .track .fill{height:100%;width:100%;background:var(--green);border-radius:999px;transform-origin:left center}
   .track .fill.warn{background:var(--amber)}
-  .track.hidden{visibility:hidden}
+  .track.hidden{display:none}
+
+  /* ---------- the chase ---------- */
+  .lane{position:relative;height:64px;margin-top:10px;display:none}
+  .lane.on{display:block}
+  .lane .ground{position:absolute;left:0;right:0;bottom:12px;height:3px;border-radius:2px;
+    background:repeating-linear-gradient(90deg,var(--line) 0 10px,transparent 10px 18px)}
+  .lane .hole{position:absolute;bottom:9px;right:2px;width:44px;height:26px;border-radius:50%;
+    background:#3a3730;box-shadow:inset 0 3px 5px rgba(0,0,0,.5)}
+  .lane .runner{position:absolute;bottom:12px;font-size:29px;line-height:1;
+    transform:translateX(-50%);transition:none;will-change:left}
+  .lane .mouse{z-index:2}
+  .lane .cat{z-index:1}
+  .lane.close .ground{background:repeating-linear-gradient(90deg,#f2c9c6 0 10px,transparent 10px 18px)}
+  .lane.close .cat{animation:lunge .5s ease-in-out infinite}
+  @keyframes lunge{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.16)}}
+  .lane .roundtag{position:absolute;top:-2px;left:0;font-size:13px;font-weight:600;color:var(--muted)}
+  .lane .gap{position:absolute;top:-2px;right:0;font-size:13px;font-weight:600;color:var(--muted);
+    font-variant-numeric:tabular-nums}
+  .lane.close .gap{color:var(--red)}
+  .pounce{animation:pounce .45s ease-out}
+  @keyframes pounce{0%{transform:translateX(-50%) rotate(0)}
+    35%{transform:translateX(-50%) rotate(-14deg) scale(1.25)}
+    100%{transform:translateX(-50%) rotate(0)}}
 
   .stage{flex:1;display:flex;align-items:center;justify-content:center;padding:18px 0}
   .card{width:100%;aspect-ratio:1/1;max-height:58vh;position:relative;
@@ -100,7 +144,7 @@
   .a{font-size:clamp(64px,22vw,120px);font-weight:700;color:var(--blue);line-height:1}
   .qsmall{font-size:20px;font-weight:500;color:var(--muted);margin-bottom:14px}
 
-  /* multiple choice mode: the card and the buttons split the screen between them */
+  /* multiple choice: the card and the buttons split the screen between them */
   body.choice .stage{flex:1;align-items:stretch;padding:14px 0 10px}
   body.choice .card{aspect-ratio:auto;height:auto;max-height:none}
   .choices{display:none;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
@@ -123,35 +167,40 @@
   .next:active{transform:translateY(4px);box-shadow:0 2px 0 var(--blue-dark)}
   .grade{display:none;grid-template-columns:1fr 1fr;gap:12px}
   .grade.on{display:grid}
-  .grade.on + .next{display:none}
   .gbtn{border-radius:20px;padding:18px;font-size:18px;font-weight:600;color:#fff}
   .gbtn.yes{background:var(--green);box-shadow:0 6px 0 var(--green-dark)}
   .gbtn.no{background:#8d8981;box-shadow:0 6px 0 #6f6c65}
   .gbtn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 
-  /* streak toast */
   .toast{position:fixed;left:50%;top:78px;transform:translate(-50%,-14px);z-index:50;
     background:var(--ink);color:#fff;font-size:16px;font-weight:600;
     padding:11px 22px;border-radius:999px;opacity:0;pointer-events:none;
     transition:opacity .25s ease,transform .25s cubic-bezier(.2,.9,.3,1)}
   .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.big{font-size:19px;padding:15px 28px;background:var(--green)}
 
   /* ---------- done ---------- */
   .done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
-  .done .big{font-size:38px;font-weight:700}
-  .done .ring{font-size:64px;font-weight:700;color:var(--blue);line-height:1.1;margin-bottom:6px}
-  .done .stat{font-size:18px;color:var(--muted)}
+  .done .emoji{font-size:56px;line-height:1.1}
+  .done .big{font-size:34px;font-weight:700}
+  .done .ring{font-size:58px;font-weight:700;color:var(--blue);line-height:1.15}
+  .done .stat{font-size:17px;color:var(--muted)}
+  .missbox{margin-top:22px;width:100%;max-width:400px;border:2px solid var(--line);
+    background:#fff;border-radius:20px;padding:16px 18px;display:none}
+  .missbox.on{display:block}
+  .missbox .label{margin-bottom:10px;text-align:left}
+  .missbox .misses{justify-content:flex-start}
   .again{background:var(--blue);color:#fff;border-radius:20px;padding:18px 34px;
-    font-size:19px;font-weight:600;margin-top:26px;box-shadow:0 6px 0 var(--blue-dark);
+    font-size:19px;font-weight:600;margin-top:24px;box-shadow:0 6px 0 var(--blue-dark);
     transition:transform .1s ease,box-shadow .1s ease}
   .again:active{transform:translateY(4px);box-shadow:0 2px 0 var(--blue-dark)}
-  .link{margin-top:16px;font-size:16px;font-weight:500;color:var(--blue);padding:8px}
+  .link{margin-top:14px;font-size:16px;font-weight:500;color:var(--blue);padding:8px}
 
   .foot{text-align:center;color:#b4b0a6;font-size:12px;padding:14px 0 4px}
 
   @media (prefers-reduced-motion:reduce){
     .card,.chip,.opt,.start,.next,.again,.ch,.toast{transition:none}
-    .ch.bad{animation:none}
+    .ch.bad,.lane.close .cat,.pounce{animation:none}
   }
 </style>
 </head>
@@ -166,6 +215,15 @@
     <button type="button" class="spk" id="spkHome" aria-label="Sound">🔊</button>
   </div>
   <p class="sub">Pick your tables, then start.</p>
+
+  <div class="block hide" id="troubleBlock">
+    <p class="label">Keeps missing these</p>
+    <div class="misses" id="troubleList"></div>
+    <div class="quick">
+      <button type="button" id="practiceBtn">Practice just these</button>
+      <button type="button" class="warn" id="clearMissBtn">Clear the record</button>
+    </div>
+  </div>
 
   <div class="block">
     <p class="label">Tables</p>
@@ -193,31 +251,58 @@
   </div>
 
   <div class="block">
-    <p class="label">Timer per card</p>
-    <div class="opts five" id="timerOpts">
-      <button type="button" class="opt on" data-secs="0">Off</button>
+    <p class="label">Timer</p>
+    <div class="opts" id="timerOpts">
+      <button type="button" class="opt on" data-timer="off">Off</button>
+      <button type="button" class="opt" data-timer="card">Per card</button>
+      <button type="button" class="opt" data-timer="chase">🐱 Cat and mouse</button>
+    </div>
+  </div>
+
+  <div class="block hide" id="secsBlock">
+    <p class="label">Seconds per card</p>
+    <div class="opts four" id="secsOpts">
       <button type="button" class="opt" data-secs="3">3s</button>
-      <button type="button" class="opt" data-secs="5">5s</button>
+      <button type="button" class="opt on" data-secs="5">5s</button>
       <button type="button" class="opt" data-secs="10">10s</button>
       <button type="button" class="opt" data-secs="20">20s</button>
     </div>
   </div>
 
+  <div class="block hide" id="chaseBlock">
+    <p class="label">How fast is the cat</p>
+    <div class="slide">
+      <input type="range" min="1" max="10" step="1" id="level" aria-label="Cat speed">
+      <span class="lvl" id="levelLabel">Just right</span>
+    </div>
+    <p class="note" id="chaseNote"></p>
+  </div>
+
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.1</p>
+  <p class="foot">v1.2</p>
 </div>
 
 <!-- ================= play ================= -->
 <div class="screen" id="play">
   <div class="top">
-    <span class="count" id="count">1 / 144</span>
+    <span class="count" id="count">1 / 12</span>
     <span class="score" id="score"></span>
     <span class="topbtns">
       <button type="button" class="spk mini" id="spkPlay" aria-label="Sound">🔊</button>
       <button type="button" class="quit" id="quitBtn">Done</button>
     </span>
   </div>
+
   <div class="track hidden" id="track"><div class="fill" id="fill"></div></div>
+
+  <div class="lane" id="lane">
+    <span class="roundtag" id="roundTag"></span>
+    <span class="gap" id="gapTag"></span>
+    <div class="ground"></div>
+    <div class="hole"></div>
+    <div class="runner mouse" id="mouse">🐭</div>
+    <div class="runner cat" id="cat">🐱</div>
+  </div>
 
   <div class="stage">
     <div class="card" id="card">
@@ -242,11 +327,18 @@
 <!-- ================= done ================= -->
 <div class="screen" id="doneScreen">
   <div class="done">
+    <div class="emoji" id="doneEmoji"></div>
     <div class="big" id="doneTitle">Nice work</div>
     <div class="ring" id="doneRing"></div>
-    <div class="stat" id="doneCards">144 cards</div>
+    <div class="stat" id="doneCards">12 cards</div>
     <div class="stat" id="doneStreak"></div>
-    <div class="stat" id="doneTime">in 4:12</div>
+    <div class="stat" id="doneTime">in 1:12</div>
+
+    <div class="missbox" id="missBox">
+      <p class="label">Missed this time</p>
+      <div class="misses" id="missList"></div>
+    </div>
+
     <button type="button" class="again" id="againBtn">Go again</button>
     <button type="button" class="link" id="changeBtn">Change settings</button>
   </div>
@@ -256,27 +348,40 @@
 (function(){
   'use strict';
 
-  var MIN = 1, MAX = 12;
-  var STORE = 'seth-cards-settings-v2';
+  var MIN = 1, MAX = 12, PER_TABLE = MAX - MIN + 1;
+  var STORE = 'seth-cards-settings-v3';
+  var MISSES = 'seth-cards-misses-v1';
+
+  // chase tuning. REWIND is how far a right answer shoves the cat back,
+  // POUNCE is what a wrong one costs. The slider only changes the cat's speed.
+  var REWIND = 4, POUNCE = 4, MOUSE_AT = 77, CAT_FROM = 3;
+  var LEVEL_NAMES = ['Sleepy','Slow','Easy','Gentle','Just right',
+                     'Quick','Sharp','Tricky','Fierce','Ferocious'];
+  function crossSeconds(level){ return 150 - (level - 1) * (115 / 9); }
 
   var state = {
-    tables: [], mode: 'flip', shuffle: true, secs: 0, sound: true,
-    deck: [], idx: 0, revealed: false, answered: false,
-    right: 0, wrong: 0, streak: 0, bestStreak: 0, startedAt: 0
+    tables: [], mode: 'flip', shuffle: true,
+    timer: 'off', secs: 5, level: 5, sound: true,
+    rounds: [], roundIdx: 0, idx: 0,
+    revealed: false, answered: false,
+    right: 0, wrong: 0, streak: 0, bestStreak: 0,
+    missed: [], startedAt: 0, caught: false, practice: false
   };
 
   var el = {};
   ['home','play','doneScreen','chips','allBtn','noneBtn','modeOpts','orderOpts','timerOpts',
-   'startBtn','count','score','quitBtn','track','fill','card','q','qsmall','a','choices',
-   'hint','grade','gotIt','missedIt','nextBtn','toast','spkHome','spkPlay',
-   'doneTitle','doneRing','doneCards','doneStreak','doneTime','againBtn','changeBtn'
+   'secsBlock','secsOpts','chaseBlock','level','levelLabel','chaseNote',
+   'troubleBlock','troubleList','practiceBtn','clearMissBtn',
+   'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','roundTag','gapTag',
+   'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
+   'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
+   'missBox','missList','againBtn','changeBtn'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
   /* =========================================================
-     Sound. Everything is synthesised with Web Audio, so there
-     are no files to load and nothing to wait for. iOS will not
-     start audio before a real gesture, so the context is only
-     created and resumed from inside a tap.
+     Sound. Synthesised with Web Audio, so there is nothing to
+     download. iOS refuses to start audio before a real gesture,
+     so the context is only built and resumed from inside a tap.
      ========================================================= */
   var actx = null, master = null;
 
@@ -292,7 +397,6 @@
     } catch(e){ actx = null; }
     return actx;
   }
-  // safe to call from any tap; a suspended context stays suspended until one arrives
   function unlock(){
     var c = audio();
     if (c && c.state === 'suspended' && c.resume) c.resume();
@@ -305,7 +409,6 @@
     el.spkPlay.classList.toggle('off', !state.sound);
   }
 
-  // one note. `to` glides the pitch, which is what makes the wrong answer wobble.
   function tone(f, at, dur, type, vol, to){
     var c = audio();
     if (!c || !state.sound) return;
@@ -324,41 +427,63 @@
   var sfx = {
     flip:  function(){ tone(620, 0, .05, 'sine', .07); tone(920, .035, .05, 'sine', .05); },
     tap:   function(){ tone(680, 0, .04, 'sine', .06); },
-    // bright little climb, C E G C
-    right: function(){
-      var n = [523.25, 659.25, 783.99, 1046.50];
-      for (var i = 0; i < n.length; i++) tone(n[i], i * .075, .18, 'triangle', .17);
-    },
-    // a friendly wah-wah, not a buzzer
-    wrong: function(){
-      tone(392, 0, .22, 'triangle', .16, 196);
-      tone(196, .17, .26, 'triangle', .13, 147);
-    },
-    timeUp: function(){ tone(330, 0, .3, 'sine', .13, 196); },
-    streak: function(){
-      var n = [784, 988, 1175, 1568];
-      for (var i = 0; i < n.length; i++) tone(n[i], i * .055, .13, 'sine', .12);
-    },
-    done: function(){
-      var n = [523.25, 659.25, 783.99, 1046.50];
-      for (var i = 0; i < n.length; i++) tone(n[i], i * .11, .22, 'triangle', .16);
-      tone(783.99, .46, .5, 'triangle', .14);
-      tone(1046.50, .46, .6, 'triangle', .13);
-    }
+    right: function(){ var n=[523.25,659.25,783.99,1046.5];
+             for (var i=0;i<n.length;i++) tone(n[i], i*.075, .18, 'triangle', .17); },
+    wrong: function(){ tone(392,0,.22,'triangle',.16,196); tone(196,.17,.26,'triangle',.13,147); },
+    timeUp:function(){ tone(330,0,.3,'sine',.13,196); },
+    streak:function(){ var n=[784,988,1175,1568];
+             for (var i=0;i<n.length;i++) tone(n[i], i*.055, .13, 'sine', .12); },
+    // the cat lunging forward after a wrong answer
+    pounce:function(){ tone(150, 0, .16, 'sawtooth', .09, 90); },
+    // squeak, then the mouse is down the hole
+    escape:function(){ tone(1568,0,.09,'sine',.14,2093); tone(1318,.09,.09,'sine',.12,1760);
+             var n=[523.25,783.99,1046.5]; for (var i=0;i<n.length;i++) tone(n[i], .22+i*.09, .24,'triangle',.15); },
+    caught:function(){ tone(300,0,.45,'sawtooth',.13,70); tone(220,.1,.5,'triangle',.11,60); },
+    done:  function(){ var n=[523.25,659.25,783.99,1046.5];
+             for (var i=0;i<n.length;i++) tone(n[i], i*.11, .22, 'triangle', .16);
+             tone(783.99,.46,.5,'triangle',.14); tone(1046.5,.46,.6,'triangle',.13); }
   };
+
+  /* ---------- the missed record ---------- */
+  var record = {};   // "7×8" -> {m: missed, h: hit}
+
+  function loadRecord(){
+    try { record = JSON.parse(localStorage.getItem(MISSES)) || {}; } catch(e){ record = {}; }
+    if (!record || typeof record !== 'object') record = {};
+  }
+  function saveRecord(){
+    try { localStorage.setItem(MISSES, JSON.stringify(record)); } catch(e){}
+  }
+  function noteResult(key, correct){
+    var r = record[key] || (record[key] = {m: 0, h: 0});
+    if (correct) r.h++; else r.m++;
+    saveRecord();
+  }
+  // worst first: most misses, and a recent miss outranks an old one that has since been learned
+  function troubleList(limit){
+    var out = [];
+    for (var k in record){
+      if (record[k] && record[k].m > 0) out.push({key: k, m: record[k].m, h: record[k].h});
+    }
+    out.sort(function(a, b){ return (b.m - b.h * 0.5) - (a.m - a.h * 0.5) || b.m - a.m; });
+    return limit ? out.slice(0, limit) : out;
+  }
+  function keyToPair(k){ var p = k.split('×'); return [parseInt(p[0],10), parseInt(p[1],10)]; }
+  function pairKey(a, b){ return a + '×' + b; }
 
   /* ---------- settings ---------- */
   function loadSettings(){
     state.tables = [];
     for (var n = MIN; n <= MAX; n++) state.tables.push(n);
     try {
-      var raw = localStorage.getItem(STORE);
-      if (raw){
-        var s = JSON.parse(raw);
+      var s = JSON.parse(localStorage.getItem(STORE));
+      if (s){
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (s.mode === 'flip' || s.mode === 'choice') state.mode = s.mode;
         if (typeof s.shuffle === 'boolean') state.shuffle = s.shuffle;
-        if (typeof s.secs === 'number') state.secs = s.secs;
+        if (s.timer === 'off' || s.timer === 'card' || s.timer === 'chase') state.timer = s.timer;
+        if (typeof s.secs === 'number' && s.secs > 0) state.secs = s.secs;
+        if (typeof s.level === 'number' && s.level >= 1 && s.level <= 10) state.level = s.level;
         if (typeof s.sound === 'boolean') state.sound = s.sound;
       }
     } catch(e){}
@@ -367,7 +492,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         tables: state.tables, mode: state.mode, shuffle: state.shuffle,
-        secs: state.secs, sound: state.sound
+        timer: state.timer, secs: state.secs, level: state.level, sound: state.sound
       }));
     } catch(e){}
   }
@@ -390,29 +515,52 @@
     });
   }
 
+  function setOn(box, attr, val){
+    var list = box.querySelectorAll('.opt');
+    for (var i = 0; i < list.length; i++){
+      list[i].classList.toggle('on', list[i].getAttribute(attr) === String(val));
+    }
+  }
+
+  function paintTrouble(){
+    var worst = troubleList(8);
+    el.troubleBlock.classList.toggle('hide', worst.length === 0);
+    el.troubleList.innerHTML = '';
+    for (var i = 0; i < worst.length; i++){
+      var s = document.createElement('span');
+      s.className = 'miss';
+      s.innerHTML = worst[i].key.replace('×', ' × ') + '<em>' + worst[i].m + '</em>';
+      el.troubleList.appendChild(s);
+    }
+    el.practiceBtn.textContent = 'Practice just these (' + troubleList().length + ')';
+  }
+
   function paintHome(){
-    var i, list;
-    list = el.chips.querySelectorAll('.chip');
+    var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
         state.tables.indexOf(parseInt(list[i].getAttribute('data-n'), 10)) !== -1);
     }
-    list = el.modeOpts.querySelectorAll('.opt');
-    for (i = 0; i < list.length; i++){
-      list[i].classList.toggle('on', list[i].getAttribute('data-mode') === state.mode);
-    }
-    list = el.orderOpts.querySelectorAll('.opt');
-    for (i = 0; i < list.length; i++){
-      list[i].classList.toggle('on', (list[i].getAttribute('data-shuffle') === '1') === state.shuffle);
-    }
-    list = el.timerOpts.querySelectorAll('.opt');
-    for (i = 0; i < list.length; i++){
-      list[i].classList.toggle('on', parseInt(list[i].getAttribute('data-secs'), 10) === state.secs);
-    }
-    var count = state.tables.length * (MAX - MIN + 1);
+    setOn(el.modeOpts, 'data-mode', state.mode);
+    setOn(el.orderOpts, 'data-shuffle', state.shuffle ? '1' : '0');
+    setOn(el.timerOpts, 'data-timer', state.timer);
+    setOn(el.secsOpts, 'data-secs', state.secs);
+
+    el.secsBlock.classList.toggle('hide', state.timer !== 'card');
+    el.chaseBlock.classList.toggle('hide', state.timer !== 'chase');
+    el.level.value = String(state.level);
+    el.levelLabel.textContent = LEVEL_NAMES[state.level - 1];
+    el.chaseNote.textContent =
+      'One chase per table, so each set of ' + PER_TABLE + ' is its own escape. ' +
+      'The mouse starts well ahead. The cat takes about ' +
+      Math.round(crossSeconds(state.level)) + ' seconds to cross if you never answer, ' +
+      'and every right answer knocks it back.';
+
+    var count = state.tables.length * PER_TABLE;
     el.startBtn.disabled = state.tables.length === 0;
     el.startBtn.textContent = state.tables.length === 0
       ? 'Pick at least one table' : 'Start ' + count + ' cards';
+    paintTrouble();
   }
 
   el.allBtn.addEventListener('click', function(){
@@ -433,59 +581,93 @@
   });
   el.timerOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
+    state.timer = b.getAttribute('data-timer'); sfx.tap(); paintHome(); saveSettings();
+  });
+  el.secsOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
     state.secs = parseInt(b.getAttribute('data-secs'), 10); sfx.tap(); paintHome(); saveSettings();
+  });
+  el.level.addEventListener('input', function(){
+    state.level = parseInt(el.level.value, 10);
+    el.levelLabel.textContent = LEVEL_NAMES[state.level - 1];
+    el.chaseNote.textContent =
+      'One chase per table, so each set of ' + PER_TABLE + ' is its own escape. ' +
+      'The mouse starts well ahead. The cat takes about ' +
+      Math.round(crossSeconds(state.level)) + ' seconds to cross if you never answer, ' +
+      'and every right answer knocks it back.';
+    saveSettings();
+  });
+
+  el.clearMissBtn.addEventListener('click', function(){
+    record = {}; saveRecord(); sfx.tap(); paintHome();
+  });
+  el.practiceBtn.addEventListener('click', function(){
+    var worst = troubleList();
+    if (!worst.length) return;
+    var cards = worst.map(function(w){ return keyToPair(w.key); });
+    shuffle(cards);
+    startRun([{label: 'Trouble spots', cards: cards}], true);
   });
 
   function toggleSound(){
-    state.sound = !state.sound;
-    applyMute(); saveSettings();
+    state.sound = !state.sound; applyMute(); saveSettings();
     if (state.sound) sfx.tap();
   }
   el.spkHome.addEventListener('click', toggleSound);
   el.spkPlay.addEventListener('click', function(ev){ ev.stopPropagation(); toggleSound(); });
 
   /* ---------- deck ---------- */
-  function buildDeck(){
-    var deck = [], i, m;
-    var tables = state.tables.slice().sort(function(x, y){ return x - y; });
-    for (i = 0; i < tables.length; i++){
-      for (m = MIN; m <= MAX; m++) deck.push([tables[i], m]);
+  function shuffle(arr){
+    for (var j = arr.length - 1; j > 0; j--){
+      var r = Math.floor(Math.random() * (j + 1));
+      var t = arr[j]; arr[j] = arr[r]; arr[r] = t;
     }
-    if (state.shuffle){
-      for (var j = deck.length - 1; j > 0; j--){
-        var r = Math.floor(Math.random() * (j + 1));
-        var t = deck[j]; deck[j] = deck[r]; deck[r] = t;
-      }
-    }
-    return deck;
+    return arr;
   }
 
-  // near misses make better wrong answers than random numbers
+  // With the chase on, tables stay whole so each one is a round.
+  // Otherwise it is one long round and shuffling can cross tables.
+  function buildRounds(){
+    var tables = state.tables.slice().sort(function(x, y){ return x - y; });
+    var rounds = [], i, m;
+    if (state.timer === 'chase'){
+      if (state.shuffle) shuffle(tables);
+      for (i = 0; i < tables.length; i++){
+        var cards = [];
+        for (m = MIN; m <= MAX; m++) cards.push([tables[i], m]);
+        if (state.shuffle) shuffle(cards);
+        rounds.push({label: 'The ' + tables[i] + 's', cards: cards});
+      }
+    } else {
+      var all = [];
+      for (i = 0; i < tables.length; i++){
+        for (m = MIN; m <= MAX; m++) all.push([tables[i], m]);
+      }
+      if (state.shuffle) shuffle(all);
+      rounds.push({label: '', cards: all});
+    }
+    return rounds;
+  }
+
   function distractors(a, b){
     var right = a * b;
-    var cands = [a*(b+1), a*(b-1), (a+1)*b, (a-1)*b, right+1, right-1,
-                 right+a, right-a, right+b, right-b, (a+1)*(b+1), right+2];
-    for (var s = cands.length - 1; s > 0; s--){
-      var r = Math.floor(Math.random() * (s + 1));
-      var t = cands[s]; cands[s] = cands[r]; cands[r] = t;
-    }
+    var cands = shuffle([a*(b+1), a*(b-1), (a+1)*b, (a-1)*b, right+1, right-1,
+                         right+a, right-a, right+b, right-b, (a+1)*(b+1), right+2]);
     var out = [], k = 0;
     for (var i = 0; i < cands.length && out.length < 3; i++){
-      var v = cands[i];
-      if (v > 0 && v !== right && out.indexOf(v) === -1) out.push(v);
+      if (cands[i] > 0 && cands[i] !== right && out.indexOf(cands[i]) === -1) out.push(cands[i]);
     }
-    while (out.length < 3){ k++; if (out.indexOf(right + k) === -1 && right + k > 0) out.push(right + k); }
+    while (out.length < 3){ k++; if (right + k > 0 && out.indexOf(right + k) === -1) out.push(right + k); }
     return out;
   }
 
-  /* ---------- timer ---------- */
+  /* ---------- per card timer ---------- */
   var timerId = null, deadline = 0;
-
   function stopTimer(){ if (timerId){ cancelAnimationFrame(timerId); timerId = null; } }
 
   function startTimer(){
     stopTimer();
-    if (!state.secs){ el.track.classList.add('hidden'); return; }
+    if (state.timer !== 'card'){ el.track.classList.add('hidden'); return; }
     el.track.classList.remove('hidden');
     el.fill.classList.remove('warn');
     deadline = Date.now() + state.secs * 1000;
@@ -500,14 +682,74 @@
   }
 
   function timeUp(){
-    if (state.mode === 'choice'){
-      if (state.answered) return;
-      sfx.timeUp();
-      settle(null);
-    } else {
-      if (state.revealed) return;
-      reveal();
+    if (state.mode === 'choice'){ if (!state.answered){ sfx.timeUp(); settle(null); } }
+    else if (!state.revealed) reveal();
+  }
+
+  /* ---------- the chase ----------
+     One chase per round. It runs across cards rather than resetting
+     with each one, and it holds still while an answer is on screen. */
+  var chase = {p: 0, last: 0, id: null, running: false};
+
+  function chaseOn(){ return state.timer === 'chase'; }
+
+  function paintLane(){
+    var p = Math.max(0, Math.min(100, chase.p));
+    el.cat.style.left = (CAT_FROM + p / 100 * (MOUSE_AT - CAT_FROM)) + '%';
+    el.mouse.style.left = MOUSE_AT + '%';
+    var close = p > 66;
+    el.lane.classList.toggle('close', close);
+    el.gapTag.textContent = Math.max(0, Math.round(100 - p)) + '% ahead';
+  }
+
+  function chaseFrame(now){
+    if (!chase.running) return;
+    var dt = Math.min(0.06, (now - chase.last) / 1000);
+    chase.last = now;
+    chase.p += (100 / crossSeconds(state.level)) * dt;
+    if (chase.p >= 100){ chase.p = 100; paintLane(); chase.running = false; caught(); return; }
+    paintLane();
+    chase.id = requestAnimationFrame(chaseFrame);
+  }
+
+  function chaseStart(){
+    chaseStop();
+    chase.p = 0;
+    el.lane.classList.toggle('on', chaseOn());
+    if (!chaseOn()) return;
+    el.roundTag.textContent = state.rounds[state.roundIdx].label;
+    paintLane();
+    chaseResume();
+  }
+  function chaseResume(){
+    if (!chaseOn() || chase.running) return;
+    chase.running = true;
+    chase.last = performance.now();
+    chase.id = requestAnimationFrame(chaseFrame);
+  }
+  function chasePause(){
+    chase.running = false;
+    if (chase.id){ cancelAnimationFrame(chase.id); chase.id = null; }
+  }
+  function chaseStop(){ chasePause(); }
+
+  function chaseNudge(correct){
+    if (!chaseOn()) return;
+    chase.p = Math.max(0, chase.p + (correct ? -REWIND : POUNCE));
+    paintLane();
+    if (!correct){
+      sfx.pounce();
+      el.cat.classList.remove('pounce');
+      void el.cat.offsetWidth;          // restart the animation
+      el.cat.classList.add('pounce');
     }
+  }
+
+  function caught(){
+    chaseStop(); stopTimer(); clearTimeout(advanceId);
+    state.caught = true;
+    sfx.caught();
+    finish();
   }
 
   /* ---------- play ---------- */
@@ -516,16 +758,21 @@
     el.play.classList.toggle('on', screen === 'play');
     el.doneScreen.classList.toggle('on', screen === 'done');
   }
+  function round(){ return state.rounds[state.roundIdx]; }
 
-  function startRun(){
+  function startRun(rounds, isPractice){
     unlock();
-    state.deck = buildDeck();
-    if (!state.deck.length) return;
-    state.idx = 0; state.right = 0; state.wrong = 0;
+    state.rounds = rounds || buildRounds();
+    state.practice = !!isPractice;
+    if (!state.rounds.length || !state.rounds[0].cards.length) return;
+    state.roundIdx = 0; state.idx = 0;
+    state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
+    state.missed = []; state.caught = false;
     state.startedAt = Date.now();
     document.body.classList.toggle('choice', state.mode === 'choice');
     show('play');
+    chaseStart();
     paintCard();
   }
 
@@ -535,13 +782,13 @@
   }
 
   function paintCard(){
-    var pair = state.deck[state.idx];
+    var pair = round().cards[state.idx];
     var text = pair[0] + ' × ' + pair[1];
     var answer = pair[0] * pair[1];
 
     state.revealed = false; state.answered = false;
     el.card.classList.remove('flip');
-    el.count.textContent = (state.idx + 1) + ' / ' + state.deck.length;
+    el.count.textContent = (state.idx + 1) + ' / ' + round().cards.length;
     el.q.textContent = text;
     el.qsmall.textContent = text;
     el.a.textContent = String(answer);
@@ -565,28 +812,36 @@
       el.nextBtn.textContent = 'Show answer';
     }
     startTimer();
+    chaseResume();
+  }
+
+  var toastId = null;
+  function toast(msg, big){
+    el.toast.textContent = msg;
+    el.toast.classList.toggle('big', !!big);
+    el.toast.classList.add('show');
+    clearTimeout(toastId);
+    toastId = setTimeout(function(){ el.toast.classList.remove('show'); }, big ? 1600 : 1500);
   }
 
   function bump(correct){
+    var pair = round().cards[state.idx];
+    var key = pairKey(pair[0], pair[1]);
+    noteResult(key, correct);
+
     if (correct){
       state.right++; state.streak++;
       if (state.streak > state.bestStreak) state.bestStreak = state.streak;
     } else {
       state.wrong++; state.streak = 0;
+      if (state.missed.indexOf(key) === -1) state.missed.push(key);
     }
     paintScore();
+    chaseNudge(correct);
     if (correct && state.streak >= 3 && state.streak % 3 === 0){
       setTimeout(function(){ sfx.streak(); }, 340);
       toast(state.streak + ' in a row!');
     }
-  }
-
-  var toastId = null;
-  function toast(msg){
-    el.toast.textContent = msg;
-    el.toast.classList.add('show');
-    clearTimeout(toastId);
-    toastId = setTimeout(function(){ el.toast.classList.remove('show'); }, 1500);
   }
 
   /* --- multiple choice --- */
@@ -595,10 +850,11 @@
   function settle(picked){
     if (state.answered) return;
     state.answered = true;
-    stopTimer();
+    stopTimer(); chasePause();
     el.track.classList.add('hidden');
 
-    var answer = state.deck[state.idx][0] * state.deck[state.idx][1];
+    var pair = round().cards[state.idx];
+    var answer = pair[0] * pair[1];
     var correct = picked === answer;
     var btns = el.choices.querySelectorAll('.ch');
     for (var i = 0; i < btns.length; i++){
@@ -607,8 +863,9 @@
       else if (v === picked) btns[i].classList.add('bad');
       else btns[i].classList.add('dim');
     }
-    if (picked !== null){ correct ? sfx.right() : sfx.wrong(); }
+    if (picked !== null) correct ? sfx.right() : sfx.wrong();
     bump(correct);
+    if (state.caught) return;
 
     clearTimeout(advanceId);
     advanceId = setTimeout(step, correct ? 700 : 1500);
@@ -625,7 +882,7 @@
   function reveal(){
     if (state.revealed) return;
     state.revealed = true;
-    stopTimer();
+    stopTimer(); chasePause();
     el.track.classList.add('hidden');
     el.card.classList.add('flip');
     sfx.flip();
@@ -639,6 +896,7 @@
     state.answered = true;
     correct ? sfx.right() : sfx.wrong();
     bump(correct);
+    if (state.caught) return;
     clearTimeout(advanceId);
     advanceId = setTimeout(step, correct ? 500 : 900);
   }
@@ -647,12 +905,26 @@
 
   function step(){
     clearTimeout(advanceId);
-    if (state.idx + 1 >= state.deck.length){ finish(); return; }
-    state.idx++;
-    paintCard();
+    if (state.caught) return;
+    if (state.idx + 1 < round().cards.length){ state.idx++; paintCard(); return; }
+    // round cleared
+    if (chaseOn()){
+      chasePause();
+      sfx.escape();
+      toast(round().label + ' got away! 🐭', true);
+    }
+    if (state.roundIdx + 1 >= state.rounds.length){
+      setTimeout(finish, chaseOn() ? 1100 : 0);
+      return;
+    }
+    state.roundIdx++; state.idx = 0;
+    setTimeout(function(){
+      if (state.caught) return;
+      chaseStart();
+      paintCard();
+    }, chaseOn() ? 1100 : 0);
   }
 
-  // tapping the card reveals it, and once graded it moves along
   function cardTap(){
     unlock();
     if (state.mode === 'choice') return;
@@ -662,50 +934,76 @@
   el.card.addEventListener('click', cardTap);
   el.nextBtn.addEventListener('click', cardTap);
 
+  function paintMissBox(box, list, keys){
+    box.classList.toggle('on', keys.length > 0);
+    list.innerHTML = '';
+    for (var i = 0; i < keys.length; i++){
+      var s = document.createElement('span');
+      s.className = 'miss';
+      s.textContent = keys[i].replace('×', ' × ');
+      list.appendChild(s);
+    }
+  }
+
   function finish(){
-    stopTimer();
-    clearTimeout(advanceId);
+    stopTimer(); chaseStop(); clearTimeout(advanceId);
     var graded = state.right + state.wrong;
     var secs = Math.round((Date.now() - state.startedAt) / 1000);
     var m = Math.floor(secs / 60), s = secs % 60;
 
-    if (graded){
-      var pct = Math.round(state.right / graded * 100);
-      el.doneTitle.textContent = pct === 100 ? 'Perfect!' : pct >= 80 ? 'Nice work' : 'Keep going';
-      el.doneRing.textContent = state.right + ' / ' + graded;
-      el.doneCards.textContent = pct + '% right';
+    if (state.caught){
+      el.doneEmoji.textContent = '🐱';
+      el.doneTitle.textContent = 'The cat got the mouse';
+      el.doneRing.textContent = '';
+      el.doneCards.textContent = round().label
+        ? 'Caught during ' + round().label.toLowerCase() : 'Caught';
+      el.doneStreak.textContent = graded
+        ? state.right + ' right, ' + state.wrong + ' missed' : '';
+      el.againBtn.textContent = 'Try again';
+    } else {
+      var pct = graded ? Math.round(state.right / graded * 100) : 0;
+      el.doneEmoji.textContent = chaseOn() ? '🐭' : (pct === 100 ? '🎉' : '');
+      el.doneTitle.textContent = chaseOn() ? 'The mouse got away!'
+        : pct === 100 ? 'Perfect!' : pct >= 80 ? 'Nice work' : 'Keep going';
+      el.doneRing.textContent = graded ? state.right + ' / ' + graded : '';
+      el.doneCards.textContent = graded ? pct + '% right'
+        : (state.idx + 1) + ' of ' + round().cards.length + ' cards';
       el.doneStreak.textContent = state.bestStreak >= 3
         ? 'Best streak ' + state.bestStreak + ' in a row' : '';
-    } else {
-      el.doneTitle.textContent = 'Nice work';
-      el.doneRing.textContent = '';
-      el.doneCards.textContent = (state.idx + 1) + ' of ' + state.deck.length + ' cards';
-      el.doneStreak.textContent = '';
+      el.againBtn.textContent = 'Go again';
     }
     el.doneTime.textContent = 'in ' + m + ':' + (s < 10 ? '0' : '') + s;
-    sfx.done();
+    paintMissBox(el.missBox, el.missList, state.missed);
+
+    if (!state.caught) sfx.done();
     show('done');
   }
 
-  el.startBtn.addEventListener('click', startRun);
-  el.quitBtn.addEventListener('click', function(ev){ ev.stopPropagation(); finish(); });
-  el.againBtn.addEventListener('click', startRun);
-  el.changeBtn.addEventListener('click', function(){ sfx.tap(); show('home'); });
+  el.startBtn.addEventListener('click', function(){ startRun(null, false); });
+  el.quitBtn.addEventListener('click', function(ev){ ev.stopPropagation(); chaseStop(); finish(); });
+  el.againBtn.addEventListener('click', function(){
+    if (state.practice){ el.practiceBtn.click(); return; }
+    startRun(null, false);
+  });
+  el.changeBtn.addEventListener('click', function(){ sfx.tap(); paintHome(); show('home'); });
 
   document.addEventListener('keydown', function(ev){
     if (!el.play.classList.contains('on')) return;
     if (ev.key === ' ' || ev.key === 'Enter' || ev.key === 'ArrowRight'){ ev.preventDefault(); cardTap(); }
   });
-  // a tap anywhere is a good moment to let iOS start the audio
   document.addEventListener('click', unlock);
 
-  // a card left running in a hidden tab should not burn through the deck
+  // a hidden tab freezes rAF anyway; make the pause explicit so nothing
+  // jumps forward when it comes back
   document.addEventListener('visibilitychange', function(){
-    if (document.hidden) stopTimer();
-    else if (el.play.classList.contains('on') && !state.revealed && !state.answered) startTimer();
+    if (document.hidden){ stopTimer(); chasePause(); }
+    else if (el.play.classList.contains('on') && !state.revealed && !state.answered && !state.caught){
+      startTimer(); chaseResume();
+    }
   });
 
   loadSettings();
+  loadRecord();
   buildChips();
   paintHome();
   applyMute();
