@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.6">
+<meta name="x-cards-version" content="1.7">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -206,7 +206,8 @@
   .gbtn.no{background:#8d8981;box-shadow:0 6px 0 #6f6c65}
   .gbtn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 
-  .toast{position:fixed;left:50%;top:78px;transform:translate(-50%,-14px);z-index:50;
+  /* sits over the card, well clear of the speech bubbles up in the lane */
+  .toast{position:fixed;left:50%;top:38%;transform:translate(-50%,-14px);z-index:50;
     background:var(--ink);color:#fff;font-size:16px;font-weight:600;
     padding:11px 22px;border-radius:999px;opacity:0;pointer-events:none;
     transition:opacity .25s ease,transform .25s cubic-bezier(.2,.9,.3,1)}
@@ -316,7 +317,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.6</p>
+  <p class="foot">v1.7</p>
 </div>
 
 <!-- ================= play ================= -->
@@ -783,23 +784,59 @@
   /* What the animals say. Which pool gets used is decided by the actual
      state of the race, the line inside it is picked at random. */
   var LINES = {
-    startChaser: ['Here I come!', 'You cannot outrun me', 'I am right behind you', 'Off we go'],
-    startRunner: ['Keep up, Seth!', 'Help me out here', 'Ready when you are', 'Let us go!'],
-    right:       ['Nice one!', 'Yes!', 'Thanks Seth!', 'Keep them coming', 'That is the way'],
-    streak:      ['You are on fire!', 'Nobody can stop us', 'Brilliant, Seth!'],
-    wrongChaser: ['Ha, slowing down', 'Take your time', 'That is my chance', 'Closer and closer'],
-    wrongRunner: ['Uh oh', 'That one was tricky', 'Shake it off', 'Get the next one'],
-    aheadRunner: ['Easy!', 'Cannot catch me', 'Miles ahead', 'This is fun'],
-    aheadChaser: ['Slow down!', 'Not fair', 'Wait for me', 'My legs hurt'],
-    closeChaser: ['Almost got you!', 'So close now', 'I can smell lunch', 'Any second'],
-    closeRunner: ['Faster, Seth!', 'Too close!', 'Hurry!', 'Do not stop now'],
-    nearlyHome:  ['Nearly there!', 'I can see it!', 'Almost home', 'One more push'],
-    escape:      ['Made it!', 'Safe!', 'Woohoo!', 'Told you we could'],
-    caught:      ['Got you!', 'Dinner time', 'Told you so', 'Too slow']
+    startChaser: ["Here I come!", "You can't outrun me", "I'm right behind you", 'Off we go',
+                  'Nothing personal', "I've done my stretches", 'Give me a countdown'],
+    startRunner: ['Keep up, Seth!', 'Help me out here', 'Ready when you are', "Let's go!",
+                  "I'm counting on you", 'Do not let me down', 'Warm up those fingers'],
+
+    right:       ['Nice one!', 'Yes!', 'Thanks Seth!', 'Keep them coming', "That's the way",
+                  'You got it', 'Another one down', 'Smooth', 'Well done!', 'Onwards!',
+                  'Good shout', "That's my Seth"],
+    streak:      ["You're on fire!", 'Nobody can stop us', 'Brilliant, Seth!', "That's a run!",
+                  'Keep it going!', "You're showing off now", 'Do not stop!'],
+
+    funnyRunner: ['I skipped breakfast for this', 'Tell my family I ran fast', 'I regret every snack',
+                  'Is it lunchtime yet?', "You do maths, I'll run", "I've got a stitch",
+                  'Why is home so far?', 'This is my cardio', "I'm built for napping",
+                  'Do I get a medal?', 'Numbers are heavy', 'I need a lie down after this',
+                  'My mum says I am fast', 'Running was not my idea'],
+    funnyChaser: ["I'm only here for the steps", 'You smell like maths', "Come back, let's chat",
+                  "I've been training for this", 'This is my cardio too', "I'll allow a head start",
+                  "I'm not even sprinting yet", 'I had a big breakfast', 'Nobody outruns me. Usually.',
+                  'Wait, I dropped my snack', 'Is this a long table?', 'My coach is watching'],
+
+    wrongChaser: ['Ha, slowing down', 'Take your time', "That's my chance", 'Closer and closer',
+                  'Thank you!', 'Keep making those', 'I loved that answer', 'Do that again'],
+    wrongRunner: ['Uh oh', 'That one was tricky', 'Shake it off', 'Get the next one',
+                  'It happens', "We'll see it again", 'Yikes', 'No harm done'],
+
+    aheadRunner: ['Easy!', "Can't catch me", 'Miles ahead', 'This is fun', 'Look at me go',
+                  'Should I slow down?', "I'll wait for you", 'Is that all you have?'],
+    aheadChaser: ['Slow down!', 'Not fair', 'Wait for me', "I'm getting tired",
+                  'How are you so fast?', 'This is embarrassing', 'I need a rest'],
+
+    closeChaser: ['Almost got you!', 'So close now', 'I can smell lunch', 'Any second now',
+                  'I can see you', 'Nearly mine', 'Do not look back'],
+    closeRunner: ['Faster, Seth!', 'Too close!', 'Hurry!', "Don't stop now", 'Eek!',
+                  "It's right behind me", 'Any time now, Seth'],
+    nearlyHome:  ['Nearly there!', 'I can see it!', 'Almost home', 'One more push',
+                  "Don't jinx it", 'So close!', 'Home is in sight'],
+
+    escape:      ['Made it!', 'Safe!', 'Woohoo!', 'Told you we could', 'Home!',
+                  'Never doubted you', 'That was close'],
+    caught:      ['Got you!', 'Dinner time', 'Told you so', 'Too slow', 'Gotcha!',
+                  'Better luck next time']
   };
 
   var spoke = 0;                      // when the last bubble went up
-  function pick(pool){ return pool[Math.floor(Math.random() * pool.length)]; }
+  var lastLine = '';
+  // one re-roll so the same line does not land twice running
+  function pick(pool){
+    var s = pool[Math.floor(Math.random() * pool.length)];
+    if (s === lastLine && pool.length > 1) s = pool[Math.floor(Math.random() * pool.length)];
+    lastLine = s;
+    return s;
+  }
 
   // who is 'chaser' or 'runner'; the bubble sits over whoever is talking
   function say(who, pool, force){
@@ -851,10 +888,40 @@
     if (catU() > mouseU()) caught();
   }
 
-  // a running remark about how the race is actually going, throttled hard
-  // so they are not chattering over every card
+  /* One of them speaks on every single card. Which pool it comes from is
+     decided by the state of the race, so the jokes only get a look in when
+     nothing more urgent is going on. */
+  function speakTurn(correct){
+    if (!chaseOn()) return;
+    var lead = mouseU() - catU(), left = state.total - state.cleared, r = Math.random();
+
+    if (!correct){
+      if (r < 0.6) say('chaser', LINES.wrongChaser, true);
+      else say('runner', LINES.wrongRunner, true);
+      return;
+    }
+    if (state.streak >= 3 && state.streak % 3 === 0){ say('runner', LINES.streak, true); return; }
+    if (left <= 2 && lead > 6){ say('runner', LINES.nearlyHome, true); return; }
+    if (lead < 13){
+      if (r < 0.5) say('chaser', LINES.closeChaser, true);
+      else say('runner', LINES.closeRunner, true);
+      return;
+    }
+    if (lead > 34){
+      if (r < 0.5) say('runner', LINES.aheadRunner, true);
+      else say('chaser', LINES.aheadChaser, true);
+      return;
+    }
+    // nothing dramatic happening, so praise or a joke
+    if (r < 0.4) say('runner', LINES.right, true);
+    else if (r < 0.72) say('runner', LINES.funnyRunner, true);
+    else say('chaser', LINES.funnyChaser, true);
+  }
+
+  // fills the gaps when he is sitting on a card thinking, so they are not
+  // silent for long stretches. Every card already gets its own line.
   function patter(){
-    if (Date.now() - spoke < 9000) return;
+    if (Date.now() - spoke < 12000) return;
     var lead = mouseU() - catU();
     if (state.total - state.cleared <= 2 && lead > 6) say('runner', LINES.nearlyHome);
     else if (lead < 13) say(Math.random() < 0.5 ? 'chaser' : 'runner',
@@ -919,14 +986,7 @@
       el.cat.classList.add('pounce');
     }
     paintLane();
-    // a miss always gets a remark, mostly from the chaser enjoying it.
-    // A right answer only gets one now and then, so they are not chattering.
-    if (!correct){
-      if (Math.random() < 0.65) say('chaser', LINES.wrongChaser, true);
-      else say('runner', LINES.wrongRunner, true);
-    } else if (Math.random() < 0.4){
-      say('runner', LINES.right);
-    }
+    speakTurn(correct);
     chaseCheck();
   }
 
@@ -1045,8 +1105,7 @@
     chaseNudge(correct);
     if (correct && state.streak >= 3 && state.streak % 3 === 0){
       setTimeout(function(){ sfx.streak(); }, 340);
-      toast(state.streak + ' in a row!');
-      say('runner', LINES.streak, true);
+      toast(state.streak + ' in a row!');   // speakTurn already gave it a line
     }
   }
 
