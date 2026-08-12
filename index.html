@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.2">
+<meta name="x-cards-version" content="2.3">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -400,7 +400,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.2</p>
+  <p class="foot">v2.3</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -714,12 +714,37 @@
   /* ---------- the missed record ---------- */
   var record = {};   // "7×8" -> {m: missed, h: hit}
 
+  /* This is per PLAYER, not per device. It was device-wide at first, under one
+     storage key, so the second child to sign in on a phone saw the first
+     child's mistakes. Signed in, the server holds it and it follows them
+     between devices; signed out, it falls back to a guest record on the
+     device so the feature still works without an account. */
+  function missKey(){
+    return MISSES + (me.name ? ':' + me.name.toLowerCase() : ':guest');
+  }
   function loadRecord(){
-    try { record = JSON.parse(localStorage.getItem(MISSES)) || {}; } catch(e){ record = {}; }
+    try { record = JSON.parse(localStorage.getItem(missKey())) || {}; } catch(e){ record = {}; }
     if (!record || typeof record !== 'object') record = {};
   }
+  var pushId = null;
   function saveRecord(){
-    try { localStorage.setItem(MISSES, JSON.stringify(record)); } catch(e){}
+    try { localStorage.setItem(missKey(), JSON.stringify(record)); } catch(e){}
+    if (!me.token) return;
+    clearTimeout(pushId);
+    pushId = setTimeout(function(){
+      apiCall('/misses', { method: 'POST', body: { token: me.token, misses: record } });
+    }, 1500);
+  }
+  // called whenever the signed-in player changes
+  function adoptRecord(fromServer){
+    if (fromServer && typeof fromServer === 'object' && Object.keys(fromServer).length){
+      record = fromServer;
+      try { localStorage.setItem(missKey(), JSON.stringify(record)); } catch(e){}
+    } else {
+      loadRecord();                 // nothing on the server yet, offer up ours
+      if (me.token && Object.keys(record).length) saveRecord();
+    }
+    paintHome();
   }
   function noteResult(key, correct){
     var r = record[key] || (record[key] = {m: 0, h: 0});
@@ -959,6 +984,9 @@
     el.signOutBtn.classList.toggle('hide', !me.name);
     el.signOutNote.classList.toggle('hide', !me.name);
     paintScores();
+    // the record is per player, so it has to be repainted whenever the player
+    // changes, or the last child's mistakes stay on screen after a sign out
+    paintTrouble();
   }
   function fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function esc(s){
@@ -1051,7 +1079,7 @@
           return;
         }
         me.token = res.data.token; me.name = res.data.name; me.bests = res.data.bests || [];
-        saveMe(); paintWho(); refreshBoard();
+        saveMe(); adoptRecord(res.data.misses); paintWho(); refreshBoard();
         sfx.right();
         show('home');
       });
@@ -1068,7 +1096,7 @@
   el.skipAuth.addEventListener('click', function(){ sfx.tap(); show('home'); });
   el.signOutBtn.addEventListener('click', function(){
     me.token = ''; me.name = ''; me.bests = []; me.leaders = [];
-    saveMe(); paintWho(); sfx.tap(); show('home');
+    saveMe(); loadRecord(); paintWho(); sfx.tap(); show('home');
   });
 
   /* ---------- the scoreboard ---------- */
@@ -1076,9 +1104,9 @@
     if (!me.token) return;
     apiCall('/me?token=' + encodeURIComponent(me.token)).then(function(res){
       if (!res) return;                       // offline, keep what we have
-      if (!res.ok){ me.token = ''; me.name = ''; saveMe(); paintWho(); return; }
+      if (!res.ok){ me.token = ''; me.name = ''; saveMe(); loadRecord(); paintWho(); return; }
       me.name = res.data.name; me.bests = res.data.bests || [];
-      saveMe(); paintWho();
+      saveMe(); adoptRecord(res.data.misses); paintWho();
     });
   }
   function refreshBoard(){
@@ -1206,7 +1234,7 @@
       // A rejected session used to vanish silently and the child would finish
       // table after table with nothing saved. Say so instead.
       if (res && res.status === 401){
-        me.token = ''; me.name = ''; me.bests = []; saveMe(); paintWho();
+        me.token = ''; me.name = ''; me.bests = []; saveMe(); loadRecord(); paintWho();
         toast('Signed out, sign in again to save scores');
         onResult(null); return;
       }
@@ -1918,8 +1946,8 @@
   });
 
   loadSettings();
-  loadRecord();
   loadMe();
+  loadRecord();
   buildChips();
   buildPairs();
   paintHome();
