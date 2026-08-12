@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.5">
+<meta name="x-cards-version" content="2.6">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -406,7 +406,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.5</p>
+  <p class="foot">v2.6</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1164,8 +1164,13 @@
     el.cheerMsg.textContent = 'Saving...';
     apiCall('/cheer', { method: 'POST', body: { token: me.token, audio: dataUrl } })
       .then(function(res){
-        if (!res){ el.cheerMsg.textContent = 'Could not reach the scoreboard'; return; }
-        if (!res.ok){ el.cheerMsg.textContent = res.data.error || 'That did not save'; return; }
+        if (!res){ el.cheerMsg.textContent = 'Could not reach the scoreboard'; paintCheer(); return; }
+        if (!res.ok){
+          var kind = dataUrl ? String(dataUrl).slice(5, String(dataUrl).indexOf(';base64,')) : '';
+          el.cheerMsg.textContent = (res.data.error || 'That did not save')
+            + (kind ? ' (' + kind + ')' : '');
+          return;
+        }
         me.hasCheer = dataUrl !== null;
         cheerData = dataUrl;
         el.cheerMsg.textContent = dataUrl === null ? 'Deleted.' : 'Saved. They will hear it when they finish.';
