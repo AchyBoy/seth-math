@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.7">
+<meta name="x-cards-version" content="1.8">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,6 +68,42 @@
   .opt.on{background:var(--blue);border-color:var(--blue);color:#fff}
   .opt:active{transform:scale(.95)}
   .opts.four .opt{padding:11px 4px;text-align:center}
+
+  /* who is playing */
+  .whoami{display:flex;align-items:center;justify-content:space-between;width:100%;
+    border:2px solid var(--line);background:#fff;border-radius:16px;
+    padding:13px 16px;font-size:16px;font-weight:500;color:var(--muted);
+    margin-top:8px;margin-bottom:26px}
+  .whoami b{color:var(--ink);font-weight:600}
+  .whoami .chev{font-size:22px;color:#c3bfb5;line-height:1}
+  .whoami:active{background:var(--blue-soft)}
+
+  .names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .names button{border:2px solid var(--line);background:#fff;border-radius:16px;
+    padding:16px 10px;font-size:18px;font-weight:600;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .names button:active{background:var(--blue-soft);border-color:var(--blue)}
+  .names .none{grid-column:1 / -1;color:var(--muted);font-size:15px;font-weight:400;
+    border:0;background:none;padding:0;text-align:left}
+
+  .field{width:100%;border:2px solid var(--line);background:#fff;border-radius:16px;
+    padding:15px 16px;font-size:18px;font-family:inherit;color:var(--ink);margin-bottom:10px}
+  .field:focus{outline:none;border-color:var(--blue)}
+  .field.hide{display:none}
+  .warnnote{font-size:13px;color:var(--muted);line-height:1.45;margin:4px 2px 12px}
+  .err{color:var(--red);font-size:15px;font-weight:500;min-height:22px;margin:0 2px 8px}
+
+  /* best scores */
+  .scores{display:flex;flex-direction:column;gap:6px}
+  .srow{display:flex;align-items:center;gap:10px;font-size:15px;
+    border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px}
+  .srow .tbl{font-weight:600;width:42px;flex:none}
+  .srow .tot{font-weight:700;color:var(--blue);width:52px;flex:none;
+    text-align:right;font-variant-numeric:tabular-nums}
+  .srow .det{color:var(--muted);font-size:13px;flex:1;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srow .crown{flex:none;font-size:14px}
+  .srow.empty{color:var(--muted);justify-content:center;font-size:14px}
 
   /* trouble spots */
   .misses{display:flex;flex-wrap:wrap;gap:8px}
@@ -249,7 +285,15 @@
     <h1 class="title">Multiplication<br><span>Flash Cards</span></h1>
     <button type="button" class="spk" id="spkHome" aria-label="Sound">🔊</button>
   </div>
-  <p class="sub">Pick your tables, then start.</p>
+  <button type="button" class="whoami" id="whoBtn">
+    <span id="whoLabel">Sign in to save your scores</span><span class="chev">›</span>
+  </button>
+
+  <div class="block hide" id="scoreBlock">
+    <p class="label">Your best at <span id="scorePace">10s</span> a card</p>
+    <div class="scores" id="scoreList"></div>
+    <p class="note" id="scoreNote"></p>
+  </div>
 
   <div class="block hide" id="troubleBlock">
     <p class="label">Keeps missing these</p>
@@ -317,7 +361,39 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.7</p>
+  <p class="foot">v1.8</p>
+</div>
+
+<!-- ================= who is playing ================= -->
+<div class="screen" id="whoScreen">
+  <div class="head">
+    <h1 class="title">Who is<br><span>playing?</span></h1>
+  </div>
+  <p class="sub">Scores are saved against your name, so they follow you to any phone or tablet.</p>
+
+  <div class="block" id="pickBlock">
+    <p class="label">Tap your name</p>
+    <div class="names" id="nameList"></div>
+    <div class="quick">
+      <button type="button" id="newPlayerBtn">I am new here</button>
+    </div>
+  </div>
+
+  <div class="block hide" id="pinBlock">
+    <p class="label" id="pinLabel">Password</p>
+    <input class="field" id="newName" type="text" autocomplete="off" autocapitalize="words"
+           placeholder="Your name" maxlength="24">
+    <input class="field" id="pinField" type="password" autocomplete="off"
+           inputmode="text" placeholder="Password" maxlength="64">
+    <p class="warnnote">Pick something easy to remember and <b>not</b> a password you use
+      anywhere else. This only guards your scores on this game.</p>
+    <p class="err" id="authErr"></p>
+    <button type="button" class="start" id="authGo">Go</button>
+    <button type="button" class="link" id="authBack">Back to the names</button>
+  </div>
+
+  <button type="button" class="link" id="skipAuth">Play without saving scores</button>
+  <button type="button" class="link hide" id="signOutBtn">Sign out</button>
 </div>
 
 <!-- ================= play ================= -->
@@ -390,6 +466,48 @@
   var MIN = 1, MAX = 12, PER_TABLE = MAX - MIN + 1;
   var STORE = 'seth-cards-settings-v4';
   var MISSES = 'seth-cards-misses-v1';
+  var WHO = 'seth-cards-player-v1';
+
+  /* =========================================================
+     Players and scores.
+
+     The game itself is entirely local and always has been. This
+     layer is additive: if the network is down, or nobody is
+     signed in, every call below fails quietly and play carries
+     on exactly as before. Nothing here is ever allowed to stop
+     a child from doing their times tables.
+     ========================================================= */
+  var API = 'https://api.jobhubgo.com/api/mathcards';
+  var me = { token: '', name: '', bests: [], leaders: [] };
+
+  function loadMe(){
+    try {
+      var s = JSON.parse(localStorage.getItem(WHO));
+      if (s && s.token && s.name){ me.token = s.token; me.name = s.name; }
+    } catch(e){}
+  }
+  function saveMe(){
+    try {
+      if (me.token) localStorage.setItem(WHO, JSON.stringify({token: me.token, name: me.name}));
+      else localStorage.removeItem(WHO);
+    } catch(e){}
+  }
+
+  // never rejects; returns null on any failure so callers stay simple
+  function apiCall(path, opts){
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var killer = setTimeout(function(){ if (ctl) ctl.abort(); }, 9000);
+    var cfg = { method: (opts && opts.method) || 'GET' };
+    if (ctl) cfg.signal = ctl.signal;
+    if (opts && opts.body){
+      cfg.headers = { 'Content-Type': 'application/json' };
+      cfg.body = JSON.stringify(opts.body);
+    }
+    return fetch(API + path, cfg)
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, data: j }; }); })
+      .catch(function(){ return null; })
+      .then(function(res){ clearTimeout(killer); return res; });
+  }
 
   /* The chase is a straight race down one track, both starting on the left.
      The MOUSE is how many cards you have got RIGHT, so only a correct answer
@@ -431,6 +549,9 @@
   ['home','play','doneScreen','chips','allBtn','noneBtn','modeOpts','orderOpts','timerOpts',
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
+   'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
+   'newName','pinField','authErr','authGo','authBack','skipAuth','signOutBtn',
+   'scoreBlock','scorePace','scoreList','scoreNote',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
@@ -670,6 +791,163 @@
     if (btn) btn.textContent = pair().chaser + ' Chase';
   }
 
+  /* ---------- signing in ---------- */
+  var authMode = 'login', authName = '';
+
+  function paintWho(){
+    el.whoLabel.innerHTML = me.name
+      ? 'Playing as <b>' + esc(me.name) + '</b>'
+      : 'Sign in to save your scores';
+    el.signOutBtn.classList.toggle('hide', !me.name);
+    paintScores();
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+
+  function openWho(){
+    sfx.tap();
+    showAuthPick();
+    show('who');
+    apiCall('/players').then(function(res){
+      el.nameList.innerHTML = '';
+      var names = (res && res.ok && res.data.players) || [];
+      if (!names.length){
+        var p = document.createElement('span');
+        p.className = 'none';
+        p.textContent = res ? 'Nobody has signed up yet. Be the first.'
+                            : 'Cannot reach the scoreboard right now.';
+        el.nameList.appendChild(p);
+        return;
+      }
+      names.forEach(function(n){
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = n;
+        b.addEventListener('click', function(){ showAuthPin('login', n); });
+        el.nameList.appendChild(b);
+      });
+    });
+  }
+  function showAuthPick(){
+    el.pickBlock.classList.remove('hide');
+    el.pinBlock.classList.add('hide');
+    el.authErr.textContent = '';
+    el.pinField.value = ''; el.newName.value = '';
+  }
+  function showAuthPin(mode, name){
+    authMode = mode; authName = name || '';
+    el.pickBlock.classList.add('hide');
+    el.pinBlock.classList.remove('hide');
+    el.authErr.textContent = '';
+    el.pinField.value = '';
+    el.newName.classList.toggle('hide', mode === 'login');
+    el.pinLabel.textContent = mode === 'login' ? 'Password for ' + name : 'Make yourself a player';
+    el.authGo.textContent = mode === 'login' ? 'Sign in' : 'Create player';
+    setTimeout(function(){ (mode === 'login' ? el.pinField : el.newName).focus(); }, 60);
+  }
+
+  function doAuth(){
+    var pin = el.pinField.value;
+    var name = authMode === 'login' ? authName : el.newName.value.trim();
+    if (!name){ el.authErr.textContent = 'Type a name first'; return; }
+    if (pin.length < 4){ el.authErr.textContent = 'Password needs 4 characters or more'; return; }
+    el.authErr.textContent = '';
+    el.authGo.disabled = true;
+    el.authGo.textContent = 'Just a second...';
+    apiCall(authMode === 'login' ? '/login' : '/signup', { method: 'POST', body: { name: name, pin: pin } })
+      .then(function(res){
+        el.authGo.disabled = false;
+        el.authGo.textContent = authMode === 'login' ? 'Sign in' : 'Create player';
+        if (!res){ el.authErr.textContent = 'Cannot reach the scoreboard, check the wifi'; return; }
+        if (!res.ok){ el.authErr.textContent = res.data.error || 'That did not work'; return; }
+        me.token = res.data.token; me.name = res.data.name; me.bests = res.data.bests || [];
+        saveMe(); paintWho(); refreshBoard();
+        sfx.right();
+        show('home');
+      });
+  }
+
+  el.whoBtn.addEventListener('click', openWho);
+  el.newPlayerBtn.addEventListener('click', function(){ sfx.tap(); showAuthPin('signup', ''); });
+  el.authBack.addEventListener('click', function(){ sfx.tap(); showAuthPick(); });
+  el.authGo.addEventListener('click', doAuth);
+  el.pinField.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') doAuth(); });
+  el.newName.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') el.pinField.focus(); });
+  el.skipAuth.addEventListener('click', function(){ sfx.tap(); show('home'); });
+  el.signOutBtn.addEventListener('click', function(){
+    me.token = ''; me.name = ''; me.bests = []; me.leaders = [];
+    saveMe(); paintWho(); sfx.tap(); show('home');
+  });
+
+  /* ---------- the scoreboard ---------- */
+  function refreshMe(){
+    if (!me.token) return;
+    apiCall('/me?token=' + encodeURIComponent(me.token)).then(function(res){
+      if (!res) return;                       // offline, keep what we have
+      if (!res.ok){ me.token = ''; me.name = ''; saveMe(); paintWho(); return; }
+      me.name = res.data.name; me.bests = res.data.bests || [];
+      saveMe(); paintWho();
+    });
+  }
+  function refreshBoard(){
+    apiCall('/board?pace=' + state.pace).then(function(res){
+      if (res && res.ok) me.leaders = res.data.leaders || [];
+      paintScores();
+    });
+  }
+
+  function paintScores(){
+    var on = !!me.token;
+    el.scoreBlock.classList.toggle('hide', !on);
+    if (!on) return;
+    el.scorePace.textContent = state.pace + 's';
+    var mine = {}, top = {};
+    me.bests.forEach(function(b){ if (b.pace === state.pace) mine[b.table] = b; });
+    me.leaders.forEach(function(l){ top[l.table] = l; });
+
+    el.scoreList.innerHTML = '';
+    var shown = 0;
+    for (var t = MIN; t <= MAX; t++){
+      var b = mine[t]; if (!b) continue;
+      shown++;
+      var lead = top[t];
+      var row = document.createElement('div');
+      row.className = 'srow';
+      var holder = lead && lead.name !== me.name ? lead.name + ' leads with ' + lead.total : '';
+      row.innerHTML =
+        '<span class="tbl">' + t + 's</span>' +
+        '<span class="tot">' + b.total + '</span>' +
+        '<span class="det">' + clock(b.seconds) + ', ' +
+          (b.misses === 0 ? 'no misses' : b.misses + (b.misses === 1 ? ' miss' : ' misses')) +
+          (holder ? ' &middot; ' + esc(holder) : '') + '</span>' +
+        (lead && lead.name === me.name ? '<span class="crown">👑</span>' : '');
+      el.scoreList.appendChild(row);
+    }
+    if (!shown){
+      var e = document.createElement('div');
+      e.className = 'srow empty';
+      e.textContent = 'Finish a chase at ' + state.pace + 's a card to set your first score';
+      el.scoreList.appendChild(e);
+    }
+    el.scoreNote.textContent = 'Out of 1000. Getting them all right is worth up to 600, '
+      + 'and the time you have left over is worth up to 400.';
+  }
+
+  // Called when a chase round is cleared. Silent on failure by design.
+  function postScore(tableNo, seconds, right, wrong, onResult){
+    if (!me.token || !chaseOn()){ onResult(null); return; }
+    apiCall('/score', { method: 'POST', body: {
+      token: me.token, table: tableNo, pace: state.pace,
+      right: right, wrong: wrong, seconds: Math.round(seconds * 10) / 10
+    }}).then(function(res){
+      if (!res || !res.ok){ onResult(null); return; }
+      onResult(res.data);
+      refreshMe(); refreshBoard();
+    });
+  }
+
   function clock(secs){
     var m = Math.floor(secs / 60), s = Math.round(secs % 60);
     return m + ':' + (s < 10 ? '0' : '') + s;
@@ -682,10 +960,16 @@
       'Only a right answer moves it along. Get one wrong and that card goes to the back of ' +
       'the queue to come round again, which costs you time.';
   }
+  var boardId = null;
   el.pace.addEventListener('input', function(){
     state.pace = parseInt(el.pace.value, 10);
     paintPace();
+    paintScores();
     saveSettings();
+    // the leaderboard is per difficulty, so it has to follow the slider.
+    // Debounced, or dragging it fires a request per step.
+    clearTimeout(boardId);
+    boardId = setTimeout(refreshBoard, 400);
   });
 
   el.clearMissBtn.addEventListener('click', function(){
@@ -726,7 +1010,7 @@
         var cards = [];
         for (m = MIN; m <= MAX; m++) cards.push([tables[i], m]);
         if (state.shuffle) shuffle(cards);
-        rounds.push({label: 'The ' + tables[i] + 's', cards: cards});
+        rounds.push({label: 'The ' + tables[i] + 's', table: tables[i], cards: cards});
       }
     } else {
       var all = [];
@@ -734,7 +1018,7 @@
         for (m = MIN; m <= MAX; m++) all.push([tables[i], m]);
       }
       if (state.shuffle) shuffle(all);
-      rounds.push({label: '', cards: all});
+      rounds.push({label: '', table: 0, cards: all});
     }
     return rounds;
   }
@@ -786,13 +1070,13 @@
   var LINES = {
     startChaser: ["Here I come!", "You can't outrun me", "I'm right behind you", 'Off we go',
                   'Nothing personal', "I've done my stretches", 'Give me a countdown'],
-    startRunner: ['Keep up, Seth!', 'Help me out here', 'Ready when you are', "Let's go!",
+    startRunner: ['Keep up, {name}!', 'Help me out here', 'Ready when you are', "Let's go!",
                   "I'm counting on you", 'Do not let me down', 'Warm up those fingers'],
 
-    right:       ['Nice one!', 'Yes!', 'Thanks Seth!', 'Keep them coming', "That's the way",
+    right:       ['Nice one!', 'Yes!', 'Thanks {name}!', 'Keep them coming', "That's the way",
                   'You got it', 'Another one down', 'Smooth', 'Well done!', 'Onwards!',
-                  'Good shout', "That's my Seth"],
-    streak:      ["You're on fire!", 'Nobody can stop us', 'Brilliant, Seth!', "That's a run!",
+                  'Good shout', "That's my {name}"],
+    streak:      ["You're on fire!", 'Nobody can stop us', 'Brilliant, {name}!', "That's a run!",
                   'Keep it going!', "You're showing off now", 'Do not stop!'],
 
     funnyRunner: ['I skipped breakfast for this', 'Tell my family I ran fast', 'I regret every snack',
@@ -817,8 +1101,8 @@
 
     closeChaser: ['Almost got you!', 'So close now', 'I can smell lunch', 'Any second now',
                   'I can see you', 'Nearly mine', 'Do not look back'],
-    closeRunner: ['Faster, Seth!', 'Too close!', 'Hurry!', "Don't stop now", 'Eek!',
-                  "It's right behind me", 'Any time now, Seth'],
+    closeRunner: ['Faster, {name}!', 'Too close!', 'Hurry!', "Don't stop now", 'Eek!',
+                  "It's right behind me", 'Any time now, {name}'],
     nearlyHome:  ['Nearly there!', 'I can see it!', 'Almost home', 'One more push',
                   "Don't jinx it", 'So close!', 'Home is in sight'],
 
@@ -830,12 +1114,13 @@
 
   var spoke = 0;                      // when the last bubble went up
   var lastLine = '';
-  // one re-roll so the same line does not land twice running
+  // one re-roll so the same line does not land twice running. {name} becomes
+  // whoever is signed in, so the animals talk to the child actually playing.
   function pick(pool){
     var s = pool[Math.floor(Math.random() * pool.length)];
     if (s === lastLine && pool.length > 1) s = pool[Math.floor(Math.random() * pool.length)];
     lastLine = s;
-    return s;
+    return s.replace('{name}', (me.name || 'Seth').split(' ')[0]);
   }
 
   // who is 'chaser' or 'runner'; the bubble sits over whoever is talking
@@ -1004,6 +1289,7 @@
     el.home.classList.toggle('on', screen === 'home');
     el.play.classList.toggle('on', screen === 'play');
     el.doneScreen.classList.toggle('on', screen === 'done');
+    el.whoScreen.classList.toggle('on', screen === 'who');
   }
   function round(){ return state.rounds[state.roundIdx]; }
 
@@ -1015,6 +1301,9 @@
     state.queue = round().cards.slice();
     state.total = state.queue.length;
     state.cleared = 0;
+    // the score is per table, so these count this round only, unlike
+    // state.right / state.wrong which run across the whole session
+    state.roundRight = 0; state.roundWrong = 0;
   }
   function card(){ return state.queue[0]; }
   function clearCard(correct){
@@ -1032,7 +1321,7 @@
     breaking = false;
     state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
-    state.missed = []; state.caught = false;
+    state.missed = []; state.caught = false; state.lastScore = null;
     state.startedAt = Date.now();
     document.body.classList.toggle('choice', state.mode === 'choice');
     show('play');
@@ -1094,10 +1383,10 @@
     noteResult(key, correct);
 
     if (correct){
-      state.right++; state.streak++;
+      state.right++; state.roundRight++; state.streak++;
       if (state.streak > state.bestStreak) state.bestStreak = state.streak;
     } else {
-      state.wrong++; state.streak = 0;
+      state.wrong++; state.roundWrong++; state.streak = 0;
       if (state.missed.indexOf(key) === -1) state.missed.push(key);
     }
     paintScore();
@@ -1172,6 +1461,27 @@
   // run the end of the round twice
   var breaking = false;
 
+  /* A cleared table is worth a score. The chase time is used rather than the
+     wall clock because that is what the lane was showing, so the points agree
+     with what the child just watched. The server does the actual sums. */
+  function submitRound(){
+    var t = round().table;
+    if (!(t >= MIN && t <= MAX)) return;          // trouble-spot practice has no table
+    var secs = chase.spent, right = state.roundRight, wrong = state.roundWrong;
+    // no clock ran, so there is nothing honest to score. Only reachable if the
+    // frame loop never ticked, never in normal play.
+    if (!(secs >= 1)) return;
+    postScore(t, secs, right, wrong, function(data){
+      if (!data) return;
+      state.lastScore = data;
+      // lands after the escape message, so they do not fight for the same spot
+      setTimeout(function(){
+        toast(data.isBest ? 'New best! ' + data.score.total + ' points'
+                          : data.score.total + ' points, best is ' + data.best);
+      }, 1750);
+    });
+  }
+
   function step(){
     clearTimeout(advanceId);
     if (state.caught || breaking) return;
@@ -1183,6 +1493,7 @@
       sfx.escape();
       say('runner', LINES.escape, true);
       toast(round().label + ' got away! ' + pair().runner, true);
+      submitRound();
     }
     if (state.roundIdx + 1 >= state.rounds.length){
       setTimeout(finish, chaseOn() ? 1100 : 0);
@@ -1241,8 +1552,11 @@
       el.doneRing.textContent = graded ? state.right + ' / ' + graded : '';
       el.doneCards.textContent = graded ? pct + '% right'
         : state.cleared + ' of ' + state.total + ' cards';
-      el.doneStreak.textContent = state.bestStreak >= 3
-        ? 'Best streak ' + state.bestStreak + ' in a row' : '';
+      var sc = state.lastScore;
+      el.doneStreak.textContent = sc
+        ? (sc.isBest ? '🏆 New best, ' : 'Scored ') + sc.score.total + ' points'
+          + ' (' + sc.score.acc + ' right, ' + sc.score.speed + ' quick)'
+        : state.bestStreak >= 3 ? 'Best streak ' + state.bestStreak + ' in a row' : '';
       el.againBtn.textContent = 'Go again';
     }
     el.doneTime.textContent = 'in ' + m + ':' + (s < 10 ? '0' : '') + s;
@@ -1277,10 +1591,15 @@
 
   loadSettings();
   loadRecord();
+  loadMe();
   buildChips();
   buildPairs();
   paintHome();
   applyMute();
+  paintWho();
+  // both are best-effort; if the network is out the game just plays offline
+  refreshMe();
+  if (me.token) refreshBoard();
 })();
 </script>
 
