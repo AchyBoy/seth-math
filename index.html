@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.9">
+<meta name="x-cards-version" content="2.0">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,6 +95,13 @@
   .hintline{color:var(--muted);font-size:14px;font-weight:500;min-height:20px;margin:0 2px 8px}
 
   /* best scores */
+  .grand{display:flex;align-items:baseline;justify-content:center;gap:9px;
+    background:var(--blue-soft);border:2px solid #cfdcff;border-radius:16px;
+    padding:14px 16px;margin-bottom:10px}
+  .grand b{font-size:34px;font-weight:700;color:var(--blue);line-height:1;
+    font-variant-numeric:tabular-nums}
+  .grand span{font-size:14px;font-weight:600;color:var(--blue-dark);
+    letter-spacing:.06em;text-transform:uppercase}
   .scores{display:flex;flex-direction:column;gap:6px}
   .srow{display:flex;align-items:center;gap:10px;font-size:15px;
     border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px}
@@ -292,6 +299,7 @@
 
   <div class="block hide" id="scoreBlock">
     <p class="label">Your best at <span id="scorePace">10s</span> a card</p>
+    <div class="grand" id="grand"><b id="grandTotal">0</b><span>total points</span></div>
     <div class="scores" id="scoreList"></div>
     <p class="note" id="scoreNote"></p>
   </div>
@@ -362,7 +370,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.9</p>
+  <p class="foot">v2.0</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -457,7 +465,7 @@
     </div>
 
     <button type="button" class="again" id="againBtn">Go again</button>
-    <button type="button" class="link" id="changeBtn">Change settings</button>
+    <button type="button" class="link" id="changeBtn">Home</button>
   </div>
 </div>
 
@@ -508,7 +516,7 @@
       cfg.body = JSON.stringify(opts.body);
     }
     return fetch(API + path, cfg)
-      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, data: j }; }); })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, status: r.status, data: j }; }); })
       .catch(function(){ return null; })
       .then(function(res){ clearTimeout(killer); return res; });
   }
@@ -555,7 +563,7 @@
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn',
-   'scoreBlock','scorePace','scoreList','scoreNote',
+   'scoreBlock','scorePace','scoreList','scoreNote','grand','grandTotal',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
@@ -805,6 +813,7 @@
     el.signOutBtn.classList.toggle('hide', !me.name);
     paintScores();
   }
+  function fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function esc(s){
     return String(s).replace(/[&<>"]/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
@@ -942,18 +951,18 @@
     me.leaders.forEach(function(l){ top[l.table] = l; });
 
     el.scoreList.innerHTML = '';
-    var shown = 0;
+    var shown = 0, grand = 0;
     for (var t = MIN; t <= MAX; t++){
       var b = mine[t]; if (!b) continue;
-      shown++;
+      shown++; grand += b.total;
       var lead = top[t];
       var row = document.createElement('div');
       row.className = 'srow';
-      var holder = lead && lead.name !== me.name ? lead.name + ' leads with ' + lead.total : '';
+      var holder = lead && lead.name !== me.name ? lead.name + ' leads with ' + fmt(lead.total) : '';
       row.innerHTML =
         '<span class="tbl">' + t + 's</span>' +
-        '<span class="tot">' + b.total + '</span>' +
-        '<span class="det">' + clock(b.seconds) + ', ' +
+        '<span class="tot">' + fmt(b.total) + '</span>' +
+        '<span class="det">of ' + fmt(t * 1000) + ' &middot; ' + clock(b.seconds) + ', ' +
           (b.misses === 0 ? 'no misses' : b.misses + (b.misses === 1 ? ' miss' : ' misses')) +
           (holder ? ' &middot; ' + esc(holder) : '') + '</span>' +
         (lead && lead.name === me.name ? '<span class="crown">👑</span>' : '');
@@ -965,8 +974,11 @@
       e.textContent = 'Finish a chase at ' + state.pace + 's a card to set your first score';
       el.scoreList.appendChild(e);
     }
-    el.scoreNote.textContent = 'Out of 1000. Getting them all right is worth up to 600, '
-      + 'and the time you have left over is worth up to 400.';
+    el.grandTotal.textContent = fmt(grand);
+    el.grand.style.display = shown ? '' : 'none';
+    el.scoreNote.textContent = 'The bigger tables are worth more: a flawless run is 1000 times '
+      + 'the table, so the 12s are worth twelve times the 1s. Getting them all right first go is '
+      + 'most of it, and the time left on the clock is the rest.';
   }
 
   // Called when a chase round is cleared. Silent on failure by design.
@@ -976,6 +988,13 @@
       token: me.token, table: tableNo, pace: state.pace,
       right: right, wrong: wrong, seconds: Math.round(seconds * 10) / 10
     }}).then(function(res){
+      // A rejected session used to vanish silently and the child would finish
+      // table after table with nothing saved. Say so instead.
+      if (res && res.status === 401){
+        me.token = ''; me.name = ''; me.bests = []; saveMe(); paintWho();
+        toast('Signed out, sign in again to save scores');
+        onResult(null); return;
+      }
       if (!res || !res.ok){ onResult(null); return; }
       onResult(res.data);
       refreshMe(); refreshBoard();
@@ -1510,8 +1529,8 @@
       state.lastScore = data;
       // lands after the escape message, so they do not fight for the same spot
       setTimeout(function(){
-        toast(data.isBest ? 'New best! ' + data.score.total + ' points'
-                          : data.score.total + ' points, best is ' + data.best);
+        toast(data.isBest ? 'New best! ' + fmt(data.score.total) + ' points'
+                          : fmt(data.score.total) + ' points, best is ' + fmt(data.best));
       }, 1750);
     });
   }
@@ -1588,8 +1607,8 @@
         : state.cleared + ' of ' + state.total + ' cards';
       var sc = state.lastScore;
       el.doneStreak.textContent = sc
-        ? (sc.isBest ? '🏆 New best, ' : 'Scored ') + sc.score.total + ' points'
-          + ' (' + sc.score.acc + ' right, ' + sc.score.speed + ' quick)'
+        ? (sc.isBest ? '🏆 New best, ' : 'Scored ') + fmt(sc.score.total) + ' points'
+          + ' (' + sc.score.base + ' of 1000 on the ' + sc.score.table + 's)'
         : state.bestStreak >= 3 ? 'Best streak ' + state.bestStreak + ' in a row' : '';
       el.againBtn.textContent = 'Go again';
     }
