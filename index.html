@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="1.3">
+<meta name="x-cards-version" content="1.4">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -283,7 +283,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v1.3</p>
+  <p class="foot">v1.4</p>
 </div>
 
 <!-- ================= play ================= -->
@@ -357,20 +357,21 @@
   var MISSES = 'seth-cards-misses-v1';
 
   /* The chase is a straight race down one track, both starting on the left.
-     The MOUSE is how far through the cards you are, so it only moves when
-     you answer. The CAT is how much of the time budget you have burned.
+     The MOUSE is how many cards you have got RIGHT, so only a correct answer
+     moves it. The CAT is how much of the time budget you have burned.
      Budget is seconds-per-card times the cards in the round, so at 10s a
      card the mouse has 120 seconds to get home over 12 cards. Finish under
-     that and it makes the hole, run over and the cat has it. A miss costs
-     the mouse half a card of time. */
+     that and it makes the hole, run over and the cat has it.
+     A miss sends the card to the back of the queue to come round again, so
+     it costs you an extra card, paid in the only currency here: time. */
   var HEAD = 22;          // the mouse's head start, in track units
   var LANE_L = 3, HOLE = 88;   // HOLE must match .lane .hole{left:} in the CSS
-  var MISS_COST = 0.5;    // in cards
 
   var state = {
     tables: [], mode: 'flip', shuffle: true,
     timer: 'off', secs: 5, pace: 10, sound: true,
-    rounds: [], roundIdx: 0, idx: 0,
+    rounds: [], roundIdx: 0,
+    queue: [], total: 0, cleared: 0,
     revealed: false, answered: false,
     right: 0, wrong: 0, streak: 0, bestStreak: 0,
     missed: [], startedAt: 0, caught: false, practice: false
@@ -598,8 +599,8 @@
     el.paceLabel.textContent = state.pace + 's a card';
     el.chaseNote.textContent =
       'One chase per table. ' + PER_TABLE + ' cards at ' + state.pace + 's each, so the mouse has ' +
-      clock(state.pace * PER_TABLE) + ' to reach the hole. Get through them in under that and it ' +
-      'gets away, go over and the cat has it. A miss costs half a card of time.';
+      clock(state.pace * PER_TABLE) + ' to reach the hole. Only a right answer moves it along. ' +
+      'Get one wrong and it goes to the back of the queue to come round again, which costs you time.';
   }
   el.pace.addEventListener('input', function(){
     state.pace = parseInt(el.pace.value, 10);
@@ -698,13 +699,13 @@
   /* ---------- the chase ----------
      One chase per round. It runs across cards rather than resetting
      with each one, and it holds still while an answer is on screen. */
-  var chase = {spent: 0, penalty: 0, done: 0, last: 0, id: null, running: false};
+  var chase = {spent: 0, last: 0, id: null, running: false};
 
   function chaseOn(){ return state.timer === 'chase'; }
-  function budget(){ return state.pace * round().cards.length; }
+  function budget(){ return state.pace * state.total; }
   // where each of them is along the track, 0 at the start line and 100 at the hole
-  function mouseU(){ return HEAD + (100 - HEAD) * (chase.done / round().cards.length); }
-  function catU(){ return 100 * ((chase.spent + chase.penalty) / budget()); }
+  function mouseU(){ return HEAD + (100 - HEAD) * (state.cleared / state.total); }
+  function catU(){ return 100 * (chase.spent / budget()); }
 
   function place(node, u){
     node.style.left = (LANE_L + Math.max(0, Math.min(100, u)) / 100 * (HOLE - LANE_L)) + '%';
@@ -715,14 +716,14 @@
     place(el.mouse, mu);
     place(el.cat, cu);
     el.lane.classList.toggle('close', mu - cu < 9);
-    el.gapTag.textContent = clock(Math.max(0, budget() - chase.spent - chase.penalty)) + ' left';
+    el.gapTag.textContent = clock(Math.max(0, budget() - chase.spent)) + ' left';
   }
 
   // the mouse is home the moment the last card is answered, so it cannot be
   // caught on the line. Ties go to the mouse, hence the strict >.
   function chaseCheck(){
     if (!chaseOn() || state.caught) return;
-    if (chase.done >= round().cards.length){ chasePause(); return; }
+    if (state.cleared >= state.total){ chasePause(); return; }
     if (catU() > mouseU()) caught();
   }
 
@@ -738,7 +739,7 @@
 
   function chaseStart(){
     chaseStop();
-    chase.spent = 0; chase.penalty = 0; chase.done = 0;
+    chase.spent = 0;
     el.lane.classList.toggle('on', chaseOn());
     if (!chaseOn()) return;
     el.roundTag.textContent = state.rounds[state.roundIdx].label;
@@ -758,11 +759,10 @@
   }
   function chaseStop(){ chasePause(); }
 
+  // the mouse has already been moved by clearCard() before this runs
   function chaseNudge(correct){
     if (!chaseOn()) return;
-    chase.done++;                                   // the mouse scurries on
     if (!correct){
-      chase.penalty += state.pace * MISS_COST;      // and a miss buys the cat time
       sfx.pounce();
       el.cat.classList.remove('pounce');
       void el.cat.offsetWidth;                      // restart the animation
@@ -787,12 +787,29 @@
   }
   function round(){ return state.rounds[state.roundIdx]; }
 
+  /* The round is a queue rather than a straight walk. A card leaves the queue
+     only when it is answered correctly, and a miss goes to the back to come
+     round again. Outside the chase there is no mouse to earn steps for, so a
+     card leaves on any answer and the deck is a single pass as before. */
+  function loadRound(){
+    state.queue = round().cards.slice();
+    state.total = state.queue.length;
+    state.cleared = 0;
+  }
+  function card(){ return state.queue[0]; }
+  function clearCard(correct){
+    if (correct || !chaseOn()){ state.queue.shift(); state.cleared++; }
+    else state.queue.push(state.queue.shift());
+  }
+
   function startRun(rounds, isPractice){
     unlock();
     state.rounds = rounds || buildRounds();
     state.practice = !!isPractice;
     if (!state.rounds.length || !state.rounds[0].cards.length) return;
-    state.roundIdx = 0; state.idx = 0;
+    state.roundIdx = 0;
+    loadRound();
+    breaking = false;
     state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
     state.missed = []; state.caught = false;
@@ -809,13 +826,13 @@
   }
 
   function paintCard(){
-    var pair = round().cards[state.idx];
+    var pair = card();
     var text = pair[0] + ' × ' + pair[1];
     var answer = pair[0] * pair[1];
 
     state.revealed = false; state.answered = false;
     el.card.classList.remove('flip');
-    el.count.textContent = (state.idx + 1) + ' / ' + round().cards.length;
+    el.count.textContent = (state.cleared + 1) + ' / ' + state.total;
     el.q.textContent = text;
     el.qsmall.textContent = text;
     el.a.textContent = String(answer);
@@ -852,7 +869,7 @@
   }
 
   function bump(correct){
-    var pair = round().cards[state.idx];
+    var pair = card();
     var key = pairKey(pair[0], pair[1]);
     noteResult(key, correct);
 
@@ -864,6 +881,7 @@
       if (state.missed.indexOf(key) === -1) state.missed.push(key);
     }
     paintScore();
+    clearCard(correct);      // moves the mouse, or sends the card to the back
     chaseNudge(correct);
     if (correct && state.streak >= 3 && state.streak % 3 === 0){
       setTimeout(function(){ sfx.streak(); }, 340);
@@ -880,7 +898,7 @@
     stopTimer(); chasePause();
     el.track.classList.add('hidden');
 
-    var pair = round().cards[state.idx];
+    var pair = card();
     var answer = pair[0] * pair[1];
     var correct = picked === answer;
     var btns = el.choices.querySelectorAll('.ch');
@@ -930,10 +948,15 @@
   el.gotIt.addEventListener('click', function(){ unlock(); grade(true); });
   el.missedIt.addEventListener('click', function(){ unlock(); grade(false); });
 
+  // set while the escape is playing, so tapping through the pause cannot
+  // run the end of the round twice
+  var breaking = false;
+
   function step(){
     clearTimeout(advanceId);
-    if (state.caught) return;
-    if (state.idx + 1 < round().cards.length){ state.idx++; paintCard(); return; }
+    if (state.caught || breaking) return;
+    if (state.queue.length){ paintCard(); return; }
+    breaking = true;
     // round cleared
     if (chaseOn()){
       chasePause();
@@ -944,8 +967,10 @@
       setTimeout(finish, chaseOn() ? 1100 : 0);
       return;
     }
-    state.roundIdx++; state.idx = 0;
+    state.roundIdx++;
+    loadRound();
     setTimeout(function(){
+      breaking = false;
       if (state.caught) return;
       chaseStart();
       paintCard();
@@ -994,7 +1019,7 @@
         : pct === 100 ? 'Perfect!' : pct >= 80 ? 'Nice work' : 'Keep going';
       el.doneRing.textContent = graded ? state.right + ' / ' + graded : '';
       el.doneCards.textContent = graded ? pct + '% right'
-        : (state.idx + 1) + ' of ' + round().cards.length + ' cards';
+        : state.cleared + ' of ' + state.total + ' cards';
       el.doneStreak.textContent = state.bestStreak >= 3
         ? 'Best streak ' + state.bestStreak + ' in a row' : '';
       el.againBtn.textContent = 'Go again';
