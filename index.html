@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.7">
+<meta name="x-cards-version" content="2.8">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -137,6 +137,15 @@
   .misses{display:flex;flex-wrap:wrap;gap:8px}
   .miss{border:2px solid #f3cdc9;background:var(--red-soft);color:#a8352e;
     border-radius:12px;padding:8px 13px;font-size:16px;font-weight:600}
+  /* Buttons in a flex row will happily squash below their text. Pin them to
+     their content, and let an opened one take the whole line to itself. */
+  .miss{flex:0 0 auto}
+  .miss.tappable{cursor:pointer;text-align:left;font-family:inherit}
+  .miss .mkey{white-space:nowrap}
+  .miss .ans{display:none}
+  .miss.open{flex:1 1 100%;display:block;width:100%}
+  .miss.open .ans{display:block;margin-top:6px;font-size:14px;font-weight:500;
+    line-height:1.4;color:#7d2f2a}
   .miss em{font-style:normal;font-size:12px;font-weight:600;margin-left:8px;
     background:#d9605780;color:#fff;border-radius:999px;padding:1px 7px;vertical-align:1px}
 
@@ -438,7 +447,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.7</p>
+  <p class="foot">v2.8</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -546,8 +555,9 @@
     <div class="stat" id="doneTime">in 1:12</div>
 
     <div class="missbox" id="missBox">
-      <p class="label">Missed this time</p>
+      <p class="label">Missed this time, tap one to see the answer</p>
       <div class="misses" id="missList"></div>
+      <button type="button" class="link" id="studyMissed">Study these</button>
     </div>
 
     <button type="button" class="again" id="againBtn">Go again</button>
@@ -890,7 +900,7 @@
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
-   'missBox','missList','againBtn','changeBtn'
+   'missBox','missList','studyMissed','againBtn','changeBtn'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
   /* =========================================================
@@ -1023,15 +1033,32 @@
   function keyToPair(k){ var p = k.split('×'); return [parseInt(p[0],10), parseInt(p[1],10)]; }
   // 's:ck:duck' is a sound card, '7×8' is a times card
   function isSoundKey(k){ return k.slice(0, 2) === 's:'; }
+  function isVerseKey(k){ return k.slice(0, 2) === 'v:'; }
+  function verseByRef(ref){
+    for (var i = 0; i < SCRIPTURES.length; i++){
+      for (var j = 0; j < SCRIPTURES[i].v.length; j++){
+        if (SCRIPTURES[i].v[j].r === ref) return SCRIPTURES[i].v[j];
+      }
+    }
+    return null;
+  }
+  // what shows on the chip
   function prettyKey(k){
-    if (!isSoundKey(k)) return k.replace('×', ' × ');
-    var p = k.split(':');
-    return p[1] + ' \u2192 ' + p[2];
+    if (isVerseKey(k)) return k.slice(2);
+    if (isSoundKey(k)) { var p = k.split(':'); return p[1] + ' \u2192 ' + p[2]; }
+    return k.replace('×', ' × ');
+  }
+  // what shows when you tap it open
+  function keyAnswer(k){
+    if (isVerseKey(k)){ var v = verseByRef(k.slice(2)); return v ? v.t : ''; }
+    if (isSoundKey(k)) return 'as in ' + k.split(':')[2];
+    var p = keyToPair(k);
+    return (p[0] * p[1]) ? String(p[0] * p[1]) : '';
   }
   function keyToCard(k){
-    if (!isSoundKey(k)) return keyToPair(k);
-    var p = k.split(':');
-    return { s: p[1], w: [p[2]], pick: p[2] };
+    if (isVerseKey(k)) return verseByRef(k.slice(2));
+    if (isSoundKey(k)) { var p = k.split(':'); return { s: p[1], w: [p[2]], pick: p[2] }; }
+    return keyToPair(k);
   }
   function pairKey(a, b){ return a + '×' + b; }
 
@@ -1145,9 +1172,15 @@
     el.troubleBlock.classList.toggle('hide', worst.length === 0);
     el.troubleList.innerHTML = '';
     for (var i = 0; i < worst.length; i++){
-      var s = document.createElement('span');
-      s.className = 'miss';
-      s.innerHTML = esc(prettyKey(worst[i].key)) + '<em>' + worst[i].m + '</em>';
+      var s = document.createElement('button');
+      s.type = 'button';
+      s.className = 'miss tappable';
+      s.addEventListener('click', function(ev){
+        ev.currentTarget.classList.toggle('open'); sfx.tap();
+      });
+      s.innerHTML = '<span class="mkey">' + esc(prettyKey(worst[i].key)) +
+                    '<em>' + worst[i].m + '</em></span>' +
+                    '<span class="ans">' + esc(keyAnswer(worst[i].key)) + '</span>';
       el.troubleList.appendChild(s);
     }
     el.practiceBtn.textContent = 'Practice just these (' + troubleList().length + ')';
@@ -2157,6 +2190,9 @@
     primeCheer();
     state.rounds = rounds || buildRounds();
     state.practice = !!isPractice;
+    // Go again on a revision run has to repeat THAT set, not fall through to
+    // the home screen's lifetime trouble spots, which is a different deck
+    state.practiceRounds = isPractice ? state.rounds : null;
     if (!state.rounds.length || !state.rounds[0].cards.length) return;
     state.roundIdx = 0;
     loadRound();
@@ -2360,15 +2396,33 @@
   el.card.addEventListener('click', cardTap);
   el.nextBtn.addEventListener('click', cardTap);
 
+  /* Tapping a missed card opens it and shows the answer, so the thing you got
+     wrong is right there to look at instead of having to go and find it. */
   function paintMissBox(box, list, keys){
     box.classList.toggle('on', keys.length > 0);
     list.innerHTML = '';
-    for (var i = 0; i < keys.length; i++){
-      var s = document.createElement('span');
-      s.className = 'miss';
-      s.textContent = prettyKey(keys[i]);
-      list.appendChild(s);
-    }
+    keys.forEach(function(k){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'miss tappable';
+      b.innerHTML = '<span class="mkey">' + esc(prettyKey(k)) + '</span>' +
+                    '<span class="ans">' + esc(keyAnswer(k)) + '</span>';
+      b.addEventListener('click', function(){
+        b.classList.toggle('open');
+        sfx.tap();
+      });
+      list.appendChild(b);
+    });
+    el.studyMissed.classList.toggle('hide', keys.length === 0);
+    el.studyMissed.textContent = 'Study these ' + keys.length;
+  }
+
+  // a run made only of the ones just missed; no score, it is revision
+  function studyMissedNow(keys){
+    var cards = keys.map(keyToCard).filter(Boolean);
+    if (!cards.length) return;
+    shuffle(cards);
+    startRun([{ label: 'The ones you missed', table: 0, cards: cards }], true);
   }
 
   function finish(){
@@ -2397,7 +2451,8 @@
       var sc = state.lastScore;
       el.doneStreak.textContent = sc
         ? (sc.isBest ? '🏆 New best, ' : 'Scored ') + fmt(sc.score.total) + ' points'
-          + ' (' + sc.score.base + ' of 1000 on the ' + sc.score.table + 's)'
+          + ' (' + sc.score.base + ' of 1000'
+          + (state.subject === 'times' ? ' on the ' + sc.score.table + 's' : '') + ')'
         : state.bestStreak >= 3 ? 'Best streak ' + state.bestStreak + ' in a row' : '';
       el.againBtn.textContent = 'Go again';
     }
@@ -2412,8 +2467,14 @@
 
   el.startBtn.addEventListener('click', function(){ startRun(null, false); });
   el.quitBtn.addEventListener('click', function(ev){ ev.stopPropagation(); chaseStop(); finish(); });
+  el.studyMissed.addEventListener('click', function(){ studyMissedNow(state.missed); });
   el.againBtn.addEventListener('click', function(){
-    if (state.practice){ el.practiceBtn.click(); return; }
+    if (state.practice && state.practiceRounds){
+      startRun(state.practiceRounds.map(function(r){
+        return { label: r.label, table: r.table, cards: shuffle(r.cards.slice()) };
+      }), true);
+      return;
+    }
     startRun(null, false);
   });
   el.changeBtn.addEventListener('click', function(){ sfx.tap(); paintHome(); show('home'); });
