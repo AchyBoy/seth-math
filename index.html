@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.8">
+<meta name="x-cards-version" content="2.9">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -276,6 +276,46 @@
   @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}
     30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
 
+  /* ---------- the archery range ----------
+     The whole field is one canvas. Everything around it is chrome: the
+     question above, the thumb pad and the fire button below, both of which
+     take their own touch, so he can be running as he lets an arrow go. */
+  .range{display:none;flex:1;flex-direction:column;min-height:0;gap:10px;padding-top:8px}
+  body.shoot .range{display:flex}
+  body.shoot .stage,body.shoot .choices,body.shoot .hint,
+  body.shoot .grade,body.shoot .next{display:none}
+  .range .prompt{text-align:center;font-size:clamp(34px,11vw,58px);font-weight:600;
+    line-height:1.05;letter-spacing:.01em}
+  body.wordy .range .prompt{font-size:clamp(30px,9vw,48px)}
+  body.versey .range .prompt{font-size:15px;font-weight:500;line-height:1.4;
+    max-height:21vh;overflow:auto;padding:0 6px}
+  .range .fieldwrap{position:relative;flex:1;min-height:148px;border-radius:22px;
+    overflow:hidden;border:2px solid var(--line);background:#cfe8ff}
+  .range canvas{display:block;width:100%;height:100%;touch-action:none}
+  .range .wind{position:absolute;top:8px;right:10px;background:rgba(255,255,255,.82);
+    border-radius:999px;padding:3px 11px;font-size:13px;font-weight:600;
+    color:#31506b;pointer-events:none;font-variant-numeric:tabular-nums}
+
+  .pads{display:flex;align-items:stretch;gap:14px;height:112px;flex:none}
+  .pad{position:relative;flex:none;width:112px;border-radius:50%;
+    border:2px solid var(--line);background:#fff;touch-action:none;
+    -webkit-user-select:none;user-select:none}
+  .pad.live{border-color:var(--blue);background:var(--blue-soft)}
+  .pad .knob{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;
+    background:#fff;border:3px solid var(--blue);box-shadow:0 2px 6px rgba(32,36,46,.18);
+    transform:translate(-50%,-50%);pointer-events:none}
+  .pad .padtip{position:absolute;left:0;right:0;bottom:9px;text-align:center;
+    font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+    color:#b6b1a6;pointer-events:none}
+  .fire{flex:1;background:var(--green);color:#fff;border-radius:24px;font-size:34px;
+    line-height:1;box-shadow:0 6px 0 var(--green-dark);touch-action:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    -webkit-user-select:none;user-select:none;
+    transition:transform .08s ease,box-shadow .08s ease,opacity .15s ease}
+  .fire em{font-style:normal;font-size:16px;font-weight:600;letter-spacing:.05em}
+  .fire.down{transform:translateY(4px);box-shadow:0 2px 0 var(--green-dark)}
+  .fire.cool{opacity:.5}
+
   .hint{text-align:center;color:var(--muted);font-size:15px;min-height:24px;margin-bottom:8px}
   .next{background:var(--blue);color:#fff;border-radius:20px;padding:18px;
     font-size:19px;font-weight:600;width:100%;box-shadow:0 6px 0 var(--blue-dark);
@@ -299,6 +339,8 @@
   .toast.show{opacity:1;transform:translate(-50%,0)}
   .toast.big{font-size:19px;padding:15px 28px;background:var(--green)}
   body.chasing .toast{top:186px}
+  /* the question is up there in shoot mode, so the toast drops to the bottom */
+  body.shoot .toast,body.shoot.chasing .toast{top:auto;bottom:136px}
 
   /* ---------- done ---------- */
   .done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
@@ -404,6 +446,7 @@
     <div class="opts" id="modeOpts">
       <button type="button" class="opt on" data-mode="flip">Flip the card</button>
       <button type="button" class="opt" data-mode="choice">Pick the answer</button>
+      <button type="button" class="opt" data-mode="shoot">🏹 Shoot it</button>
     </div>
   </div>
 
@@ -535,6 +578,23 @@
   </div>
 
   <div class="choices" id="choices"></div>
+
+  <!-- the archery range: the question sits above, the four answers float
+       over the field, the left thumb aims and runs, the right thumb fires -->
+  <div class="range" id="range">
+    <div class="prompt" id="shootQ">1 × 1</div>
+    <div class="fieldwrap">
+      <canvas id="rangeCv"></canvas>
+      <span class="wind" id="windTag">calm</span>
+    </div>
+    <div class="pads">
+      <div class="pad" id="pad">
+        <span class="knob" id="knob"></span>
+        <span class="padtip">look</span>
+      </div>
+      <button type="button" class="fire" id="fireBtn">🏹<em>Shoot</em></button>
+    </div>
+  </div>
 
   <p class="hint" id="hint">Tap the card to see the answer</p>
   <div class="grade" id="grade">
@@ -899,6 +959,7 @@
    'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
+   'range','shootQ','rangeCv','windTag','pad','knob','fireBtn',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
    'missBox','missList','studyMissed','againBtn','changeBtn'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
@@ -960,6 +1021,11 @@
              for (var i=0;i<n.length;i++) tone(n[i], i*.055, .13, 'sine', .12); },
     // the cat lunging forward after a wrong answer
     pounce:function(){ tone(150, 0, .16, 'sawtooth', .09, 90); },
+    // the bowstring, then the arrow going away from you
+    twang: function(){ tone(240, 0, .13, 'triangle', .13, 90); tone(700, 0, .05, 'square', .04, 430); },
+    thunk: function(){ tone(180, 0, .13, 'triangle', .12, 70); tone(90, .02, .16, 'sine', .09); },
+    // buried in the dirt, nothing hit
+    dirt:  function(){ tone(120, 0, .1, 'sawtooth', .06, 60); },
     // squeak, then the mouse is down the hole
     escape:function(){ tone(1568,0,.09,'sine',.14,2093); tone(1318,.09,.09,'sine',.12,1760);
              var n=[523.25,783.99,1046.5]; for (var i=0;i<n.length;i++) tone(n[i], .22+i*.09, .24,'triangle',.15); },
@@ -1069,11 +1135,11 @@
     try {
       var s = JSON.parse(localStorage.getItem(STORE));
       if (s){
-        if (s.subject === 'times' || s.subject === 'blends') state.subject = s.subject;
+        if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture') state.subject = s.subject;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
         if (Array.isArray(s.topics) && s.topics.length) state.topics = s.topics;
-        if (s.mode === 'flip' || s.mode === 'choice') state.mode = s.mode;
+        if (s.mode === 'flip' || s.mode === 'choice' || s.mode === 'shoot') state.mode = s.mode;
         if (typeof s.shuffle === 'boolean') state.shuffle = s.shuffle;
         if (s.timer === 'off' || s.timer === 'card' || s.timer === 'chase') state.timer = s.timer;
         if (typeof s.secs === 'number' && s.secs > 0) state.secs = s.secs;
@@ -1839,12 +1905,14 @@
   /* A verse is drilled both ways round. Flipping shows the reference and asks
      you to recall the words; the four button mode has to go the other way,
      since four whole verses will not fit on a phone but four references will. */
+  // both answer-from-four modes work the same way round, only the flip does not
+  function picking(){ return state.mode === 'choice' || state.mode === 'shoot'; }
   function cardFace(c){
-    if (isVerse(c)) return state.mode === 'choice' ? c.t : c.r;
+    if (isVerse(c)) return picking() ? c.t : c.r;
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
   }
   function cardAnswer(c){
-    if (isVerse(c)) return state.mode === 'choice' ? c.r : c.t;
+    if (isVerse(c)) return picking() ? c.r : c.t;
     return isSound(c) ? c.pick : String(c[0] * c[1]);
   }
   function cardKey(c){
@@ -1929,7 +1997,7 @@
   }
 
   function timeUp(){
-    if (state.mode === 'choice'){ if (!state.answered){ sfx.timeUp(); settle(null); } }
+    if (picking()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
     else if (!state.revealed) reveal();
   }
 
@@ -2158,6 +2226,717 @@
     setTimeout(finish, 1200);
   }
 
+  /* =========================================================
+     The archery range, seen down his own arrow.
+
+     A third way to answer. He is standing in a field holding a
+     bow, and the four options float out in front of him. The
+     left thumb turns his head, the right thumb looses an arrow,
+     and because they are two separate touches he can be turning
+     as he shoots, which is the whole point of the mode.
+
+     One fixed draw weight, so the only thing he controls is
+     where he is looking. Gravity pulls the arrow down over the
+     distance and a crosswind pushes it sideways, which is why
+     the crosshair is not the answer: he has to hold over.
+     ========================================================= */
+  var FONT = "Fredoka,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+  /* Metres and seconds, real ones. At 38 m/s a card 20 m out takes about half
+     a second to reach and the arrow falls a good metre on the way. */
+  var EYE = 1.65, V0 = 38, GRAV = 9.8;
+  var YAW_LIM = 1.15, PITCH_MIN = -0.28, PITCH_MAX = 0.72;
+  var CARD_H = 2.6;
+
+  var rng = {
+    on: false, id: null, last: 0, t: 0, frozen: false,
+    w: 0, h: 0, dpr: 1, s: 1, f: 300, horizon: 0,
+    yaw: 0, pitch: 0.1, yawV: 0, pitchV: 0,
+    cards: [], arrows: [], stuck: [], sparks: [], clouds: [], tufts: [], flags: [],
+    wind: 0, windBase: 0, cool: 0, pull: 0, shots: 0
+  };
+  var toldAboutShooting = false;
+  var ctx = el.rangeCv.getContext('2d');
+
+  /* The canvas is sized in CSS pixels and scaled up for the screen. The focal
+     length comes out of the width, so the field of view is the same on a small
+     phone as it is on an iPad instead of the world going fisheye. */
+  function rangeSize(){
+    var box = el.rangeCv.parentNode;
+    var w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h) return false;
+    rng.dpr = Math.min(3, window.devicePixelRatio || 1);
+    rng.w = w; rng.h = h;
+    rng.s = Math.max(0.72, Math.min(1.7, h / 300));
+    rng.f = (w / 2) / Math.tan(0.58);          // about 66 degrees across
+    el.rangeCv.width = Math.round(w * rng.dpr);
+    el.rangeCv.height = Math.round(h * rng.dpr);
+    return true;
+  }
+
+  /* World to screen. He stands at the origin with his eyes at EYE, turned by
+     yaw and tilted by pitch. Everything on screen goes through here, the
+     clouds and the grass included, so nothing needs a special case. */
+  function project(x, y, z){
+    var dx = x, dy = y - EYE, dz = z;
+    var cy = Math.cos(rng.yaw), sy = Math.sin(rng.yaw);
+    var xr = dx * cy - dz * sy, zr = dx * sy + dz * cy;
+    var cp = Math.cos(rng.pitch), sp = Math.sin(rng.pitch);
+    var yr = dy * cp - zr * sp, zz = dy * sp + zr * cp;
+    if (zz < 0.35) return null;
+    return { x: rng.w / 2 + rng.f * xr / zz, y: rng.h / 2 - rng.f * yr / zz, z: zz };
+  }
+  // the way he is looking, which is the way the arrow leaves
+  function fwd(){
+    var cp = Math.cos(rng.pitch);
+    return { x: Math.sin(rng.yaw) * cp, y: Math.sin(rng.pitch), z: Math.cos(rng.yaw) * cp };
+  }
+  function horizonY(){ return rng.h / 2 + rng.f * Math.tan(rng.pitch); }
+  // where a bearing sits relative to straight ahead, folded to -PI..PI
+  function relBearing(b){
+    var d = b - rng.yaw;
+    while (d > Math.PI) d -= 6.2832;
+    while (d < -Math.PI) d += 6.2832;
+    return d;
+  }
+
+  /* Four cards on an arc in front of him, at different bearings and different
+     distances, so some of them are out of view and have to be turned to. */
+  function layoutCards(opts){
+    var out = [], n = opts.length, order = [], i;
+    for (i = 0; i < n; i++) order.push(i);
+    shuffle(order);
+    for (i = 0; i < n; i++){
+      var v = String(opts[i]);
+      ctx.font = '600 100px ' + FONT;
+      var ratio = ctx.measureText(v).width / 100;
+      var fh = CARD_H * 0.52;
+      var t = n > 1 ? order[i] / (n - 1) : 0.5;
+      var bear = (t - 0.5) * 1.7 + (Math.random() - 0.5) * 0.14;
+      var dist = 12 + Math.random() * 11;
+      out.push({
+        v: v, bw: Math.max(2, ratio * fh + 0.9), bh: CARD_H,
+        bear: bear, dist: dist,
+        y0: 3.1 + Math.random() * 2.1,
+        bp: Math.random() * 6.28, bs: 0.5 + Math.random() * 0.4,
+        sp: Math.random() * 6.28, ss: 0.18 + Math.random() * 0.14,
+        x: 0, y: 0, z: 0,
+        hue: ['#f0a12e', '#2f6df6', '#e0524a', '#1f9d63'][i % 4],
+        state: '', burst: false
+      });
+      floatCard(out[i]);
+    }
+    return out;
+  }
+  // they drift, so a card is never quite where it was last time he looked
+  function floatCard(c){
+    var b = c.bear + Math.sin(rng.t * c.ss + c.sp) * 0.045;
+    c.x = Math.sin(b) * c.dist;
+    c.z = Math.cos(b) * c.dist;
+    c.y = c.y0 + Math.sin(rng.t * c.bs + c.bp) * 0.22;
+    c.face = b;
+  }
+
+  function rangeSetup(c){
+    el.shootQ.textContent = cardFace(c);
+    // the field has no size until the play screen is on screen
+    if (!rangeSize()){ setTimeout(function(){ if (card() === c) rangeSetup(c); }, 60); return; }
+    rng.frozen = false;
+    rng.arrows.length = 0; rng.stuck.length = 0; rng.sparks.length = 0;
+    rng.cool = 0; rng.pull = 0;
+    rng.cards = layoutCards(cardOptions(c));
+    // a fresh crosswind for every card, so the same hold is never twice right
+    rng.windBase = (Math.random() * 2 - 1) * 7;
+    if (Math.abs(rng.windBase) < 1.2) rng.windBase = 0;
+    paintWind();
+    if (!rng.on){
+      rng.yaw = 0; rng.pitch = 0.1; rng.yawV = 0; rng.pitchV = 0;
+      rng.clouds = []; rng.tufts = []; rng.flags = [];
+      var i;
+      for (i = 0; i < 12; i++){
+        rng.clouds.push({ b: (Math.random() * 2 - 1) * 2.2, d: 150 + Math.random() * 220,
+                          h: 30 + Math.random() * 50, r: 14 + Math.random() * 16 });
+      }
+      for (i = 0; i < 130; i++){
+        var tb = (Math.random() * 2 - 1) * 2.4, td = 3 + Math.random() * Math.random() * 45;
+        rng.tufts.push({ x: Math.sin(tb) * td, z: Math.cos(tb) * td, k: Math.random() });
+      }
+      for (i = 0; i < 5; i++){
+        var fb = (i - 2) * 0.42, fd = 9 + Math.random() * 9;
+        rng.flags.push({ x: Math.sin(fb) * fd, z: Math.cos(fb) * fd });
+      }
+      rng.on = true; rng.last = performance.now(); rng.t = 0;
+      rng.id = requestAnimationFrame(rangeFrame);
+    }
+  }
+  function rangeStop(){
+    rng.on = false;
+    rng.yawV = 0; rng.pitchV = 0;
+    if (rng.id){ cancelAnimationFrame(rng.id); rng.id = null; }
+  }
+  function paintWind(){
+    var w = rng.windBase;
+    if (!w){ el.windTag.textContent = 'no wind'; return; }
+    var n = Math.min(3, Math.max(1, Math.round(Math.abs(w) / 2.6)));
+    el.windTag.textContent = new Array(n + 1).join(w < 0 ? '←' : '→') + ' wind';
+  }
+
+  /* ---------- shooting ---------- */
+  function fire(){
+    if (!rng.on || rng.frozen || state.answered || state.caught) return;
+    if (rng.cool > 0 || rng.arrows.length >= 3) return;
+    unlock();
+    rng.cool = 0.42; rng.pull = 1; rng.shots++;
+    var d = fwd();
+    rng.arrows.push({
+      x: d.x * 0.7, y: EYE - 0.42 + d.y * 0.7, z: d.z * 0.7,
+      vx: d.x * V0, vy: d.y * V0, vz: d.z * V0, tr: []
+    });
+    sfx.twang();
+  }
+
+  // the arrow against one floating card, in the card's own frame so that a
+  // card off to the side is hit on its face and not on its edge
+  function inCard(c, x, y, z){
+    var dx = x - c.x, dy = y - c.y, dz = z - c.z;
+    var cb = Math.cos(c.face), sb = Math.sin(c.face);
+    var lx = dx * cb - dz * sb, lz = dx * sb + dz * cb;
+    return Math.abs(lx) < c.bw / 2 && Math.abs(dy) < c.bh / 2 && Math.abs(lz) < 0.4;
+  }
+  function cardAt(x, y, z){
+    for (var i = 0; i < rng.cards.length; i++){
+      if (inCard(rng.cards[i], x, y, z)) return rng.cards[i];
+    }
+    return null;
+  }
+
+  // screen-space sparks; nothing moves once a shot has landed
+  function puff(sx, sy, col, n, spread){
+    for (var i = 0; i < n; i++){
+      var a = Math.random() * 6.28, sp = (20 + Math.random() * (spread || 120)) * rng.s;
+      rng.sparks.push({ x: sx, y: sy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40 * rng.s,
+                        life: 0, max: 0.4 + Math.random() * 0.4,
+                        r: (1.5 + Math.random() * 2.4) * rng.s, col: col });
+    }
+  }
+
+  function hitCard(c, a){
+    var cb = Math.cos(c.face), sb = Math.sin(c.face);
+    var dx = a.x - c.x, dz = a.z - c.z;
+    rng.stuck.push({ card: c, lx: dx * cb - dz * sb, ly: a.y - c.y,
+                     ang: Math.atan2(a.vy, Math.sqrt(a.vx * a.vx + a.vz * a.vz)) });
+    sfx.thunk();
+    var p = project(a.x, a.y, a.z);
+    if (p) puff(p.x, p.y, '#fff', 6, 70);
+    if (rng.frozen || state.answered) return;
+    settle(c.v);
+  }
+  function hitGround(a){
+    rng.stuck.push({ card: null, x: a.x, z: a.z,
+                     ang: Math.atan2(a.vy, Math.sqrt(a.vx * a.vx + a.vz * a.vz)) });
+    var p = project(a.x, 0, a.z);
+    if (p) puff(p.x, p.y, '#c9b48a', 7, 80);
+    sfx.dirt();
+  }
+
+  /* The shot is over. The right one goes green wherever it is, even if he
+     never turned that way, and whatever he actually hit goes red. Nothing
+     moves after this, so the answer is still there to be looked at. */
+  function rangeSettle(picked, answer){
+    rng.frozen = true;
+    rng.yawV = 0; rng.pitchV = 0;
+    knobTo(0, 0);
+    el.pad.classList.remove('live');
+    for (var i = 0; i < rng.cards.length; i++){
+      var cd = rng.cards[i];
+      if (cd.v === answer){
+        cd.state = 'good'; cd.burst = true;
+        var p = project(cd.x, cd.y + cd.bh / 2 + 0.5, cd.z);
+        if (p) puff(p.x, p.y, cd.hue, 14, 140);
+      } else if (picked !== null && cd.v === picked){
+        cd.state = 'bad';
+      }
+    }
+  }
+
+  function stepArrows(dt){
+    var n = 5, sdt = dt / n;
+    for (var i = rng.arrows.length - 1; i >= 0; i--){
+      var a = rng.arrows[i], dead = false;
+      for (var k = 0; k < n && !dead; k++){
+        a.vy -= GRAV * sdt; a.vx += rng.wind * sdt;
+        a.x += a.vx * sdt; a.y += a.vy * sdt; a.z += a.vz * sdt;
+        var hit = cardAt(a.x, a.y, a.z);
+        if (hit){ dead = true; hitCard(hit, a); }
+        else if (a.y <= 0){ a.y = 0; dead = true; hitGround(a); }
+        else if (a.x * a.x + a.z * a.z > 3600){ dead = true; }
+      }
+      a.tr.push(a.x, a.y, a.z);
+      if (a.tr.length > 27) a.tr.splice(0, 3);
+      if (dead) rng.arrows.splice(i, 1);
+    }
+  }
+
+  function stepSparks(dt){
+    for (var i = rng.sparks.length - 1; i >= 0; i--){
+      var p = rng.sparks[i];
+      p.life += dt;
+      if (p.life >= p.max){ rng.sparks.splice(i, 1); continue; }
+      p.vy += 420 * rng.s * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+    }
+  }
+
+  function rangeFrame(now){
+    if (!rng.on) return;
+    var dt = Math.min(0.05, (now - rng.last) / 1000);
+    rng.last = now; rng.t += dt;
+    if (rng.cool > 0) rng.cool -= dt;
+    if (rng.pull > 0) rng.pull = Math.max(0, rng.pull - dt * 3);
+    rng.wind = rng.windBase * (0.86 + 0.14 * Math.sin(rng.t * 0.7));
+
+    if (!rng.frozen && !state.answered){
+      rng.yaw = Math.max(-YAW_LIM, Math.min(YAW_LIM, rng.yaw + rng.yawV * dt));
+      rng.pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, rng.pitch + rng.pitchV * dt));
+    }
+    for (var i = 0; i < rng.cards.length; i++) floatCard(rng.cards[i]);
+    stepArrows(dt);
+    stepSparks(dt);
+    drawRange();
+    rng.id = requestAnimationFrame(rangeFrame);
+  }
+
+  /* ---------- drawing ---------- */
+  function drawRange(){
+    ctx.setTransform(rng.dpr, 0, 0, rng.dpr, 0, 0);
+    rng.horizon = horizonY();
+    drawSky();
+    drawGround();
+    drawFlags();
+    drawCards();
+    drawArrows();
+    drawAimArc();
+    drawBow();
+    drawCrosshair();
+    drawEdgeTags();
+    drawSparks();
+  }
+
+  function drawSky(){
+    var c = ctx, w = rng.w, h = rng.h, hz = rng.horizon;
+    var top = Math.min(hz, h);
+    var sky = c.createLinearGradient(0, Math.min(0, hz - h), 0, Math.max(top, 1));
+    sky.addColorStop(0, '#79c2ff'); sky.addColorStop(1, '#dff0ff');
+    c.fillStyle = sky; c.fillRect(0, 0, w, h);
+
+    // the sun and the clouds go through the same projection as everything else
+    var p = project(Math.sin(-0.55) * 300, EYE + 120, Math.cos(-0.55) * 300);
+    if (p){ c.fillStyle = '#ffe488'; c.beginPath(); c.arc(p.x, p.y, 20 * rng.s, 0, 6.2832); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,.85)';
+    for (var i = 0; i < rng.clouds.length; i++){
+      var cl = rng.clouds[i];
+      var q = project(Math.sin(cl.b) * cl.d, EYE + cl.h, Math.cos(cl.b) * cl.d);
+      if (!q || q.x < -160 || q.x > rng.w + 160) continue;
+      var r = rng.f * cl.r / q.z;
+      c.beginPath();
+      c.arc(q.x, q.y, r, 0, 6.2832);
+      c.arc(q.x + r * 0.9, q.y + r * 0.22, r * 0.7, 0, 6.2832);
+      c.arc(q.x - r * 0.9, q.y + r * 0.26, r * 0.64, 0, 6.2832);
+      c.fill();
+    }
+    // hills sitting on the skyline, shifted by however far round he has turned
+    var off = rng.yaw * rng.f * 0.55;
+    c.fillStyle = '#a9d6a0';
+    c.beginPath(); c.moveTo(-4, hz + 2);
+    for (var x = -4; x <= rng.w + 4; x += 12){
+      var a = (x + off) / (78 * rng.s);
+      c.lineTo(x, hz - (16 + 11 * Math.sin(a * 0.8) + 7 * Math.sin(a * 2.1 + 1.3)) * rng.s);
+    }
+    c.lineTo(rng.w + 4, hz + 2); c.closePath(); c.fill();
+  }
+
+  function drawGround(){
+    var c = ctx, w = rng.w, h = rng.h, hz = rng.horizon;
+    if (hz >= h) return;
+    var g = c.createLinearGradient(0, Math.max(0, hz), 0, h);
+    g.addColorStop(0, '#8ecb7d'); g.addColorStop(1, '#5da44f');
+    c.fillStyle = g; c.fillRect(0, Math.max(0, hz), w, h - Math.max(0, hz));
+
+    c.strokeStyle = 'rgba(52,110,44,.5)'; c.lineCap = 'round';
+    for (var i = 0; i < rng.tufts.length; i++){
+      var t = rng.tufts[i];
+      var p = project(t.x, 0, t.z);
+      if (!p || p.y < hz || p.x < -20 || p.x > w + 20 || p.y > h + 10) continue;
+      var k = rng.f / p.z;
+      c.lineWidth = Math.max(1, 0.03 * k);
+      c.beginPath();
+      c.moveTo(p.x, p.y);
+      c.lineTo(p.x + (t.k - 0.5) * 0.3 * k, p.y - (0.18 + t.k * 0.2) * k);
+      c.stroke();
+    }
+  }
+
+  // flags planted down the field, so the wind is something he can see
+  function drawFlags(){
+    var c = ctx, lean = Math.max(-1, Math.min(1, rng.wind / 7));
+    var flap = Math.sin(rng.t * 5) * 0.08 * Math.abs(lean);
+    for (var i = 0; i < rng.flags.length; i++){
+      var f = rng.flags[i];
+      var base = project(f.x, 0, f.z), top = project(f.x, 2.4, f.z);
+      if (!base || !top || top.x < -60 || top.x > rng.w + 60) continue;
+      var k = rng.f / top.z;
+      c.strokeStyle = '#8a7f6b'; c.lineWidth = Math.max(1.2, 0.05 * k);
+      c.beginPath(); c.moveTo(base.x, base.y); c.lineTo(top.x, top.y); c.stroke();
+      // the cloth swings across the view, so it reads as a crosswind
+      var tipX = top.x + lean * 0.9 * k, tipY = top.y + (0.35 + (1 - Math.abs(lean)) * 0.55 + flap) * k;
+      c.fillStyle = '#e0524a';
+      c.beginPath();
+      c.moveTo(top.x, top.y);
+      c.quadraticCurveTo((top.x + tipX) / 2 + 0.1 * k, (top.y + tipY) / 2 - 0.1 * k, tipX, tipY);
+      c.lineTo(tipX - lean * 0.1 * k, tipY + 0.3 * k);
+      c.quadraticCurveTo((top.x + tipX) / 2, (top.y + tipY) / 2 + 0.35 * k, top.x, top.y + 0.5 * k);
+      c.closePath(); c.fill();
+    }
+  }
+
+  function drawCards(){
+    var c = ctx, list = rng.cards.slice();
+    // furthest first, so a near card covers the one behind it
+    list.sort(function(a, b){ return b.dist - a.dist; });
+    for (var i = 0; i < list.length; i++){
+      var cd = list[i];
+      var p = project(cd.x, cd.y, cd.z);
+      if (!p) continue;
+      var k = rng.f / p.z;
+      var pw = cd.bw * k, ph = cd.bh * k;
+      if (p.x + pw < -40 || p.x - pw > rng.w + 40) continue;
+      c.save();
+      c.translate(p.x, p.y);
+
+      if (!cd.burst){
+        var bt = project(cd.x, cd.y + cd.bh / 2 + 0.75, cd.z);
+        if (bt){
+          c.strokeStyle = 'rgba(60,60,60,.35)'; c.lineWidth = Math.max(1, 0.03 * k);
+          c.beginPath(); c.moveTo(0, -ph / 2); c.lineTo(bt.x - p.x, bt.y - p.y + 0.28 * k); c.stroke();
+          c.fillStyle = cd.hue;
+          c.beginPath();
+          c.ellipse(bt.x - p.x, bt.y - p.y, 0.26 * k, 0.32 * k, 0, 0, 6.2832);
+          c.fill();
+        }
+      }
+
+      c.shadowColor = 'rgba(32,36,46,.25)';
+      c.shadowBlur = 0.15 * k; c.shadowOffsetY = 0.07 * k;
+      roundRect(-pw / 2, -ph / 2, pw, ph, 0.22 * k);
+      c.fillStyle = cd.state === 'good' ? '#1f9d63' : cd.state === 'bad' ? '#e0524a' : '#fff';
+      c.fill();
+      c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+      c.lineWidth = Math.max(1.5, 0.07 * k);
+      c.strokeStyle = cd.state === 'good' ? '#177a4d' : cd.state === 'bad' ? '#b93f38' : '#d8d2c4';
+      c.stroke();
+
+      c.fillStyle = cd.state ? '#fff' : '#20242e';
+      c.font = '600 ' + (cd.bh * 0.52 * k) + 'px ' + FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(cd.v, 0, 0.02 * k);
+      c.restore();
+
+      drawStuckOn(cd, p, k);
+    }
+  }
+
+  function roundRect(x, y, w, h, r){
+    var c = ctx;
+    r = Math.max(1, Math.min(r, Math.min(w, h) / 2));
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+
+  // an arrow buried in a card, drawn end on so it reads as coming at you
+  function shaft(x, y, k, ang){
+    var c = ctx;
+    var len = Math.max(6, 0.55 * k), lift = Math.sin(ang || 0);
+    c.strokeStyle = '#7a5330'; c.lineWidth = Math.max(1.6, 0.055 * k);
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x - len * 0.25, y + len * (0.9 - lift * 0.4));
+    c.stroke();
+    c.fillStyle = '#e8e2d4';
+    c.beginPath();
+    c.moveTo(x - len * 0.25, y + len * (0.9 - lift * 0.4));
+    c.lineTo(x - len * 0.55, y + len * (0.75 - lift * 0.4));
+    c.lineTo(x - len * 0.2, y + len * (0.62 - lift * 0.4));
+    c.closePath(); c.fill();
+  }
+  function drawStuckOn(cd, p, k){
+    for (var i = 0; i < rng.stuck.length; i++){
+      var st = rng.stuck[i];
+      if (st.card !== cd) continue;
+      shaft(p.x + st.lx * k, p.y - st.ly * k, k, st.ang);
+    }
+  }
+  function drawStuckGround(){
+    for (var i = 0; i < rng.stuck.length; i++){
+      var st = rng.stuck[i];
+      if (st.card) continue;
+      var p = project(st.x, 0, st.z);
+      if (!p || p.y < rng.horizon) continue;
+      shaft(p.x, p.y, rng.f / p.z, st.ang);
+    }
+  }
+
+  function drawArrows(){
+    var c = ctx;
+    drawStuckGround();
+    for (var i = 0; i < rng.arrows.length; i++){
+      var a = rng.arrows[i];
+      var pts = [], k;
+      for (k = 0; k < a.tr.length; k += 3){
+        var q = project(a.tr[k], a.tr[k + 1], a.tr[k + 2]);
+        if (q) pts.push(q);
+      }
+      if (pts.length > 1){
+        c.strokeStyle = 'rgba(255,255,255,.45)';
+        c.lineWidth = Math.max(1, 0.05 * rng.f / Math.max(1, pts[pts.length - 1].z));
+        c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
+        for (k = 1; k < pts.length; k++) c.lineTo(pts[k].x, pts[k].y);
+        c.stroke();
+      }
+      var p = project(a.x, a.y, a.z);
+      if (!p) continue;
+      var kk = rng.f / p.z;
+      // seen from behind it is a dart getting smaller, not a side-on arrow
+      var back = project(a.x - a.vx * 0.035, a.y - a.vy * 0.035, a.z - a.vz * 0.035);
+      c.strokeStyle = '#7a5330'; c.lineWidth = Math.max(1.4, 0.05 * kk);
+      if (back){ c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(back.x, back.y); c.stroke(); }
+      c.fillStyle = '#59606b';
+      c.beginPath(); c.arc(p.x, p.y, Math.max(1.4, 0.05 * kk), 0, 6.2832); c.fill();
+    }
+  }
+
+  /* A short dotted arc out of the bow: enough to read the drop and which way
+     the wind is pushing, and it stops well short of the far cards so the last
+     of the judgement is still his. */
+  function drawAimArc(){
+    if (rng.frozen || state.answered || rng.cool > 0) return;
+    var c = ctx, d = fwd(), dt = 0.045;
+    var x = d.x * 0.7, y = EYE - 0.42 + d.y * 0.7, z = d.z * 0.7;
+    var vx = d.x * V0, vy = d.y * V0, vz = d.z * V0;
+    for (var i = 0; i < 12; i++){
+      vy -= GRAV * dt; vx += rng.wind * dt;
+      x += vx * dt; y += vy * dt; z += vz * dt;
+      var p = project(x, y, z);
+      if (!p) break;
+      c.globalAlpha = 0.6 - i * 0.045;
+      c.fillStyle = '#fff';
+      c.beginPath(); c.arc(p.x, p.y, Math.max(1.2, 0.045 * rng.f / p.z), 0, 6.2832); c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+
+  /* His own bow, held across the bottom left the way a right hander holds it.
+     It has to say bow at a glance without covering the field, so what is drawn
+     is the top limb sweeping down out of frame, the string, and the shaft
+     running away from the nock towards the middle of the view, which is where
+     the arrow is about to go. */
+  function drawBow(){
+    var c = ctx, s = rng.s, w = rng.w, h = rng.h;
+    var cx = w / 2, cy = h / 2;
+    // it swings a little as he turns, so the view has some weight to it
+    var sway = Math.max(-1, Math.min(1, rng.yawV / 1.5)) * 14 * s;
+    var bob = Math.sin(rng.t * 1.6) * 3 * s;
+    var ready = rng.cool <= 0 && !rng.frozen && !state.answered;
+    var pull = (rng.pull > 0 ? rng.pull : 0) * 22 * s;
+
+    var tipX = cx - 0.54 * w - sway, tipY = h * 0.58 + bob;
+    var botX = cx - 0.16 * w - sway, botY = h + 26 * s + bob;
+    var nockX = cx - 0.36 * w - sway + pull * 0.55, nockY = h * 0.90 + bob + pull * 0.4;
+
+    c.save();
+    c.lineCap = 'round';
+    // one limb, curving down out of frame, with the grip thickening in the middle
+    c.strokeStyle = '#8a5a2b'; c.lineWidth = 6 * s;
+    c.beginPath();
+    c.moveTo(tipX, tipY);
+    c.quadraticCurveTo(cx - 0.53 * w - sway, h * 0.92 + bob, botX, botY);
+    c.stroke();
+    c.strokeStyle = '#6b4a2a'; c.lineWidth = 11 * s;
+    c.beginPath();
+    c.moveTo(cx - 0.49 * w - sway, h * 0.88 + bob);
+    c.lineTo(cx - 0.44 * w - sway, h * 0.99 + bob);
+    c.stroke();
+
+    c.strokeStyle = '#efe9db'; c.lineWidth = 2 * s;
+    c.beginPath();
+    c.moveTo(tipX + 2 * s, tipY);
+    c.lineTo(nockX, nockY);
+    c.lineTo(botX - 4 * s, botY);
+    c.stroke();
+
+    if (ready){
+      c.strokeStyle = '#7a5330'; c.lineWidth = 3.4 * s;
+      c.beginPath(); c.moveTo(nockX, nockY); c.lineTo(cx - 3 * s, cy + 10 * s); c.stroke();
+      c.fillStyle = '#e8e2d4';
+      c.beginPath();
+      c.moveTo(nockX, nockY);
+      c.lineTo(nockX - 4 * s, nockY + 17 * s);
+      c.lineTo(nockX + 9 * s, nockY + 9 * s);
+      c.closePath(); c.fill();
+    }
+    c.restore();
+  }
+
+  function drawCrosshair(){
+    var c = ctx, s = rng.s, x = rng.w / 2, y = rng.h / 2;
+    c.strokeStyle = 'rgba(32,36,46,.55)'; c.lineWidth = 1.6 * s;
+    c.beginPath(); c.arc(x, y, 7 * s, 0, 6.2832); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 1.6 * s;
+    c.beginPath();
+    c.moveTo(x - 15 * s, y); c.lineTo(x - 10 * s, y);
+    c.moveTo(x + 10 * s, y); c.lineTo(x + 15 * s, y);
+    c.moveTo(x, y - 15 * s); c.lineTo(x, y - 10 * s);
+    c.stroke();
+  }
+
+  /* Anything he is not looking at gets a tag on the side it went, so he knows
+     what is out there and which way to turn for it. */
+  function drawEdgeTags(){
+    var c = ctx, s = rng.s, ph = 22 * s;
+    var seen = [], tags = [], i;
+    c.font = '600 ' + (13 * s) + 'px ' + FONT;
+    for (i = 0; i < rng.cards.length; i++){
+      var cd = rng.cards[i], rel = relBearing(cd.face);
+      var p = project(cd.x, cd.y, cd.z);
+      var on = p && p.x > 10 && p.x < rng.w - 10;
+      if (on){ seen.push(p.y); continue; }
+      tags.push({ v: cd.v, right: rel > 0,
+                  y: p ? Math.max(20 * s, Math.min(rng.h - 30 * s, p.y)) : rng.h / 2,
+                  tw: Math.min(72 * s, c.measureText(cd.v).width) });
+    }
+    // never land a tag on top of a card he can already see
+    for (i = 0; i < tags.length; i++){
+      for (var k = 0; k < seen.length; k++){
+        if (Math.abs(tags[i].y - seen[k]) < 34 * s){ tags[i].y = seen[k] + 40 * s; k = -1; }
+      }
+      tags[i].y = Math.max(20 * s, Math.min(rng.h - 30 * s, tags[i].y));
+    }
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (i = 0; i < tags.length; i++){
+      var t = tags[i], pw = t.tw + 26 * s;
+      var x = t.right ? rng.w - pw / 2 - 4 * s : pw / 2 + 4 * s;
+      c.fillStyle = 'rgba(255,255,255,.9)';
+      roundRect(x - pw / 2, t.y - ph / 2, pw, ph, ph / 2); c.fill();
+      c.fillStyle = '#20242e';
+      c.fillText(t.v, x + (t.right ? -5 * s : 5 * s), t.y + 1 * s, t.tw);
+      c.fillStyle = '#2f6df6';
+      c.beginPath();
+      var ax = t.right ? x + pw / 2 - 7 * s : x - pw / 2 + 7 * s, d = t.right ? 5 * s : -5 * s;
+      c.moveTo(ax + d, t.y); c.lineTo(ax - d, t.y - 5 * s); c.lineTo(ax - d, t.y + 5 * s);
+      c.closePath(); c.fill();
+    }
+  }
+
+  function drawSparks(){
+    var c = ctx;
+    for (var i = 0; i < rng.sparks.length; i++){
+      var p = rng.sparks[i];
+      c.globalAlpha = Math.max(0, 1 - p.life / p.max);
+      c.fillStyle = p.col;
+      c.beginPath(); c.arc(p.x, p.y, p.r, 0, 6.2832); c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+
+  /* ---------- turning and shooting ----------
+     The pad is a rate control, not a steering wheel: push it and the view
+     keeps turning, so he never runs out of thumb halfway round. Squared, so
+     small pushes are gentle and the last of the aim is fine. The field itself
+     also takes a straight drag, which is how anyone expects to look around.
+     Both are their own touch, so either one works while the other thumb is on
+     the fire button. */
+  var padPtr = null, padGrab = null, lookPtr = null, lookAt = null;
+  function knobTo(x, y){
+    el.knob.style.transform = 'translate(-50%,-50%) translate(' + x + 'px,' + y + 'px)';
+  }
+  function rate(v){ return (v < 0 ? -1 : 1) * v * v; }
+  el.pad.addEventListener('pointerdown', function(ev){
+    ev.preventDefault();
+    unlock();
+    padPtr = ev.pointerId;
+    padGrab = { x: ev.clientX, y: ev.clientY };
+    try { el.pad.setPointerCapture(padPtr); } catch(e){}
+    el.pad.classList.add('live');
+  });
+  el.pad.addEventListener('pointermove', function(ev){
+    if (ev.pointerId !== padPtr || !padGrab) return;
+    var dx = ev.clientX - padGrab.x, dy = ev.clientY - padGrab.y, R = 40;
+    var nx = Math.max(-1, Math.min(1, dx / R)), ny = Math.max(-1, Math.min(1, dy / R));
+    rng.yawV = rate(nx) * 1.5;
+    rng.pitchV = -rate(ny) * 0.9;
+    var d = Math.sqrt(dx * dx + dy * dy), lim = 30;
+    if (d > lim) knobTo(dx / d * lim, dy / d * lim); else knobTo(dx, dy);
+  });
+  function padRelease(ev){
+    if (ev.pointerId !== padPtr) return;
+    padPtr = null; padGrab = null;
+    rng.yawV = 0; rng.pitchV = 0;
+    knobTo(0, 0);
+    el.pad.classList.remove('live');
+  }
+  el.pad.addEventListener('pointerup', padRelease);
+  el.pad.addEventListener('pointercancel', padRelease);
+
+  el.rangeCv.addEventListener('pointerdown', function(ev){
+    ev.preventDefault();
+    unlock();
+    lookPtr = ev.pointerId;
+    lookAt = { x: ev.clientX, y: ev.clientY };
+    try { el.rangeCv.setPointerCapture(lookPtr); } catch(e){}
+  });
+  el.rangeCv.addEventListener('pointermove', function(ev){
+    if (ev.pointerId !== lookPtr || !lookAt || rng.frozen || state.answered) return;
+    var k = 1 / rng.f;                       // a drag moves the world with the thumb
+    rng.yaw = Math.max(-YAW_LIM, Math.min(YAW_LIM, rng.yaw - (ev.clientX - lookAt.x) * k));
+    rng.pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, rng.pitch - (ev.clientY - lookAt.y) * k));
+    lookAt.x = ev.clientX; lookAt.y = ev.clientY;
+  });
+  function lookRelease(ev){
+    if (ev.pointerId !== lookPtr) return;
+    lookPtr = null; lookAt = null;
+  }
+  el.rangeCv.addEventListener('pointerup', lookRelease);
+  el.rangeCv.addEventListener('pointercancel', lookRelease);
+
+  el.fireBtn.addEventListener('pointerdown', function(ev){
+    ev.preventDefault();
+    el.fireBtn.classList.add('down');
+    fire();
+  });
+  function fireUp(){ el.fireBtn.classList.remove('down'); }
+  el.fireBtn.addEventListener('pointerup', fireUp);
+  el.fireBtn.addEventListener('pointercancel', fireUp);
+  el.fireBtn.addEventListener('pointerleave', fireUp);
+
+  // desktop, for testing and for whoever has a keyboard
+  var keys = {};
+  function keyAim(){
+    if (!rng.on) return;
+    rng.yawV = ((keys.right ? 1 : 0) - (keys.left ? 1 : 0)) * 1.1;
+    rng.pitchV = ((keys.up ? 1 : 0) - (keys.down ? 1 : 0)) * 0.7;
+  }
+
+  // the field is only as tall as whatever is left over, so it has to keep up
+  // with a rotation or a keyboard opening
+  if (window.ResizeObserver){
+    new ResizeObserver(function(){ if (rng.on) rangeSize(); })
+      .observe(el.rangeCv.parentNode);
+  } else {
+    window.addEventListener('resize', function(){ if (rng.on) rangeSize(); });
+  }
   /* ---------- play ---------- */
   function show(screen){
     el.home.classList.toggle('on', screen === 'home');
@@ -2202,9 +2981,15 @@
     state.missed = []; state.caught = false; state.lastScore = null;
     state.startedAt = Date.now();
     document.body.classList.toggle('choice', state.mode === 'choice');
+    document.body.classList.toggle('shoot', state.mode === 'shoot');
+    if (state.mode !== 'shoot') rangeStop();
     show('play');
     chaseStart();
     paintCard();
+    if (state.mode === 'shoot' && !toldAboutShooting){
+      toldAboutShooting = true;
+      setTimeout(function(){ toast('Left thumb looks, right thumb shoots'); }, 900);
+    }
   }
 
   function paintScore(){
@@ -2228,7 +3013,9 @@
     document.body.classList.toggle('versey', isVerse(c));
     paintScore();
 
-    if (state.mode === 'choice'){
+    if (state.mode === 'shoot'){
+      rangeSetup(c);
+    } else if (state.mode === 'choice'){
       var opts = cardOptions(c);
       el.choices.innerHTML = '';
       for (var i = 0; i < opts.length; i++){
@@ -2295,6 +3082,7 @@
       else if (v === picked) btns[i].classList.add('bad');
       else btns[i].classList.add('dim');
     }
+    if (state.mode === 'shoot') rangeSettle(picked, answer);
     if (picked !== null) correct ? sfx.right() : sfx.wrong();
     bump(correct);
     if (state.caught) return;
@@ -2389,7 +3177,7 @@
 
   function cardTap(){
     unlock();
-    if (state.caught || state.mode === 'choice') return;
+    if (state.caught || picking()) return;
     if (!state.revealed){ reveal(); return; }
     if (state.answered) step();
   }
@@ -2426,7 +3214,7 @@
   }
 
   function finish(){
-    stopTimer(); chaseStop(); clearTimeout(advanceId); hush();
+    stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
     var graded = state.right + state.wrong;
     var secs = Math.round((Date.now() - state.startedAt) / 1000);
     var m = Math.floor(secs / 60), s = secs % 60;
@@ -2481,7 +3269,22 @@
 
   document.addEventListener('keydown', function(ev){
     if (!el.play.classList.contains('on')) return;
+    if (state.mode === 'shoot'){
+      if (ev.key === 'ArrowLeft'){ keys.left = true; keyAim(); ev.preventDefault(); return; }
+      if (ev.key === 'ArrowRight'){ keys.right = true; keyAim(); ev.preventDefault(); return; }
+      if (ev.key === 'ArrowUp'){ keys.up = true; keyAim(); ev.preventDefault(); return; }
+      if (ev.key === 'ArrowDown'){ keys.down = true; keyAim(); ev.preventDefault(); return; }
+      if (ev.key === ' ' || ev.key === 'Enter'){ ev.preventDefault(); fire(); return; }
+      return;
+    }
     if (ev.key === ' ' || ev.key === 'Enter' || ev.key === 'ArrowRight'){ ev.preventDefault(); cardTap(); }
+  });
+  document.addEventListener('keyup', function(ev){
+    if (ev.key === 'ArrowLeft') keys.left = false;
+    if (ev.key === 'ArrowRight') keys.right = false;
+    if (ev.key === 'ArrowUp') keys.up = false;
+    if (ev.key === 'ArrowDown') keys.down = false;
+    keyAim();
   });
   document.addEventListener('click', unlock);
 
