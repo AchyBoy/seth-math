@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="3.1">
+<meta name="x-cards-version" content="3.2">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1051,6 +1051,8 @@
     thunk: function(){ tone(180, 0, .13, 'triangle', .12, 70); tone(90, .02, .16, 'sine', .09); },
     // buried in the dirt, nothing hit
     dirt:  function(){ tone(120, 0, .1, 'sawtooth', .06, 60); },
+    // one going straight past the card, close but past it
+    swish: function(){ tone(1400, 0, .16, 'sine', .05, 320); },
     // squeak, then the mouse is down the hole
     escape:function(){ tone(1568,0,.09,'sine',.14,2093); tone(1318,.09,.09,'sine',.12,1760);
              var n=[523.25,783.99,1046.5]; for (var i=0;i<n.length;i++) tone(n[i], .22+i*.09, .24,'triangle',.15); },
@@ -2268,7 +2270,7 @@
   var FONT = "Fredoka,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
   /* Metres and seconds, real ones. At 38 m/s a card 20 m out takes about half
      a second to reach and the arrow falls a good metre on the way. */
-  var EYE = 1.65, V0 = 38, GRAV = 9.8;
+  var EYE = 1.65, V0 = 46, GRAV = 9.8;
   var YAW_LIM = 1.15, PITCH_MIN = -0.28, PITCH_MAX = 0.72;
   var CARD_H = 2.6;
 
@@ -2337,7 +2339,7 @@
       var fh = CARD_H * 0.52;
       var t = n > 1 ? order[i] / (n - 1) : 0.5;
       var bear = (t - 0.5) * 1.7 + (Math.random() - 0.5) * 0.14;
-      var dist = 12 + Math.random() * 11;
+      var dist = 10 + Math.random() * 9;
       out.push({
         v: v, bw: Math.max(2, ratio * fh + 0.9), bh: CARD_H,
         bear: bear, dist: dist,
@@ -2414,7 +2416,8 @@
     var d = fwd();
     rng.arrows.push({
       x: d.x * 0.7, y: EYE - 0.42 + d.y * 0.7, z: d.z * 0.7,
-      vx: d.x * V0, vy: d.y * V0, vz: d.z * V0, tr: []
+      vx: d.x * V0, vy: d.y * V0, vz: d.z * V0, tr: [],
+      landed: false, near: { d: 1e9, x: 0, y: 0, z: 0 }
     });
     sfx.twang();
   }
@@ -2425,7 +2428,7 @@
     var dx = x - c.x, dy = y - c.y, dz = z - c.z;
     var cb = Math.cos(c.face), sb = Math.sin(c.face);
     var lx = dx * cb - dz * sb, lz = dx * sb + dz * cb;
-    return Math.abs(lx) < c.bw / 2 && Math.abs(dy) < c.bh / 2 && Math.abs(lz) < 0.4;
+    return Math.abs(lx) < c.bw / 2 + 0.3 && Math.abs(dy) < c.bh / 2 + 0.3 && Math.abs(lz) < 0.7;
   }
   function cardAt(x, y, z){
     for (var i = 0; i < rng.cards.length; i++){
@@ -2483,6 +2486,16 @@
     }
   }
 
+  // how near an arrow came to a card, so that going past one can be shown
+  function nearMiss(a){
+    for (var i = 0; i < rng.cards.length; i++){
+      var c = rng.cards[i];
+      var dx = a.x - c.x, dy = a.y - c.y, dz = a.z - c.z;
+      var d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (d < a.near.d){ a.near.d = d; a.near.x = a.x; a.near.y = a.y; a.near.z = a.z; }
+    }
+  }
+
   function stepArrows(dt){
     var n = 5, sdt = dt / n;
     for (var i = rng.arrows.length - 1; i >= 0; i--){
@@ -2490,14 +2503,22 @@
       for (var k = 0; k < n && !dead; k++){
         a.vy -= GRAV * sdt; a.vx += rng.wind * sdt;
         a.x += a.vx * sdt; a.y += a.vy * sdt; a.z += a.vz * sdt;
+        nearMiss(a);
         var hit = cardAt(a.x, a.y, a.z);
-        if (hit){ dead = true; hitCard(hit, a); }
-        else if (a.y <= 0){ a.y = 0; dead = true; hitGround(a); }
+        if (hit){ dead = true; a.landed = true; hitCard(hit, a); }
+        else if (a.y <= 0){ a.y = 0; dead = true; a.landed = true; hitGround(a); }
         else if (a.x * a.x + a.z * a.z > 3600){ dead = true; }
       }
       a.tr.push(a.x, a.y, a.z);
       if (a.tr.length > 27) a.tr.splice(0, 3);
-      if (dead) rng.arrows.splice(i, 1);
+      if (dead){
+        // it went by close enough to look like a hit, so say that it was not
+        if (!a.landed || a.near.d < 2.2){
+          var p = project(a.near.x, a.near.y, a.near.z);
+          if (p && a.near.d < 2.6){ puff(p.x, p.y, '#fff', 5, 60); sfx.swish(); }
+        }
+        rng.arrows.splice(i, 1);
+      }
     }
   }
 
@@ -2743,22 +2764,27 @@
     }
   }
 
-  /* A short dotted arc out of the bow: enough to read the drop and which way
-     the wind is pushing, and it stops well short of the far cards so the last
-     of the judgement is still his. */
+  /* The aim line runs the whole flight, not a fixed few tenths of a second.
+     The old one stopped at about twenty metres, which is exactly where the
+     drop starts to overshoot a card, so the last dot sat on the card while
+     the real arrow carried on falling underneath it. It looked like a hit
+     and it was not. Now the line ends where the arrow ends, on a card or in
+     the dirt, and the same physics draws it. */
   function drawAimArc(){
     if (rng.frozen || state.answered || rng.cool > 0) return;
-    var c = ctx, d = fwd(), dt = 0.045;
+    var c = ctx, d = fwd(), dt = 0.03;
     var x = d.x * 0.7, y = EYE - 0.42 + d.y * 0.7, z = d.z * 0.7;
     var vx = d.x * V0, vy = d.y * V0, vz = d.z * V0;
-    for (var i = 0; i < 12; i++){
+    for (var i = 0; i < 46; i++){
       vy -= GRAV * dt; vx += rng.wind * dt;
       x += vx * dt; y += vy * dt; z += vz * dt;
+      if (y <= 0 || cardAt(x, y, z)) break;
+      if (i % 2) continue;
       var p = project(x, y, z);
       if (!p) break;
-      c.globalAlpha = 0.6 - i * 0.045;
+      c.globalAlpha = Math.max(0.12, 0.6 - i * 0.016);
       c.fillStyle = '#fff';
-      c.beginPath(); c.arc(p.x, p.y, Math.max(1.2, 0.045 * rng.f / p.z), 0, 6.2832); c.fill();
+      c.beginPath(); c.arc(p.x, p.y, Math.max(1.2, 0.05 * rng.f / p.z), 0, 6.2832); c.fill();
     }
     c.globalAlpha = 1;
   }
