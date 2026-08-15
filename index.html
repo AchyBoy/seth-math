@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="2.9">
+<meta name="x-cards-version" content="3.0">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -277,36 +277,57 @@
     30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
 
   /* ---------- the archery range ----------
-     The whole field is one canvas. Everything around it is chrome: the
-     question above, the thumb pad and the fire button below, both of which
-     take their own touch, so he can be running as he lets an arrow go. */
-  .range{display:none;flex:1;flex-direction:column;min-height:0;gap:10px;padding-top:8px}
-  body.shoot .range{display:flex}
+     Full screen. The canvas is a fixed layer behind everything and the rest of
+     the play screen keeps its ordinary flow on top of it, which is why the
+     score still sits where it always sat and the chase still runs across the
+     top. Anything that has to be read over sky or grass carries a white glow
+     or its own pill, since neither is a reliable background. */
+  .range{display:none}
+  body.shoot .range{display:block;position:fixed;inset:0;z-index:0;background:#cfe8ff}
+  body.shoot .range canvas{display:block;width:100%;height:100%;touch-action:none}
   body.shoot .stage,body.shoot .choices,body.shoot .hint,
   body.shoot .grade,body.shoot .next{display:none}
-  .range .prompt{text-align:center;font-size:clamp(34px,11vw,58px);font-weight:600;
-    line-height:1.05;letter-spacing:.01em}
-  body.wordy .range .prompt{font-size:clamp(30px,9vw,48px)}
-  body.versey .range .prompt{font-size:15px;font-weight:500;line-height:1.4;
-    max-height:21vh;overflow:auto;padding:0 6px}
-  .range .fieldwrap{position:relative;flex:1;min-height:148px;border-radius:22px;
-    overflow:hidden;border:2px solid var(--line);background:#cfe8ff}
-  .range canvas{display:block;width:100%;height:100%;touch-action:none}
-  .range .wind{position:absolute;top:8px;right:10px;background:rgba(255,255,255,.82);
-    border-radius:999px;padding:3px 11px;font-size:13px;font-weight:600;
-    color:#31506b;pointer-events:none;font-variant-numeric:tabular-nums}
+  body.shoot .top,body.shoot .track,body.shoot .lane{position:relative;z-index:2}
+  body.shoot .count,body.shoot .score,body.shoot .quit,
+  body.shoot .lane .roundtag,body.shoot .lane .gap{text-shadow:0 1px 6px rgba(255,255,255,.95)}
+  body.shoot .lane .ground{background:repeating-linear-gradient(90deg,
+    rgba(60,72,50,.35) 0 10px,transparent 10px 18px)}
 
-  .pads{display:flex;align-items:stretch;gap:14px;height:112px;flex:none}
+  /* one soft fade under the top of the HUD, so the count, the chase and the
+     question all stay readable whatever the sky is doing behind them */
+  body.shoot #play::before{content:"";position:fixed;left:0;right:0;top:0;height:150px;
+    z-index:1;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.8),rgba(255,255,255,0))}
+  body.shoot.chasing #play::before{height:250px}
+
+  .prompt{display:none}
+  body.shoot .prompt{display:block;position:relative;z-index:2;margin:14px auto 0;
+    align-self:center;max-width:100%;
+    background:rgba(255,255,255,.86);border-radius:20px;padding:6px 20px;
+    box-shadow:0 4px 14px rgba(32,36,46,.14);
+    text-align:center;font-size:clamp(34px,11vw,58px);font-weight:600;line-height:1.1}
+  body.wordy .prompt{font-size:clamp(30px,9vw,48px)}
+  body.versey .prompt{font-size:15px;font-weight:500;line-height:1.4;
+    max-height:24vh;overflow:auto;padding:10px 16px;border-radius:18px}
+
+  .pads{display:none}
+  body.shoot .pads{display:flex;position:relative;z-index:2;
+    align-items:stretch;gap:14px;height:112px;flex:none;margin-top:auto}
+  .pads .wind{position:absolute;right:2px;top:-34px;
+    background:rgba(255,255,255,.86);border-radius:999px;padding:4px 12px;
+    font-size:13px;font-weight:600;color:#31506b;pointer-events:none;
+    font-variant-numeric:tabular-nums;box-shadow:0 3px 10px rgba(32,36,46,.12)}
   .pad{position:relative;flex:none;width:112px;border-radius:50%;
-    border:2px solid var(--line);background:#fff;touch-action:none;
-    -webkit-user-select:none;user-select:none}
-  .pad.live{border-color:var(--blue);background:var(--blue-soft)}
+    border:2px solid rgba(255,255,255,.75);background:rgba(255,255,255,.6);
+    touch-action:none;-webkit-user-select:none;user-select:none;
+    box-shadow:0 4px 14px rgba(32,36,46,.14)}
+  .pad.live{border-color:var(--blue);background:rgba(234,240,255,.9)}
   .pad .knob{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;
     background:#fff;border:3px solid var(--blue);box-shadow:0 2px 6px rgba(32,36,46,.18);
     transform:translate(-50%,-50%);pointer-events:none}
   .pad .padtip{position:absolute;left:0;right:0;bottom:9px;text-align:center;
     font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
-    color:#b6b1a6;pointer-events:none}
+    color:#6f7d8c;pointer-events:none}
   .fire{flex:1;background:var(--green);color:#fff;border-radius:24px;font-size:34px;
     line-height:1;box-shadow:0 6px 0 var(--green-dark);touch-action:none;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
@@ -314,7 +335,6 @@
     transition:transform .08s ease,box-shadow .08s ease,opacity .15s ease}
   .fire em{font-style:normal;font-size:16px;font-weight:600;letter-spacing:.05em}
   .fire.down{transform:translateY(4px);box-shadow:0 2px 0 var(--green-dark)}
-  .fire.cool{opacity:.5}
 
   .hint{text-align:center;color:var(--muted);font-size:15px;min-height:24px;margin-bottom:8px}
   .next{background:var(--blue);color:#fff;border-radius:20px;padding:18px;
@@ -579,21 +599,19 @@
 
   <div class="choices" id="choices"></div>
 
-  <!-- the archery range: the question sits above, the four answers float
-       over the field, the left thumb aims and runs, the right thumb fires -->
-  <div class="range" id="range">
-    <div class="prompt" id="shootQ">1 × 1</div>
-    <div class="fieldwrap">
-      <canvas id="rangeCv"></canvas>
-      <span class="wind" id="windTag">calm</span>
+  <!-- The archery range fills the whole phone and everything else floats on
+       top of it, so the field is the screen rather than a picture of one. The
+       canvas is its own layer underneath; the question, the score, the chase
+       and the two thumbs are ordinary flow above it. -->
+  <div class="range" id="range"><canvas id="rangeCv"></canvas></div>
+  <div class="prompt" id="shootQ">1 × 1</div>
+  <div class="pads">
+    <span class="wind" id="windTag">calm</span>
+    <div class="pad" id="pad">
+      <span class="knob" id="knob"></span>
+      <span class="padtip">look</span>
     </div>
-    <div class="pads">
-      <div class="pad" id="pad">
-        <span class="knob" id="knob"></span>
-        <span class="padtip">look</span>
-      </div>
-      <button type="button" class="fire" id="fireBtn">🏹<em>Shoot</em></button>
-    </div>
+    <button type="button" class="fire" id="fireBtn">🏹<em>Shoot</em></button>
   </div>
 
   <p class="hint" id="hint">Tap the card to see the answer</p>
@@ -2316,7 +2334,7 @@
       out.push({
         v: v, bw: Math.max(2, ratio * fh + 0.9), bh: CARD_H,
         bear: bear, dist: dist,
-        y0: 3.1 + Math.random() * 2.1,
+        y0: 3.7 + Math.random() * 2.3,
         bp: Math.random() * 6.28, bs: 0.5 + Math.random() * 0.4,
         sp: Math.random() * 6.28, ss: 0.18 + Math.random() * 0.14,
         x: 0, y: 0, z: 0,
@@ -2752,9 +2770,12 @@
     var ready = rng.cool <= 0 && !rng.frozen && !state.answered;
     var pull = (rng.pull > 0 ? rng.pull : 0) * 22 * s;
 
-    var tipX = cx - 0.54 * w - sway, tipY = h * 0.58 + bob;
-    var botX = cx - 0.16 * w - sway, botY = h + 26 * s + bob;
-    var nockX = cx - 0.36 * w - sway + pull * 0.55, nockY = h * 0.90 + bob + pull * 0.4;
+    // it scales off the shorter side, so it stays a thing in the corner rather
+    // than a branch across the field when the phone is tall
+    var U = Math.min(w, h * 0.62);
+    var tipX = cx - 0.40 * w - sway, tipY = h - 0.60 * U + bob;
+    var botX = cx - 0.10 * w - sway, botY = h + 0.05 * U + bob;
+    var nockX = cx - 0.28 * w - sway + pull * 0.55, nockY = h - 0.24 * U + bob + pull * 0.4;
 
     c.save();
     c.lineCap = 'round';
@@ -2762,12 +2783,12 @@
     c.strokeStyle = '#8a5a2b'; c.lineWidth = 6 * s;
     c.beginPath();
     c.moveTo(tipX, tipY);
-    c.quadraticCurveTo(cx - 0.53 * w - sway, h * 0.92 + bob, botX, botY);
+    c.quadraticCurveTo(cx - 0.40 * w - sway, h - 0.16 * U + bob, botX, botY);
     c.stroke();
     c.strokeStyle = '#6b4a2a'; c.lineWidth = 11 * s;
     c.beginPath();
-    c.moveTo(cx - 0.49 * w - sway, h * 0.88 + bob);
-    c.lineTo(cx - 0.44 * w - sway, h * 0.99 + bob);
+    c.moveTo(cx - 0.37 * w - sway, h - 0.30 * U + bob);
+    c.lineTo(cx - 0.32 * w - sway, h - 0.09 * U + bob);
     c.stroke();
 
     c.strokeStyle = '#efe9db'; c.lineWidth = 2 * s;
@@ -2778,8 +2799,11 @@
     c.stroke();
 
     if (ready){
-      c.strokeStyle = '#7a5330'; c.lineWidth = 3.4 * s;
-      c.beginPath(); c.moveTo(nockX, nockY); c.lineTo(cx - 3 * s, cy + 10 * s); c.stroke();
+      // the shaft points at the crosshair but stops well short of it, or it
+      // draws a line right through the middle of everything he is aiming at
+      var ex = nockX + (cx - nockX) * 0.6, ey = nockY + (cy + 10 * s - nockY) * 0.6;
+      c.strokeStyle = '#7a5330'; c.lineWidth = 3 * s;
+      c.beginPath(); c.moveTo(nockX, nockY); c.lineTo(ex, ey); c.stroke();
       c.fillStyle = '#e8e2d4';
       c.beginPath();
       c.moveTo(nockX, nockY);
