@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="3.2">
+<meta name="x-cards-version" content="3.3">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -164,6 +164,8 @@
   .pair .who{font-size:12px;font-weight:500;color:var(--muted);line-height:1.2;text-align:center}
   .pair.on{background:var(--blue-soft);border-color:var(--blue)}
   .pair.on .who{color:var(--blue-dark)}
+  /* not bought yet: still shown, so there is something to save up for */
+  .pair.locked{opacity:.45;border-style:dashed}
   .pair:active{transform:scale(.94)}
   .label.pairgap{margin-top:24px}
 
@@ -386,7 +388,80 @@
   .again:active{transform:translateY(4px);box-shadow:0 2px 0 var(--blue-dark)}
   .link{margin-top:14px;font-size:16px;font-weight:500;color:var(--blue);padding:8px}
 
+  /* ---------- coins and the shop ---------- */
+  .purse{display:flex;align-items:center;gap:10px;width:100%;
+    border:2px solid #f0dfa8;background:#fffaea;border-radius:16px;
+    padding:13px 16px;font-size:16px;font-weight:500;color:#8a6d1f;
+    margin-top:-18px;margin-bottom:26px}
+  .purse.hide{display:none}
+  .purse b{font-size:20px;font-weight:700;color:#7a5c12;font-variant-numeric:tabular-nums}
+  .purse .grow{flex:1;text-align:right;font-size:15px;font-weight:600;color:var(--blue)}
+  .purse .chev{font-size:22px;color:#d6c58e;line-height:1}
+  .purse:active{background:#fff3d0}
+  /* something is waiting on a grown-up */
+  .purse .dot{display:inline-block;width:9px;height:9px;border-radius:50%;
+    background:var(--red);margin-left:6px;vertical-align:middle}
+  .purse .dot.hide{display:none}
+
+  #capNote{margin-bottom:26px}
+  .coinbar{display:flex;align-items:baseline;justify-content:center;gap:9px;
+    background:#fffaea;border:2px solid #f0dfa8;border-radius:16px;
+    padding:14px 16px;margin-bottom:8px}
+  .coinbar b{font-size:34px;font-weight:700;color:#7a5c12;line-height:1;
+    font-variant-numeric:tabular-nums}
+  .coinbar span{font-size:14px;font-weight:600;color:#8a6d1f;
+    letter-spacing:.06em;text-transform:uppercase}
+
+  .prizes{display:flex;flex-direction:column;gap:8px}
+  .prize{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    border:2px solid var(--line);background:#fff;border-radius:16px;padding:12px 14px}
+  .prize .pic{font-size:26px;line-height:1;flex:none;width:32px;text-align:center}
+  .prize .what{flex:1;min-width:0}
+  .prize .what b{display:block;font-size:16px;font-weight:600;line-height:1.25}
+  .prize .what em{font-style:normal;font-size:13px;color:var(--muted)}
+  .prize .cost{flex:none;font-size:15px;font-weight:700;color:#8a6d1f;
+    background:#fffaea;border:2px solid #f0dfa8;border-radius:999px;padding:6px 12px;
+    font-variant-numeric:tabular-nums}
+  .prize:active{background:var(--blue-soft)}
+  .prize.short{opacity:.55}
+  .prize.short .cost{color:var(--muted);background:#f3f1ec;border-color:var(--line)}
+  .prize.worn{border-color:var(--green);background:var(--green-soft)}
+  .prize.worn .cost{color:var(--green-dark);background:#fff;border-color:var(--green)}
+  .prize.owned .cost{color:var(--blue);background:var(--blue-soft);border-color:#cfdcff}
+
+  .reqs{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+  .req{display:flex;align-items:center;gap:10px;border:2px solid var(--line);
+    background:#fff;border-radius:16px;padding:11px 14px;font-size:15px}
+  .req .pic{font-size:22px;flex:none}
+  .req .what{flex:1;min-width:0;font-weight:600}
+  .req .tag{flex:none;font-size:13px;font-weight:600;border-radius:999px;padding:5px 11px}
+  .req.pending{border-color:#f0dfa8;background:#fffaea}
+  .req.pending .tag{color:#8a6d1f;background:#fff}
+  .req.done{border-color:var(--green);background:var(--green-soft)}
+  .req.done .tag{color:var(--green-dark);background:#fff}
+  .req.declined{opacity:.6}
+  .req.declined .tag{color:var(--muted);background:#f3f1ec}
+  .req .yn{display:flex;gap:6px;flex:none}
+  .req .yn button{font-size:14px;font-weight:600;border-radius:999px;padding:7px 13px;
+    border:2px solid var(--line);background:#fff}
+  .req .yn .yes{color:var(--green-dark);border-color:var(--green)}
+  .req .yn .no{color:var(--muted)}
+
+  .empty{color:var(--muted);font-size:15px;line-height:1.45;
+    border:2px dashed var(--line);border-radius:16px;padding:16px;text-align:center}
+
+  .costrow{display:flex;gap:8px}
+  .costrow .field{margin-bottom:10px}
+  .costrow .emojif{flex:none;width:74px;text-align:center}
+
   .foot{text-align:center;color:#b4b0a6;font-size:12px;padding:14px 0 4px}
+
+  /* ⚠️ .hide only ever existed as .block.hide and .field.hide, so every
+     classList.toggle('hide') on a plain button quietly did nothing: the Listen
+     and Delete it buttons sat there whether or not a well done message had been
+     recorded. Last in the file so it beats the plain class it lands beside;
+     the two rules above are more specific still and are unaffected. */
+  .hide{display:none}
 
   @media (prefers-reduced-motion:reduce){
     .card,.chip,.opt,.start,.next,.again,.ch,.toast{transition:none}
@@ -406,6 +481,12 @@
   </div>
   <button type="button" class="whoami" id="whoBtn">
     <span id="whoLabel">Sign in to save your scores</span><span class="chev">›</span>
+  </button>
+
+  <button type="button" class="purse hide" id="purseBtn">
+    🪙 <b id="coinCount">0</b> coins
+    <span class="grow"><span id="shopWord">Shop</span><span class="dot hide" id="waitDot"></span></span>
+    <span class="chev">›</span>
   </button>
 
   <div class="block hide" id="scoreBlock">
@@ -517,7 +598,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v2.8</p>
+  <p class="foot">v3.3</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -569,6 +650,110 @@
   <button type="button" class="link hide" id="signOutBtn">Sign out</button>
   <p class="warnnote hide" id="signOutNote">Signing out only forgets you on this device.
     Your scores stay safe under your name, and come back the moment you sign in again.</p>
+</div>
+
+<!-- ================= the shop ================= -->
+<div class="screen" id="shopScreen">
+  <div class="head">
+    <h1 class="title">The<br><span>Shop</span></h1>
+  </div>
+  <div class="coinbar"><b id="shopCoins">0</b><span>coins</span></div>
+  <p class="note" id="capNote"></p>
+
+  <div class="block hide" id="waitBlock">
+    <p class="label">Asked for</p>
+    <div class="reqs" id="waitList"></div>
+  </div>
+
+  <div class="block">
+    <div class="opts" id="shopTabs">
+      <button type="button" class="opt on" data-tab="prizes">🎁 Real life</button>
+      <button type="button" class="opt" data-tab="looks">✨ Looks</button>
+    </div>
+  </div>
+
+  <div class="block" id="prizeBlock">
+    <div class="prizes" id="prizeList"></div>
+    <p class="note">These are real things a grown-up has put up. Ask for one and the
+      coins are spent while they think about it. If they say no you get them back.</p>
+  </div>
+
+  <div class="block hide" id="lookBlock">
+    <p class="label">Skies</p>
+    <div class="prizes" id="skyList"></div>
+    <p class="label pairgap">Arrows</p>
+    <div class="prizes" id="trailList"></div>
+    <p class="label pairgap">Chase animals</p>
+    <div class="prizes" id="pairList"></div>
+    <p class="note">Looks only. None of these makes a round any easier, so nothing you
+      buy can flatter a score.</p>
+  </div>
+
+  <button type="button" class="link" id="shopBack">Back</button>
+  <button type="button" class="link" id="parentBtn">Grown-ups</button>
+</div>
+
+<!-- ================= grown-ups ================= -->
+<div class="screen" id="parentScreen">
+  <div class="head">
+    <h1 class="title">Grown<br><span>ups</span></h1>
+  </div>
+
+  <div class="block" id="codeBlock">
+    <p class="label" id="codeLabel">The grown-ups code</p>
+    <input class="field" id="codeField" type="password" autocomplete="off"
+           placeholder="Code, 4 or more" maxlength="64">
+    <p class="warnnote" id="codeNote"></p>
+    <p class="err" id="codeErr"></p>
+    <button type="button" class="start" id="codeGo">Open</button>
+  </div>
+
+  <div class="block hide" id="pendBlock">
+    <p class="label">Waiting on you</p>
+    <div class="reqs" id="pendList"></div>
+  </div>
+
+  <div class="block hide" id="rewardBlock">
+    <p class="label">What they can save up for</p>
+    <div class="prizes" id="rewardList"></div>
+
+    <p class="label pairgap" id="addLabel">Add one</p>
+    <div class="costrow">
+      <input class="field emojif" id="rwEmoji" type="text" placeholder="🎁" maxlength="4">
+      <input class="field" id="rwTitle" type="text" placeholder="An hour at the park" maxlength="80">
+    </div>
+    <div class="costrow">
+      <input class="field" id="rwCost" type="number" inputmode="numeric" placeholder="Coins" min="0">
+      <select class="field" id="rwRepeats">
+        <option value="any">As often as they like</option>
+        <option value="week">Once a week</option>
+        <option value="month">Once a month</option>
+        <option value="once">Once ever</option>
+      </select>
+    </div>
+    <p class="err" id="rwErr"></p>
+    <div class="quick">
+      <button type="button" id="rwSave">Put it up</button>
+      <button type="button" class="warn hide" id="rwCancel">Cancel</button>
+      <button type="button" class="warn hide" id="rwRemove">Take it down</button>
+    </div>
+    <p class="note" id="rwGuide"></p>
+  </div>
+
+  <div class="block hide" id="mailBlock">
+    <p class="label">Tell me when they ask</p>
+    <input class="field" id="mailField" type="email" autocomplete="off"
+           inputmode="email" placeholder="you@example.com">
+    <p class="warnnote">One short email when they spend their coins on something.
+      Leave it empty for none.</p>
+    <div class="quick">
+      <button type="button" id="mailSave">Save</button>
+      <button type="button" class="warn" id="codeChange">Change the code</button>
+    </div>
+    <p class="hintline" id="mailMsg"></p>
+  </div>
+
+  <button type="button" class="link" id="parentBack">Back to the shop</button>
 </div>
 
 <!-- ================= play ================= -->
@@ -670,6 +855,37 @@
      ========================================================= */
   var API = 'https://api.jobhubgo.com/api/mathcards';
   var me = { token: '', name: '', bests: [], leaders: [], hasCheer: false };
+
+  /* Coins, what they have been spent on, and what is waiting on a grown-up.
+     All of it belongs to the PLAYER and none of it to the device: two children
+     share a phone here, and the wallet following the wrong one would be worse
+     than not having one. Signed out there is no purse at all. */
+  var shop = {
+    coins: 0, waiting: 0, capLeft: 0, dayCap: 40, perRound: 5,
+    owned: [], worn: {}, cosmetics: [], rewards: [], requests: [],
+    hasParent: false, parentEmail: '', loaded: false
+  };
+  function owns(id){ return shop.owned.indexOf(id) !== -1; }
+  function clearShop(){
+    shop.coins = 0; shop.waiting = 0; shop.capLeft = 0;
+    shop.owned = []; shop.worn = {}; shop.rewards = []; shop.requests = [];
+    shop.hasParent = false; shop.parentEmail = ''; shop.loaded = false;
+  }
+  // /me and /login carry the small version: the balance, what is being worn
+  // (the game needs that to draw itself) and whether anything is waiting.
+  function takePocket(d){
+    if (!d) return;
+    if (typeof d.coins === 'number') shop.coins = d.coins;
+    if (typeof d.waiting === 'number') shop.waiting = d.waiting;
+    if (d.worn && typeof d.worn === 'object'){
+      shop.worn = d.worn;
+      // the server only ever reports something as worn if it is owned, so this
+      // keeps the chase animals right on the first paint, before /shop lands
+      for (var k in d.worn){
+        if (d.worn[k] && !owns(d.worn[k])) shop.owned.push(d.worn[k]);
+      }
+    }
+  }
 
   function loadMe(){
     try {
@@ -955,12 +1171,54 @@
     {key:'lion',  chaser:'🐭', runner:'🦁', home:'🪨', chaserName:'mouse', runnerName:'lion'},
     {key:'shark', chaser:'🦈', runner:'🐠', home:'🪸', chaserName:'shark', runnerName:'fish'},
     {key:'wolf',  chaser:'🐺', runner:'🐑', home:'🛖', chaserName:'wolf',  runnerName:'sheep'},
-    {key:'bee',   chaser:'🐝', runner:'🐻', home:'🌲', chaserName:'bee',   runnerName:'bear'}
+    {key:'bee',   chaser:'🐝', runner:'🐻', home:'🌲', chaserName:'bee',   runnerName:'bear'},
+    // bought in the shop; locked until then, and shown with their price
+    {key:'croc',  chaser:'🐊', runner:'🐸', home:'🪷', chaserName:'croc',  runnerName:'frog',
+     buy:'pair-croc'},
+    {key:'dragon',chaser:'🐉', runner:'🦄', home:'🏰', chaserName:'dragon',runnerName:'unicorn',
+     buy:'pair-dragon'},
+    {key:'robot', chaser:'🤖', runner:'🚀', home:'🌎', chaserName:'robot', runnerName:'rocket',
+     buy:'pair-robot'}
   ];
+  // A pair that has not been bought cannot be the one in play, however the
+  // setting got saved, so a cleared closet quietly falls back to the cat.
+  function pairOk(p){ return !p.buy || owns(p.buy); }
   function pair(){
-    for (var i = 0; i < PAIRS.length; i++) if (PAIRS[i].key === state.pair) return PAIRS[i];
+    for (var i = 0; i < PAIRS.length; i++){
+      if (PAIRS[i].key === state.pair) return pairOk(PAIRS[i]) ? PAIRS[i] : PAIRS[0];
+    }
     return PAIRS[0];
   }
+
+  /* =========================================================
+     Bought looks.
+
+     Every one of these is a colour or an emoji. Nothing here
+     touches how a round plays: no steadier arrow, no slower
+     clock, nothing that could flatter a score. If a real perk
+     is ever sold, that run has to be flagged and must not be
+     allowed to set a best.
+     ========================================================= */
+  /* Each sky carries its own ground as well. A night sky over bright daytime
+     grass reads as a mistake rather than a choice, and the ground is half the
+     screen. */
+  var SKIES = {
+    'sky-sunset': {top:'#ff8a4c', bot:'#ffe6c9', sun:'#fff0a0', cloud:'rgba(255,236,214,.85)',
+                   hill:'#c07f5d', gtop:'#89b96f', gbot:'#5c8f47', tuft:'rgba(60,92,40,.5)'},
+    'sky-storm':  {top:'#5a6472', bot:'#c3cad3', sun:'#e8edf3', cloud:'rgba(236,240,245,.8)',
+                   hill:'#7d8a79', gtop:'#7ba874', gbot:'#4d7a4a', tuft:'rgba(40,74,38,.5)'},
+    'sky-night':  {top:'#101a3c', bot:'#3d4f86', sun:'#f4f1d8', cloud:'rgba(210,220,255,.35)',
+                   hill:'#2b3a5e', gtop:'#3c6a4c', gbot:'#204731', tuft:'rgba(14,38,22,.55)',
+                   stars:true}
+  };
+  var TRAILS = {
+    'trail-fire':    {trail:'rgba(255,150,50,.75)',  shaft:'#c0400f', head:'#ffcf70'},
+    'trail-ice':     {trail:'rgba(150,225,255,.8)',  shaft:'#2e7fa8', head:'#e6faff'},
+    'trail-rainbow': {rainbow:true,                  shaft:'#8a4bd6', head:'#fff2a8'}
+  };
+  function skin(slot){ return shop.worn[slot] || ''; }
+  function sky(){ return SKIES[skin('sky')] || null; }
+  function trail(){ return TRAILS[skin('trail')] || null; }
 
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
@@ -982,6 +1240,13 @@
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
    'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
+   'purseBtn','coinCount','shopWord','waitDot',
+   'shopScreen','shopCoins','capNote','waitBlock','waitList','shopTabs',
+   'prizeBlock','prizeList','lookBlock','skyList','trailList','pairList','shopBack','parentBtn',
+   'parentScreen','codeBlock','codeLabel','codeField','codeNote','codeErr','codeGo',
+   'pendBlock','pendList','rewardBlock','rewardList','addLabel',
+   'rwEmoji','rwTitle','rwCost','rwRepeats','rwErr','rwSave','rwCancel','rwRemove','rwGuide',
+   'mailBlock','mailField','mailSave','mailMsg','codeChange','parentBack',
    'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'range','shootQ','rangeCv','windTag','pad','knob','fireBtn',
@@ -1093,6 +1358,9 @@
   function forgetPlayer(){
     me.token = ''; me.name = ''; me.bests = []; me.leaders = []; me.hasCheer = false;
     cheerData = null; cheerAudio = null;
+    // the purse belongs to the player too, and a wallet following the wrong
+    // child would be worse than not having one at all
+    clearShop(); parentCode = ''; parentData = null;
     saveMe();
     loadRecord();          // back to the guest record on this device
     paintWho();
@@ -1378,14 +1646,27 @@
     }
     el.pairOpts.addEventListener('click', function(ev){
       var b = ev.target.closest('.pair'); if (!b) return;
-      state.pair = b.getAttribute('data-pair');
+      var key = b.getAttribute('data-pair'), p = null;
+      for (var i = 0; i < PAIRS.length; i++) if (PAIRS[i].key === key) p = PAIRS[i];
+      // one you have not bought sends you to the shop rather than doing nothing
+      if (p && !pairOk(p)){ toast('Those two are in the shop'); openShop(); return; }
+      state.pair = key;
       sfx.tap(); paintHome(); saveSettings();
     });
   }
   function paintPairs(){
     var list = el.pairOpts.querySelectorAll('.pair');
     for (var i = 0; i < list.length; i++){
-      list[i].classList.toggle('on', list[i].getAttribute('data-pair') === state.pair);
+      var key = list[i].getAttribute('data-pair'), p = null;
+      for (var j = 0; j < PAIRS.length; j++) if (PAIRS[j].key === key) p = PAIRS[j];
+      var locked = p && !pairOk(p);
+      list[i].classList.toggle('locked', !!locked);
+      list[i].classList.toggle('on', !locked && key === state.pair);
+      var who = list[i].querySelector('.who');
+      if (who && p){
+        who.innerHTML = locked ? '🔒 in the shop'
+          : esc(p.chaserName) + ' &amp; ' + esc(p.runnerName);
+      }
     }
     // the Timer button shows whichever pair is picked
     var btn = el.timerOpts.querySelector('.opt[data-timer="chase"]');
@@ -1406,6 +1687,7 @@
     // changes, or the last child's mistakes stay on screen after a sign out
     paintTrouble();
     paintCheer();
+    paintPurse();
   }
   function fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function esc(s){
@@ -1499,7 +1781,8 @@
         }
         me.token = res.data.token; me.name = res.data.name; me.bests = res.data.bests || [];
         me.hasCheer = !!res.data.hasCheer; cheerData = null;
-        saveMe(); adoptRecord(res.data.misses); paintWho(); refreshBoard();
+        clearShop(); takePocket(res.data);
+        saveMe(); adoptRecord(res.data.misses); paintWho(); refreshBoard(); refreshShop();
         sfx.right();
         show('home');
       });
@@ -1654,6 +1937,456 @@
   }
 
   /* ---------- the scoreboard ---------- */
+  /* =========================================================
+     Coins and the shop.
+
+     Coins are a second number beside the score, and the score
+     is never spent, so nothing bought here can ever soften the
+     leaderboard.
+
+     Two halves. Looks are instant: pay, own it, wear it. Real
+     life prizes are not purchases at all, they are REQUESTS,
+     because the thing being bought is an hour of somebody's
+     Saturday and only that somebody can agree to it. The coins
+     still come out at the asking, or the same pile could be
+     spent three times over while all three sat waiting.
+     ========================================================= */
+  var parentCode = '';        // held for this visit only, never written down
+  var parentData = null;
+  var editingReward = '';
+
+  /* Nothing here costs real money, but 240 coins is a fortnight of practice to
+     a nine year old, so a stray thumb must not spend it. One tap arms, the
+     next one buys, and it forgets after a few seconds. A dialog would do the
+     same job and would also be the only modal in the whole game. */
+  var armed = '', armId = null;
+  function arm(key, said){
+    clearTimeout(armId);
+    if (armed === key){ armed = ''; return true; }
+    armed = key;
+    sfx.tap();
+    toast(said);
+    armId = setTimeout(function(){ armed = ''; paintShop(); }, 6000);
+    paintShop();
+    return false;
+  }
+
+  function repeatWords(k){
+    return k === 'once' ? 'Once ever' : k === 'week' ? 'Once a week'
+         : k === 'month' ? 'Once a month' : '';
+  }
+  function pairForBuy(id){
+    for (var i = 0; i < PAIRS.length; i++) if (PAIRS[i].buy === id) return PAIRS[i];
+    return null;
+  }
+
+  function paintPurse(){
+    el.purseBtn.classList.toggle('hide', !me.token);
+    el.coinCount.textContent = fmt(shop.coins);
+    el.waitDot.classList.toggle('hide', shop.waiting < 1);
+    el.shopWord.textContent = shop.waiting
+      ? (shop.waiting === 1 ? '1 waiting' : shop.waiting + ' waiting') : 'Shop';
+  }
+
+  function takeShop(d){
+    shop.coins = d.coins || 0;
+    shop.capLeft = d.capLeft || 0;
+    shop.dayCap = d.dayCap || shop.dayCap;
+    shop.perRound = d.perRound || shop.perRound;
+    shop.owned = d.owned || [];
+    shop.worn = d.worn || {};
+    shop.cosmetics = d.cosmetics || [];
+    shop.rewards = d.rewards || [];
+    shop.requests = d.requests || [];
+    shop.hasParent = !!d.hasParent;
+    shop.parentEmail = d.parentEmail || '';
+    shop.waiting = shop.requests.filter(function(r){ return r.status === 'pending'; }).length;
+    shop.loaded = true;
+  }
+
+  function refreshShop(then){
+    if (!me.token){ clearShop(); paintPurse(); if (then) then(null); return; }
+    apiCall('/shop?token=' + encodeURIComponent(me.token)).then(function(res){
+      if (res && res.ok) takeShop(res.data);
+      paintPurse(); paintShop(); paintPairs();
+      if (then) then(res && res.ok ? res.data : null);
+    });
+  }
+
+  function rowEl(o){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'prize' + (o.cls ? ' ' + o.cls : '');
+    b.innerHTML = '<span class="pic">' + esc(o.emoji || '🎁') + '</span>' +
+      '<span class="what"><b>' + esc(o.title) + '</b>' +
+      (o.sub ? '<em>' + esc(o.sub) + '</em>' : '') + '</span>' +
+      '<span class="cost">' + esc(o.cost) + '</span>';
+    if (o.tap) b.addEventListener('click', o.tap); else b.disabled = true;
+    return b;
+  }
+
+  function paintShop(){
+    el.shopCoins.textContent = fmt(shop.coins);
+    el.capNote.textContent = shop.capLeft > 0
+      ? 'Clearing a set is worth ' + shop.perRound + ' coins, up to ' + shop.dayCap +
+        ' a day, and there is ' + shop.capLeft + ' of today left. Beating your own best' +
+        ' pays on top of that and is never capped.'
+      : 'That is all ' + shop.dayCap + ' practice coins for today. Beating your own best' +
+        ' still pays on top, and that part is never capped.';
+
+    // what has been asked for: everything still waiting, then the last few answers
+    var waiting = shop.requests.filter(function(r){ return r.status === 'pending'; });
+    var answered = shop.requests.filter(function(r){ return r.status !== 'pending'; }).slice(0, 3);
+    var showing = waiting.concat(answered);
+    el.waitBlock.classList.toggle('hide', showing.length === 0);
+    el.waitList.innerHTML = '';
+    showing.forEach(function(r){
+      var d = document.createElement('div');
+      d.className = 'req ' + r.status;
+      d.innerHTML = '<span class="pic">' + esc(r.emoji || '🎁') + '</span>' +
+        '<span class="what">' + esc(r.title) + '</span>' +
+        '<span class="tag">' + (r.status === 'pending' ? 'Waiting'
+                              : r.status === 'done' ? 'Yes!' : 'Not this time') + '</span>';
+      el.waitList.appendChild(d);
+    });
+
+    el.prizeList.innerHTML = '';
+    if (!shop.rewards.length){
+      var none = document.createElement('p');
+      none.className = 'empty';
+      none.textContent = shop.hasParent
+        ? 'Nothing up for grabs yet. Ask a grown-up to put something on the list.'
+        : 'A grown-up can put real things here, like an hour at the park or a story at '
+          + 'bedtime. Tap Grown-ups at the bottom to set it up.';
+      el.prizeList.appendChild(none);
+    }
+    shop.rewards.forEach(function(r){
+      var key = 'r:' + r.id, short = shop.coins < r.cost;
+      el.prizeList.appendChild(rowEl({
+        emoji: r.emoji || '🎁', title: r.title,
+        sub: armed === key ? 'Tap again to ask for it'
+           : short ? fmt(r.cost - shop.coins) + ' more coins to go'
+           : repeatWords(r.repeats),
+        cost: fmt(r.cost),
+        cls: short ? 'short' : armed === key ? 'worn' : '',
+        tap: short ? null : function(){ askFor(r); }
+      }));
+    });
+
+    paintLooks('sky', el.skyList);
+    paintLooks('trail', el.trailList);
+    paintLooks('pair', el.pairList);
+  }
+
+  function paintLooks(slot, into){
+    into.innerHTML = '';
+    shop.cosmetics.filter(function(c){ return c.slot === slot; }).forEach(function(c){
+      var have = owns(c.id), key = 'c:' + c.id, short = !have && shop.coins < c.cost;
+
+      // A bought pair of animals is not something you wear, it is something the
+      // chase picker on the home screen can now offer, so its row sends you
+      // there rather than pretending to be a costume.
+      if (slot === 'pair'){
+        var pr = pairForBuy(c.id), using = pr && state.pair === pr.key;
+        into.appendChild(rowEl({
+          emoji: c.emoji, title: c.name,
+          sub: have ? (using ? 'The one you are using' : 'Tap to use them')
+             : armed === key ? 'Tap again to buy'
+             : short ? fmt(c.cost - shop.coins) + ' more coins to go' : 'Tap to buy',
+          cost: have ? (using ? '✓' : 'Use') : fmt(c.cost),
+          cls: using ? 'worn' : have ? 'owned' : short ? 'short' : armed === key ? 'owned' : '',
+          tap: have ? function(){ usePair(pr); } : short ? null : function(){ buy(c); }
+        }));
+        return;
+      }
+
+      var on = shop.worn[slot] === c.id;
+      into.appendChild(rowEl({
+        emoji: c.emoji, title: c.name,
+        sub: have ? (on ? 'Wearing it, tap to take it off' : 'Tap to wear it')
+           : armed === key ? 'Tap again to buy'
+           : short ? fmt(c.cost - shop.coins) + ' more coins to go' : 'Tap to buy',
+        cost: have ? (on ? '✓' : 'Wear') : fmt(c.cost),
+        cls: on ? 'worn' : have ? 'owned' : short ? 'short' : armed === key ? 'owned' : '',
+        tap: have ? function(){ wear(slot, on ? '' : c.id); }
+           : short ? null : function(){ buy(c); }
+      }));
+    });
+  }
+
+  function buy(c){
+    if (!arm('c:' + c.id, 'Buy ' + c.name + ' for ' + fmt(c.cost) + ' coins?')) return;
+    apiCall('/buy', { method: 'POST', body: { token: me.token, item: c.id } })
+      .then(function(res){
+        if (!res){ toast('No connection just now'); return; }
+        if (!res.ok){ toast((res.data && res.data.error) || 'That did not work'); return; }
+        shop.coins = res.data.coins;
+        shop.owned = res.data.owned || shop.owned;
+        shop.worn = res.data.worn || shop.worn;
+        sfx.streak();
+        toast('Got it! ' + c.name, true);
+        paintPurse(); paintShop(); paintPairs();
+      });
+  }
+
+  // free, and instant on screen: putting on something already owned
+  function wear(slot, id){
+    if (id) shop.worn[slot] = id; else delete shop.worn[slot];
+    sfx.tap(); paintShop();
+    apiCall('/wear', { method: 'POST', body: { token: me.token, slot: slot, item: id } })
+      .then(function(res){
+        if (res && res.ok && res.data.worn){ shop.worn = res.data.worn; paintShop(); }
+      });
+  }
+
+  function usePair(p){
+    if (!p) return;
+    state.pair = p.key;
+    state.timer = 'chase';        // no point picking animals with the chase off
+    sfx.tap(); saveSettings(); paintHome(); paintShop();
+    toast('The ' + p.chaserName + ' is after the ' + p.runnerName + ' now');
+  }
+
+  function askFor(r){
+    if (!arm('r:' + r.id, 'Ask for ' + r.title + '? That is ' + fmt(r.cost) + ' coins.')) return;
+    apiCall('/request', { method: 'POST', body: { token: me.token, reward: r.id } })
+      .then(function(res){
+        if (!res){ toast('No connection just now'); return; }
+        if (!res.ok){ toast((res.data && res.data.error) || 'That did not work'); return; }
+        sfx.escape();
+        toast('Asked for! Now a grown-up has to say yes.', true);
+        refreshShop();
+      });
+  }
+
+  function openShop(){
+    if (!me.token){ openWho(); return; }
+    sfx.tap(); armed = '';
+    show('shop');
+    paintShop();
+    refreshShop();
+  }
+  el.purseBtn.addEventListener('click', openShop);
+  el.shopBack.addEventListener('click', function(){ sfx.tap(); show('home'); paintHome(); });
+  el.shopTabs.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    var tab = b.getAttribute('data-tab');
+    setOn(el.shopTabs, 'data-tab', tab);
+    el.prizeBlock.classList.toggle('hide', tab !== 'prizes');
+    el.lookBlock.classList.toggle('hide', tab !== 'looks');
+    sfx.tap();
+  });
+
+  /* ---------- the grown-ups' side ----------
+     A second code, separate from the child's own password, because the whole
+     point is that the child cannot mark their own prize as given. Setting it
+     the first time asks for nothing but being signed in, exactly like recording
+     the well done message: whoever is holding the phone at setup is the parent.
+     After that it takes the current code to change. */
+  var codeMode = 'open';        // open | set | change
+
+  function paintGate(){
+    codeMode = shop.hasParent ? 'open' : 'set';
+    el.codeBlock.classList.remove('hide');
+    el.pendBlock.classList.add('hide');
+    el.rewardBlock.classList.add('hide');
+    el.mailBlock.classList.add('hide');
+    el.codeLabel.textContent = codeMode === 'set' ? 'Make a grown-ups code' : 'The grown-ups code';
+    el.codeField.placeholder = codeMode === 'set' ? 'Code, 4 or more' : 'Code';
+    el.codeNote.innerHTML = codeMode === 'set'
+      ? 'This is <b>not</b> the child’s password. It is yours, so that only you can '
+      + 'put prizes up and say yes to them.'
+      : 'The code you made when you set the prizes up.';
+    el.codeGo.textContent = codeMode === 'set' ? 'Make it' : 'Open';
+    el.codeErr.textContent = '';
+    el.codeField.value = '';
+  }
+
+  function openParent(){
+    sfx.tap();
+    parentData = null; parentCode = ''; editingReward = '';
+    show('parent');
+    paintGate();
+  }
+  el.parentBtn.addEventListener('click', openParent);
+  el.parentBack.addEventListener('click', function(){
+    sfx.tap(); parentCode = ''; show('shop'); refreshShop();
+  });
+
+  el.codeGo.addEventListener('click', function(){
+    var code = el.codeField.value;
+    if (code.length < 4){ el.codeErr.textContent = 'At least 4 characters'; return; }
+    el.codeErr.textContent = '';
+    el.codeGo.disabled = true;
+
+    var path = codeMode === 'open' ? '/parent/open' : '/parent/code';
+    var body = { token: me.token, code: code };
+    // already inside and changing it, so the current one is the one in hand
+    if (codeMode === 'change') body.current = parentCode;
+
+    apiCall(path, { method: 'POST', body: body }).then(function(res){
+      el.codeGo.disabled = false;
+      if (!res){ el.codeErr.textContent = 'No connection just now'; return; }
+      if (!res.ok){
+        el.codeErr.textContent = (res.data && res.data.error) || 'That did not work';
+        return;
+      }
+      parentCode = code;
+      shop.hasParent = true;
+      parentData = res.data;
+      sfx.tap();
+      paintParent();
+    });
+  });
+  el.codeField.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter'){ ev.preventDefault(); el.codeField.blur(); el.codeGo.click(); }
+  });
+  el.codeChange.addEventListener('click', function(){
+    sfx.tap();
+    codeMode = 'change';
+    el.codeBlock.classList.remove('hide');
+    el.codeLabel.textContent = 'A new grown-ups code';
+    el.codeField.value = ''; el.codeField.placeholder = 'New code, 4 or more';
+    el.codeNote.textContent = 'Type the new one. You are already signed in, so the old one is not needed again.';
+    el.codeGo.textContent = 'Change it';
+    el.codeErr.textContent = '';
+    el.codeField.focus();
+  });
+
+  function paintParent(){
+    if (!parentData) return;
+    el.codeBlock.classList.add('hide');
+    el.pendBlock.classList.remove('hide');
+    el.rewardBlock.classList.remove('hide');
+    el.mailBlock.classList.remove('hide');
+
+    var waiting = parentData.requests.filter(function(r){ return r.status === 'pending'; });
+    el.pendBlock.classList.toggle('hide', waiting.length === 0);
+    el.pendList.innerHTML = '';
+    waiting.forEach(function(r){
+      var d = document.createElement('div');
+      d.className = 'req pending';
+      d.innerHTML = '<span class="pic">' + esc(r.emoji || '🎁') + '</span>' +
+        '<span class="what">' + esc(r.title) + '<br><em style="font-style:normal;font-size:13px;color:var(--muted)">'
+        + fmt(r.cost) + ' coins</em></span>';
+      var yn = document.createElement('span');
+      yn.className = 'yn';
+      var yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'yes'; yes.textContent = 'Given';
+      yes.addEventListener('click', function(){ decide(r.id, true); });
+      var no = document.createElement('button');
+      no.type = 'button'; no.className = 'no'; no.textContent = 'No';
+      no.addEventListener('click', function(){ decide(r.id, false); });
+      yn.appendChild(yes); yn.appendChild(no);
+      d.appendChild(yn);
+      el.pendList.appendChild(d);
+    });
+
+    var live = parentData.rewards.filter(function(r){ return r.active; });
+    el.rewardList.innerHTML = '';
+    if (!live.length){
+      var none = document.createElement('p');
+      none.className = 'empty';
+      none.textContent = 'Nothing up yet. An hour at the park, a story at bedtime, '
+        + 'picking what is for tea. Real things work far better than badges.';
+      el.rewardList.appendChild(none);
+    }
+    live.forEach(function(r){
+      el.rewardList.appendChild(rowEl({
+        emoji: r.emoji || '🎁', title: r.title,
+        sub: repeatWords(r.repeats) || 'As often as they like',
+        cost: fmt(r.cost),
+        cls: editingReward === r.id ? 'worn' : '',
+        tap: function(){ editReward(r); }
+      }));
+    });
+
+    el.mailField.value = parentData.email || '';
+    el.rwGuide.textContent = 'They earn ' + shop.perRound + ' coins for clearing a set, up to '
+      + shop.dayCap + ' a day, plus one coin for every 100 points they beat their own record by. '
+      + 'Perfecting every table is worth about 780 coins all told, so a few hundred is a '
+      + 'week or two of practice.';
+    paintRewardForm();
+  }
+
+  function paintRewardForm(){
+    var editing = !!editingReward;
+    el.addLabel.textContent = editing ? 'Change this one' : 'Add one';
+    el.rwSave.textContent = editing ? 'Save it' : 'Put it up';
+    el.rwCancel.classList.toggle('hide', !editing);
+    el.rwRemove.classList.toggle('hide', !editing);
+    el.rwErr.textContent = '';
+  }
+  function editReward(r){
+    sfx.tap();
+    editingReward = r.id;
+    el.rwEmoji.value = r.emoji || '';
+    el.rwTitle.value = r.title;
+    el.rwCost.value = String(r.cost);
+    el.rwRepeats.value = r.repeats;
+    paintParent();
+  }
+  function clearRewardForm(){
+    editingReward = '';
+    el.rwEmoji.value = ''; el.rwTitle.value = ''; el.rwCost.value = '';
+    el.rwRepeats.value = 'any';
+    paintRewardForm();
+  }
+  el.rwCancel.addEventListener('click', function(){ sfx.tap(); clearRewardForm(); paintParent(); });
+
+  function parentPost(path, body, done){
+    body.token = me.token; body.code = parentCode;
+    apiCall(path, { method: 'POST', body: body }).then(function(res){
+      if (!res){ el.rwErr.textContent = 'No connection just now'; return; }
+      if (!res.ok){
+        var msg = (res.data && res.data.error) || 'That did not work';
+        el.rwErr.textContent = msg;
+        // the code was changed on another device, so send them back to the gate
+        if (res.status === 401){ parentData = null; paintGate(); }
+        return;
+      }
+      parentData = res.data;
+      if (done) done();
+      paintParent();
+    });
+  }
+
+  el.rwSave.addEventListener('click', function(){
+    var title = el.rwTitle.value.trim();
+    var cost = parseInt(el.rwCost.value, 10);
+    if (title.length < 2){ el.rwErr.textContent = 'Give it a name'; return; }
+    if (!(cost >= 0)){ el.rwErr.textContent = 'Give it a price in coins'; return; }
+    sfx.tap();
+    parentPost('/parent/reward', {
+      id: editingReward, title: title, emoji: el.rwEmoji.value.trim(),
+      cost: cost, repeats: el.rwRepeats.value
+    }, clearRewardForm);
+  });
+  el.rwRemove.addEventListener('click', function(){
+    if (!editingReward) return;
+    sfx.tap();
+    parentPost('/parent/reward', { id: editingReward, remove: true }, clearRewardForm);
+  });
+  function decide(id, ok){
+    sfx.tap();
+    parentPost('/parent/decide', { id: id, ok: ok }, function(){
+      toast(ok ? 'Marked as given' : 'Coins put back');
+    });
+  }
+  el.mailSave.addEventListener('click', function(){
+    sfx.tap();
+    el.mailMsg.textContent = 'Saving...';
+    apiCall('/parent/email', {
+      method: 'POST',
+      body: { token: me.token, code: parentCode, email: el.mailField.value.trim() }
+    }).then(function(res){
+      if (!res){ el.mailMsg.textContent = 'No connection just now'; return; }
+      if (!res.ok){ el.mailMsg.textContent = (res.data && res.data.error) || 'That did not work'; return; }
+      el.mailMsg.textContent = res.data.email ? 'Saved, notes go to ' + res.data.email
+                                              : 'Saved, no notes will be sent';
+    });
+  });
+
   function refreshMe(){
     if (!me.token) return;
     apiCall('/me?token=' + encodeURIComponent(me.token)).then(function(res){
@@ -1661,6 +2394,7 @@
       if (!res.ok){ forgetPlayer(); return; }
       me.name = res.data.name; me.bests = res.data.bests || [];
       me.hasCheer = !!res.data.hasCheer;
+      takePocket(res.data);
       saveMe(); adoptRecord(res.data.misses); paintWho();
     });
   }
@@ -2570,14 +3304,28 @@
   function drawSky(){
     var c = ctx, w = rng.w, h = rng.h, hz = rng.horizon;
     var top = Math.min(hz, h);
-    var sky = c.createLinearGradient(0, Math.min(0, hz - h), 0, Math.max(top, 1));
-    sky.addColorStop(0, '#79c2ff'); sky.addColorStop(1, '#dff0ff');
-    c.fillStyle = sky; c.fillRect(0, 0, w, h);
+    // a bought sky is only a set of colours; the drawing underneath is the same
+    var k = sky() || {top:'#79c2ff', bot:'#dff0ff', sun:'#ffe488',
+                      cloud:'rgba(255,255,255,.85)', hill:'#a9d6a0'};
+    var g = c.createLinearGradient(0, Math.min(0, hz - h), 0, Math.max(top, 1));
+    g.addColorStop(0, k.top); g.addColorStop(1, k.bot);
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+
+    // stars only in the one sky that has any, and only above the skyline
+    if (k.stars){
+      c.fillStyle = 'rgba(255,255,255,.85)';
+      for (var si = 0; si < rng.tufts.length; si += 3){
+        var t = rng.tufts[si];
+        var sp = project(Math.sin(t.x * 0.7) * 260, EYE + 40 + (t.k * 90), Math.cos(t.x * 0.7) * 260);
+        if (!sp || sp.y > hz - 4) continue;
+        c.fillRect(sp.x, sp.y, 1.6 * rng.s, 1.6 * rng.s);
+      }
+    }
 
     // the sun and the clouds go through the same projection as everything else
     var p = project(Math.sin(-0.55) * 300, EYE + 120, Math.cos(-0.55) * 300);
-    if (p){ c.fillStyle = '#ffe488'; c.beginPath(); c.arc(p.x, p.y, 20 * rng.s, 0, 6.2832); c.fill(); }
-    c.fillStyle = 'rgba(255,255,255,.85)';
+    if (p){ c.fillStyle = k.sun; c.beginPath(); c.arc(p.x, p.y, 20 * rng.s, 0, 6.2832); c.fill(); }
+    c.fillStyle = k.cloud;
     for (var i = 0; i < rng.clouds.length; i++){
       var cl = rng.clouds[i];
       var q = project(Math.sin(cl.b) * cl.d, EYE + cl.h, Math.cos(cl.b) * cl.d);
@@ -2591,7 +3339,7 @@
     }
     // hills sitting on the skyline, shifted by however far round he has turned
     var off = rng.yaw * rng.f * 0.55;
-    c.fillStyle = '#a9d6a0';
+    c.fillStyle = k.hill;
     c.beginPath(); c.moveTo(-4, hz + 2);
     for (var x = -4; x <= rng.w + 4; x += 12){
       var a = (x + off) / (78 * rng.s);
@@ -2603,11 +3351,13 @@
   function drawGround(){
     var c = ctx, w = rng.w, h = rng.h, hz = rng.horizon;
     if (hz >= h) return;
+    var k = sky();
     var g = c.createLinearGradient(0, Math.max(0, hz), 0, h);
-    g.addColorStop(0, '#8ecb7d'); g.addColorStop(1, '#5da44f');
+    g.addColorStop(0, (k && k.gtop) || '#8ecb7d');
+    g.addColorStop(1, (k && k.gbot) || '#5da44f');
     c.fillStyle = g; c.fillRect(0, Math.max(0, hz), w, h - Math.max(0, hz));
 
-    c.strokeStyle = 'rgba(52,110,44,.5)'; c.lineCap = 'round';
+    c.strokeStyle = (k && k.tuft) || 'rgba(52,110,44,.5)'; c.lineCap = 'round';
     for (var i = 0; i < rng.tufts.length; i++){
       var t = rng.tufts[i];
       var p = project(t.x, 0, t.z);
@@ -2737,6 +3487,8 @@
 
   function drawArrows(){
     var c = ctx;
+    // a bought set of arrows is three colours: the trail, the shaft and the tip
+    var t = trail() || {trail:'rgba(255,255,255,.45)', shaft:'#7a5330', head:'#59606b'};
     drawStuckGround();
     for (var i = 0; i < rng.arrows.length; i++){
       var a = rng.arrows[i];
@@ -2746,20 +3498,31 @@
         if (q) pts.push(q);
       }
       if (pts.length > 1){
-        c.strokeStyle = 'rgba(255,255,255,.45)';
         c.lineWidth = Math.max(1, 0.05 * rng.f / Math.max(1, pts[pts.length - 1].z));
-        c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
-        for (k = 1; k < pts.length; k++) c.lineTo(pts[k].x, pts[k].y);
-        c.stroke();
+        if (t.rainbow){
+          // one short segment per colour rather than a gradient, because the
+          // trail bends and a linear gradient would not follow it round
+          var hues = ['#ff5a5a','#ffa93b','#ffe14d','#57d16a','#4aa8ff','#a06bff'];
+          for (k = 1; k < pts.length; k++){
+            c.strokeStyle = hues[k % hues.length];
+            c.beginPath(); c.moveTo(pts[k - 1].x, pts[k - 1].y);
+            c.lineTo(pts[k].x, pts[k].y); c.stroke();
+          }
+        } else {
+          c.strokeStyle = t.trail;
+          c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
+          for (k = 1; k < pts.length; k++) c.lineTo(pts[k].x, pts[k].y);
+          c.stroke();
+        }
       }
       var p = project(a.x, a.y, a.z);
       if (!p) continue;
       var kk = rng.f / p.z;
       // seen from behind it is a dart getting smaller, not a side-on arrow
       var back = project(a.x - a.vx * 0.035, a.y - a.vy * 0.035, a.z - a.vz * 0.035);
-      c.strokeStyle = '#7a5330'; c.lineWidth = Math.max(1.4, 0.05 * kk);
+      c.strokeStyle = t.shaft; c.lineWidth = Math.max(1.4, 0.05 * kk);
       if (back){ c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(back.x, back.y); c.stroke(); }
-      c.fillStyle = '#59606b';
+      c.fillStyle = t.head;
       c.beginPath(); c.arc(p.x, p.y, Math.max(1.4, 0.05 * kk), 0, 6.2832); c.fill();
     }
   }
@@ -3000,6 +3763,8 @@
     el.play.classList.toggle('on', screen === 'play');
     el.doneScreen.classList.toggle('on', screen === 'done');
     el.whoScreen.classList.toggle('on', screen === 'who');
+    el.shopScreen.classList.toggle('on', screen === 'shop');
+    el.parentScreen.classList.toggle('on', screen === 'parent');
   }
   function round(){ return state.rounds[state.roundIdx]; }
 
@@ -3202,6 +3967,18 @@
         toast(data.isBest ? 'New best! ' + fmt(data.score.total) + ' points'
                           : fmt(data.score.total) + ' points, best is ' + fmt(data.best));
       }, 1750);
+      if (data.coins){
+        shop.coins = data.coins.balance;
+        shop.capLeft = data.coins.capLeft;
+        paintPurse();
+        // and the coins after the points, since one is worked out from the other
+        if (data.coins.got > 0){
+          setTimeout(function(){
+            toast('🪙 ' + data.coins.got + ' coins' +
+                  (data.coins.bonus > 0 ? ', ' + data.coins.bonus + ' for beating your best' : ''));
+          }, 3350);
+        }
+      }
     });
   }
 
@@ -3301,7 +4078,8 @@
         : state.bestStreak >= 3 ? 'Best streak ' + state.bestStreak + ' in a row' : '';
       el.againBtn.textContent = 'Go again';
     }
-    el.doneTime.textContent = 'in ' + m + ':' + (s < 10 ? '0' : '') + s;
+    el.doneTime.textContent = 'in ' + m + ':' + (s < 10 ? '0' : '') + s
+      + (me.token ? '  ·  🪙 ' + fmt(shop.coins) : '');
     paintMissBox(el.missBox, el.missList, state.missed);
 
     if (!state.caught) sfx.done();
@@ -3362,9 +4140,9 @@
   paintHome();
   applyMute();
   paintWho();
-  // both are best-effort; if the network is out the game just plays offline
+  // all best-effort; if the network is out the game just plays offline
   refreshMe();
-  if (me.token) refreshBoard();
+  if (me.token){ refreshBoard(); refreshShop(); }
 })();
 </script>
 
