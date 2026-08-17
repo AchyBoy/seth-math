@@ -413,6 +413,15 @@
     letter-spacing:.06em;text-transform:uppercase}
 
   .prizes{display:flex;flex-direction:column;gap:8px}
+  .wish{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+  .wishLab{display:block;font-weight:800;margin-bottom:6px}
+  .wishRow{display:flex;gap:8px}
+  .wishRow input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 12px;
+    border:2px solid var(--line);border-radius:12px;background:#fff;color:inherit}
+  .wishRow input:focus{outline:none;border-color:var(--blue)}
+  .wishRow button{font:inherit;font-weight:800;padding:10px 18px;border:0;border-radius:12px;
+    background:var(--blue);color:#fff;cursor:pointer}
+  .wishRow button:disabled{opacity:.45;cursor:default}
   .prize{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
     border:2px solid var(--line);background:#fff;border-radius:16px;padding:12px 14px}
   .prize .pic{font-size:26px;line-height:1;flex:none;width:32px;text-align:center}
@@ -676,6 +685,20 @@
     <div class="prizes" id="prizeList"></div>
     <p class="note">These are real things a grown-up has put up. Ask for one and the
       coins are spent while they think about it. If they say no you get them back.</p>
+
+    <!-- Asking for something that is not on the shelf. Free on purpose: only a
+         grown-up can say what a trip to the zoo is worth, so this sends the idea
+         rather than a price, and they can put it up properly. -->
+    <div class="wish">
+      <label class="wishLab" for="wishText">Want something that is not here?</label>
+      <div class="wishRow">
+        <input id="wishText" type="text" maxlength="80" autocomplete="off"
+               placeholder="A trip to the zoo…" />
+        <button type="button" id="wishGo">Ask</button>
+      </div>
+      <p class="note" id="wishNote">This does not cost any coins. A grown-up decides
+        if it goes on the list, and what it is worth.</p>
+    </div>
   </div>
 
   <div class="block hide" id="lookBlock">
@@ -1242,7 +1265,7 @@
    'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
    'purseBtn','coinCount','shopWord','waitDot',
    'shopScreen','shopCoins','capNote','waitBlock','waitList','shopTabs',
-   'prizeBlock','prizeList','lookBlock','skyList','trailList','pairList','shopBack','parentBtn',
+   'prizeBlock','prizeList','wishText','wishGo','lookBlock','skyList','trailList','pairList','shopBack','parentBtn',
    'parentScreen','codeBlock','codeLabel','codeField','codeNote','codeErr','codeGo',
    'pendBlock','pendList','rewardBlock','rewardList','addLabel',
    'rwEmoji','rwTitle','rwCost','rwRepeats','rwErr','rwSave','rwCancel','rwRemove','rwGuide',
@@ -2159,6 +2182,36 @@
       });
   }
 
+  /* Asking for something that is not on the shelf.
+
+     No arm() double-tap here, unlike every other row on this screen. That
+     guard exists because those spend coins and a mis-tap costs real money to
+     a child; a wish spends nothing, so making them tap twice would be
+     ceremony for its own sake. What it does need is a guard against the
+     double-fire a slow connection invites, hence the disable. */
+  function sendWish(){
+    var t = (el.wishText.value || '').trim();
+    if (t.length < 2){ el.wishText.focus(); return; }
+    el.wishGo.disabled = true;
+    apiCall('/wish', { method: 'POST', body: { token: me.token, title: t } })
+      .then(function(res){
+        el.wishGo.disabled = false;
+        if (!res){ toast('No connection just now'); return; }
+        if (!res.ok){ toast((res.data && res.data.error) || 'That did not work'); return; }
+        el.wishText.value = '';
+        el.wishText.blur();
+        sfx.escape();
+        toast('Sent! A grown-up will have a look.', true);
+        refreshShop();
+      });
+  }
+  el.wishGo.addEventListener('click', function(){ sfx.tap(); sendWish(); });
+  // Enter sends it, because the on-screen keyboard's blue key is the obvious
+  // thing to press and having it do nothing reads as broken.
+  el.wishText.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter'){ ev.preventDefault(); sendWish(); }
+  });
+
   function openShop(){
     if (!me.token){ openWho(); return; }
     sfx.tap(); armed = '';
@@ -2264,20 +2317,43 @@
     el.pendBlock.classList.toggle('hide', waiting.length === 0);
     el.pendList.innerHTML = '';
     waiting.forEach(function(r){
+      // A wish carries no rewardId: it was typed, not bought off the shelf, and
+      // nothing has been spent on it. Saying "0 coins" would read as free, so
+      // it says what it actually is and offers the useful answer, which is a
+      // price rather than a yes.
+      var wish = !r.rewardId;
       var d = document.createElement('div');
       d.className = 'req pending';
       d.innerHTML = '<span class="pic">' + esc(r.emoji || '🎁') + '</span>' +
         '<span class="what">' + esc(r.title) + '<br><em style="font-style:normal;font-size:13px;color:var(--muted)">'
-        + fmt(r.cost) + ' coins</em></span>';
+        + (wish ? 'wishing for this, nothing spent' : fmt(r.cost) + ' coins') + '</em></span>';
       var yn = document.createElement('span');
       yn.className = 'yn';
-      var yes = document.createElement('button');
-      yes.type = 'button'; yes.className = 'yes'; yes.textContent = 'Given';
-      yes.addEventListener('click', function(){ decide(r.id, true); });
+      if (wish){
+        // Puts the wish into the reward form with a price left blank, so the
+        // answer to "can I have a trip to the zoo" is "yes, for 400 coins"
+        // without retyping it. The wish itself stays waiting until decided.
+        var shelve = document.createElement('button');
+        shelve.type = 'button'; shelve.className = 'yes'; shelve.textContent = 'Put it up';
+        shelve.addEventListener('click', function(){
+          sfx.tap();
+          el.rwTitle.value = r.title;
+          el.rwCost.value = '';
+          el.rwErr.textContent = '';
+          el.rwCost.focus();
+          el.rwCost.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+        yn.appendChild(shelve);
+      } else {
+        var yes = document.createElement('button');
+        yes.type = 'button'; yes.className = 'yes'; yes.textContent = 'Given';
+        yes.addEventListener('click', function(){ decide(r.id, true); });
+        yn.appendChild(yes);
+      }
       var no = document.createElement('button');
-      no.type = 'button'; no.className = 'no'; no.textContent = 'No';
+      no.type = 'button'; no.className = 'no'; no.textContent = wish ? 'Clear' : 'No';
       no.addEventListener('click', function(){ decide(r.id, false); });
-      yn.appendChild(yes); yn.appendChild(no);
+      yn.appendChild(no);
       d.appendChild(yn);
       el.pendList.appendChild(d);
     });
@@ -3571,7 +3647,17 @@
     var U = Math.min(w, h * 0.62);
     var tipX = cx - 0.40 * w - sway, tipY = h - 0.60 * U + bob;
     var botX = cx - 0.10 * w - sway, botY = h + 0.05 * U + bob;
-    var nockX = cx - 0.28 * w - sway + pull * 0.55, nockY = h - 0.24 * U + bob + pull * 0.4;
+    /* The nock rides ON the string, between the two limb tips, and WHICH SIDE
+       of that line it sits on is the whole thing. The string is pulled toward
+       the ARCHER, and on screen that is to the RIGHT: the bow is held out to
+       his left and his own face is at the camera. It used to sit 0.046w to the
+       LEFT of the line — the same side the limb bows — so the stave and the
+       string curved together and the whole thing read as a bow held backwards.
+       Interpolating along the tips also means sway and bob come along for free
+       instead of being reapplied, and it cannot drift if the limb moves. */
+    var nockT = 0.554;                 // how far down the string the arrow sits
+    var nockX = tipX + (botX - tipX) * nockT + 9 * s - pull * 0.55;
+    var nockY = tipY + (botY - tipY) * nockT + pull * 0.4;
 
     c.save();
     c.lineCap = 'round';
