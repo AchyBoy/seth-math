@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.0">
+<meta name="x-cards-version" content="4.1">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -705,7 +705,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.0</p>
+  <p class="foot">v4.1</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -2955,8 +2955,14 @@
     });
   }
   function refreshBoard(){
-    apiCall('/board?pace=' + state.pace + '&subject=' + state.subject).then(function(res){
+    var asked = state.subject;
+    apiCall('/board?pace=' + state.pace + '&subject=' + asked).then(function(res){
       if (res && res.ok) me.leaders = res.data.leaders || [];
+      /* The server echoes back the subject it actually understood, and
+         anything it does not recognise it answers as 'times'. That is the
+         only way from out here to tell a server that knows about a subject
+         from one that is quietly filing it under the tables. */
+      if (res && res.ok && res.data && res.data.subject) knownSubject[asked] = (res.data.subject === asked);
       paintScores();
     });
   }
@@ -3076,9 +3082,18 @@
   // Called at the end of every round, however it ended. Silent on failure by
   // design. The server decides whether what is being posted is worth points;
   // a round that was walked away from is posted purely for the history.
+  /* Which subjects the server has been heard to understand. A subject it has
+     not answered to yet is sent as practice: finished rounds still land in the
+     history, but the server will not let one set a score, so a week of
+     spelling can never turn up as a record on the 1s. */
+  var knownSubject = { times: true, blends: true, scripture: true };
+
   function postRound(body, onResult){
     if (!me.token){ onResult(null); return; }
     body.token = me.token;
+    // unknown counts as not understood: a round that misses a score because the
+    // board call failed can simply be played again, a wrong record cannot be
+    if (knownSubject[body.subject] !== true) body.practice = true;
     apiCall('/score', { method: 'POST', body: body }).then(function(res){
       // A rejected session used to vanish silently and the child would finish
       // table after table with nothing saved. Say so instead.
