@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.7">
+<meta name="x-cards-version" content="4.8">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -387,16 +387,19 @@
   .sheet .slot svg{height:34px;width:auto;max-width:100%}
   .sheet .flag{flex:none;width:22px;text-align:center;font-size:13px;color:#444}
   .sheet .foot{margin-top:10px;font-size:11px;color:#555}
-  /* ⚠️ NOTHING here may hide the app on a media query. If a browser decides
-     these rules apply when it is not printing, the game disappears and leaves
-     a white page with no way to tell why. Hiding is done by a class the page
-     puts on itself for the moment it prints, and takes off again. @page sits
-     at the top level rather than nested, which is the better supported shape. */
+  /* ⚠️ The print has to come out right however it was started: our own
+     button, Share > Print, or ⌘P. A class only our button adds would print
+     the game itself for the other two, which is exactly what it did. So the
+     media query does the hiding, and the sheet is kept built at all times so
+     there is never a moment where printing catches it empty.
+     `.screen.on` rather than `.screen`, because `.screen.on{display:flex}`
+     would otherwise win on specificity and nothing would be hidden.
+     @page sits at the top level, which is the better supported shape. */
   @page{margin:14mm}
-  body.printing{background:#fff}
-  body.printing .screen,body.printing .toast{display:none}
-  body.printing .sheet{display:block}
   @media print{
+    body{background:#fff}
+    .screen.on,.toast,#boom{display:none}
+    .sheet{display:block}
     .sheet svg{stroke:#111}
   }
 
@@ -782,7 +785,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.7</p>
+  <p class="foot">v4.8</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -5295,6 +5298,7 @@
     if (sheetInk.unit !== u){ sheetInk = { unit: u, words: {} }; }
     sheetInk.words[c.w] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
     saveSheet();
+    buildSheet();     // kept current, so Share > Print never catches it empty
   }
 
   function inkMark(ok){
@@ -5378,18 +5382,11 @@
       + 'more than one go.</p>';
     return true;
   }
-  function unprint(){ document.body.classList.remove('printing'); }
   el.printBtn.addEventListener('click', function(){
     unlock();
     if (!buildSheet()) return;
-    document.body.classList.add('printing');
-    setTimeout(function(){
-      try { window.print(); } catch(e){}
-      // afterprint is not fired everywhere, so the timer is the one that counts
-      setTimeout(unprint, 1200);
-    }, 60);
+    setTimeout(function(){ try { window.print(); } catch(e){} }, 60);
   });
-  window.addEventListener('afterprint', unprint);
 
 
 
@@ -5515,6 +5512,7 @@
     try { el.wInput.blur(); } catch(e){}
     document.body.classList.remove('write', 'listening', 'hand');
     el.printBtn.classList.toggle('hide', !hasSheet());
+    if (hasSheet()) buildSheet();
     // whatever round was underway when this screen arrived. Cleared rounds
     // logged themselves on the way out, and roundLogged stops a second line.
     logRound(state.caught ? 'caught' : 'quit');
@@ -5609,6 +5607,9 @@
   buildChips();
   buildPairs();
   paintHome();
+  // built once on the way in, so a Share > Print straight after a reload
+  // finds last night's page rather than a blank one
+  if (hasSheet()) buildSheet();
   applyMute();
   paintWho();
   // all best-effort; if the network is out the game just plays offline
