@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.6">
+<meta name="x-cards-version" content="4.7">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -288,8 +288,12 @@
      Its own box rather than the flip card, because the card is a 3D flip and
      this needs the keyboard up with everything above it. The box is never
      blurred between cards, so the keyboard stays put for the whole round. */
-  .write{display:none;flex-direction:column;gap:12px;padding-bottom:6px}
-  body.write .write{display:flex}
+  /* ⚠️ This panel used to be called .write, which is also the class the body
+     wears in this mode, so `.write{display:none}` matched the BODY and took
+     the entire page off the screen. A class that switches a mode on the body
+     must never share a name with a class on an element. */
+  .wpanel{display:none;flex-direction:column;gap:12px;padding-bottom:6px}
+  body.write .wpanel{display:flex}
   body.write .stage,body.write .hint,body.write .grade,body.write .next,
   body.write .choices{display:none}
   .wtop{display:flex;flex-direction:column;align-items:center;gap:8px;
@@ -778,7 +782,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.6</p>
+  <p class="foot">v4.7</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1000,7 +1004,7 @@
        between cards so the keyboard stays put for the whole round, and it
        turns off every iOS helper, or the phone would quietly correct his
        spelling for him and the whole exercise would be pointless. -->
-  <div class="write" id="writeBox">
+  <div class="wpanel" id="writeBox">
     <div class="wtop">
       <p class="wclue hide" id="wClue"></p>
       <div class="wword" id="wWord"><span class="word" id="wText"></span><span class="blank" id="wBlank"></span></div>
