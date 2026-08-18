@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.3">
+<meta name="x-cards-version" content="4.4">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -766,7 +766,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.3</p>
+  <p class="foot">v4.4</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1078,7 +1078,11 @@
   /* If anything in here throws, the screen it was painting can end up empty
      and the page looks broken with nothing to say why. This puts the message
      somewhere it can be read off a photo, which is how these get reported. */
-  window.addEventListener('error', function(ev){
+  window.addEventListener('unhandledrejection', function(ev){
+    try { window.dispatchEvent(new ErrorEvent('error',
+      { message: 'promise: ' + ((ev.reason && ev.reason.message) || ev.reason) })); } catch(e){}
+  });
+  function showBoom(text){
     try {
       var bar = document.getElementById('boom');
       if (!bar){
@@ -1087,11 +1091,15 @@
         bar.setAttribute('style', 'position:fixed;left:0;right:0;top:0;z-index:9999;'
           + 'background:#e0524a;color:#fff;font:600 13px/1.35 -apple-system,sans-serif;'
           + 'padding:10px 12px;white-space:pre-wrap');
+        bar.addEventListener('click', function(){ bar.parentNode.removeChild(bar); });
         (document.body || document.documentElement).appendChild(bar);
       }
-      bar.textContent = 'Something broke: ' + (ev.message || 'unknown')
-        + '\n' + String(ev.filename || '').split('/').pop() + ' line ' + (ev.lineno || '?');
+      bar.textContent = text;
     } catch(e){}
+  }
+  window.addEventListener('error', function(ev){
+    showBoom('Something broke: ' + (ev.message || 'unknown')
+      + '\n' + String(ev.filename || '').split('/').pop() + ' line ' + (ev.lineno || '?'));
   });
 
   var MIN = 1, MAX = 12, PER_TABLE = MAX - MIN + 1;
@@ -3521,6 +3529,39 @@
     return out;
   }
 
+  /* ⚠️ A written word and a tapped question are wildly different heights, and
+     swapping from the tall one to the short one leaves the window scrolled
+     past the end of a page that is now shorter than the scroll position. What
+     you see is a screenful of nothing, with no error, because nothing went
+     wrong: you are simply looking below the game.
+
+     So: if the play screen fits the window and the window is scrolled anyway,
+     that is the bug and it gets put back. If the content genuinely is taller
+     than the window, which is what a phone with the keyboard up looks like,
+     it is left alone. */
+  setInterval(function(){
+    if (!el.play.classList.contains('on')) return;
+    var doc = document.documentElement;
+    var over = doc.scrollHeight - window.innerHeight;
+    var at = window.pageYOffset || doc.scrollTop || 0;
+    if (at > 24 && over < 60) toTop();
+
+    /* And if a round is running with nothing to look at, say so with the
+       numbers, rather than showing an empty white page and leaving it to be
+       guessed at from a photograph. */
+    if (document.body.classList.contains('shoot')) return;
+    var box = function(node){
+      var r = node.getBoundingClientRect();
+      return (r.width > 2 && r.height > 2) ? 1 : 0;
+    };
+    if (box(el.writeBox) || box(el.choices) || box(el.card)) return;
+    showBoom('Nothing on screen. body=[' + document.body.className + ']'
+      + '\nwrite=' + getComputedStyle(el.writeBox).display
+      + ' ink=' + getComputedStyle(el.inkBox).display
+      + ' card=' + getComputedStyle(el.card).display
+      + '\nscroll=' + Math.round(at) + ' doc=' + doc.scrollHeight + ' win=' + window.innerHeight);
+  }, 1200);
+
   /* ---------- per card timer ---------- */
   var timerId = null, deadline = 0;
   function stopTimer(){ if (timerId){ cancelAnimationFrame(timerId); timerId = null; } }
@@ -4707,6 +4748,7 @@
   }
 
   function paintCard(){
+    toTop();
     var c = card();
     var text = cardFace(c);
     var answer = cardAnswer(c);
