@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.2">
+<meta name="x-cards-version" content="4.3">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -766,7 +766,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.2</p>
+  <p class="foot">v4.3</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1074,6 +1074,25 @@
 <script>
 (function(){
   'use strict';
+
+  /* If anything in here throws, the screen it was painting can end up empty
+     and the page looks broken with nothing to say why. This puts the message
+     somewhere it can be read off a photo, which is how these get reported. */
+  window.addEventListener('error', function(ev){
+    try {
+      var bar = document.getElementById('boom');
+      if (!bar){
+        bar = document.createElement('div');
+        bar.id = 'boom';
+        bar.setAttribute('style', 'position:fixed;left:0;right:0;top:0;z-index:9999;'
+          + 'background:#e0524a;color:#fff;font:600 13px/1.35 -apple-system,sans-serif;'
+          + 'padding:10px 12px;white-space:pre-wrap');
+        (document.body || document.documentElement).appendChild(bar);
+      }
+      bar.textContent = 'Something broke: ' + (ev.message || 'unknown')
+        + '\n' + String(ev.filename || '').split('/').pop() + ' line ' + (ev.lineno || '?');
+    } catch(e){}
+  });
 
   var MIN = 1, MAX = 12, PER_TABLE = MAX - MIN + 1;
   var STORE = 'seth-cards-settings-v4';
@@ -4607,7 +4626,16 @@
     window.addEventListener('resize', function(){ if (rng.on) rangeSize(); });
   }
   /* ---------- play ---------- */
+  /* ⚠️ Screens are swapped, not navigated, so the scroll position carries
+     over from the one before. The home screen on an iPad is a long way taller
+     than the play screen, and going from the bottom of it into a round left
+     him parked in empty space below the game, which reads as a blank page. */
+  function toTop(){
+    try { window.scrollTo(0, 0); } catch(e){}
+    try { document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch(e){}
+  }
   function show(screen){
+    toTop();
     el.home.classList.toggle('on', screen === 'home');
     el.play.classList.toggle('on', screen === 'play');
     el.doneScreen.classList.toggle('on', screen === 'done');
