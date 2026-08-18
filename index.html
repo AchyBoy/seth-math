@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.5">
+<meta name="x-cards-version" content="4.6">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -383,11 +383,16 @@
   .sheet .slot svg{height:34px;width:auto;max-width:100%}
   .sheet .flag{flex:none;width:22px;text-align:center;font-size:13px;color:#444}
   .sheet .foot{margin-top:10px;font-size:11px;color:#555}
+  /* ⚠️ NOTHING here may hide the app on a media query. If a browser decides
+     these rules apply when it is not printing, the game disappears and leaves
+     a white page with no way to tell why. Hiding is done by a class the page
+     puts on itself for the moment it prints, and takes off again. @page sits
+     at the top level rather than nested, which is the better supported shape. */
+  @page{margin:14mm}
+  body.printing{background:#fff}
+  body.printing .screen,body.printing .toast{display:none}
+  body.printing .sheet{display:block}
   @media print{
-    @page{margin:14mm}
-    body{background:#fff}
-    .screen,.toast{display:none !important}
-    .sheet{display:block !important}
     .sheet svg{stroke:#111}
   }
 
@@ -773,7 +778,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.5</p>
+  <p class="foot">v4.6</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -3600,10 +3605,13 @@
       return (r.width > 2 && r.height > 2) ? 1 : 0;
     };
     if (box(el.writeBox) || box(el.choices) || box(el.card)) return;
+    var printMQ = '?';
+    try { printMQ = window.matchMedia('print').matches ? 'YES' : 'no'; } catch(e){}
     showBoom('Nothing on screen. body=[' + document.body.className + ']'
-      + '\nwrite=' + getComputedStyle(el.writeBox).display
+      + '\nwrite=' + getComputedStyle(el.writeBox).display + ' ' + sizeOf(el.writeBox)
       + ' ink=' + getComputedStyle(el.inkBox).display
-      + ' card=' + getComputedStyle(el.card).display
+      + '\nplay=' + getComputedStyle(el.play).display + ' ' + sizeOf(el.play)
+      + ' body=' + sizeOf(document.body) + ' printMQ=' + printMQ
       + '\nscroll=' + Math.round(at) + ' doc=' + doc.scrollHeight + ' win=' + window.innerHeight);
   }, 1200);
 
@@ -5366,11 +5374,18 @@
       + 'more than one go.</p>';
     return true;
   }
+  function unprint(){ document.body.classList.remove('printing'); }
   el.printBtn.addEventListener('click', function(){
     unlock();
     if (!buildSheet()) return;
-    setTimeout(function(){ window.print(); }, 60);
+    document.body.classList.add('printing');
+    setTimeout(function(){
+      try { window.print(); } catch(e){}
+      // afterprint is not fired everywhere, so the timer is the one that counts
+      setTimeout(unprint, 1200);
+    }, 60);
   });
+  window.addEventListener('afterprint', unprint);
 
 
 
