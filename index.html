@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="3.9">
+<meta name="x-cards-version" content="4.0">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -284,6 +284,58 @@
   @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}
     30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
 
+  /* ---------- spelling: he writes it ----------
+     Its own box rather than the flip card, because the card is a 3D flip and
+     this needs the keyboard up with everything above it. The box is never
+     blurred between cards, so the keyboard stays put for the whole round. */
+  .write{display:none;flex-direction:column;gap:12px;padding-bottom:6px}
+  body.write .write{display:flex}
+  body.write .stage,body.write .hint,body.write .grade,body.write .next,
+  body.write .choices{display:none}
+  .wtop{display:flex;flex-direction:column;align-items:center;gap:8px;
+    border:2px solid var(--line);border-radius:26px;background:#fff;
+    padding:16px 14px;min-height:96px;justify-content:center;
+    box-shadow:0 10px 26px rgba(32,36,46,.08)}
+  .wclue{font-size:16px;color:var(--muted);text-align:center;line-height:1.35}
+  .wclue.hide{display:none}
+  .wword{font-size:clamp(32px,9vw,48px);font-weight:600;letter-spacing:.02em;
+    line-height:1.1;text-align:center;min-height:1.1em}
+  .wword .blank{color:#c9c4b8;letter-spacing:.16em}
+  .wword.gone .word{display:none}
+  .wword.shown .blank{display:none}
+  .wsay{border:2px solid var(--blue);border-radius:999px;background:var(--blue-soft);
+    color:var(--blue);font-size:17px;font-weight:600;padding:12px 22px;
+    display:none;align-items:center;gap:8px}
+  .wsay:active{transform:scale(.96)}
+  body.listening .wsay{display:inline-flex}
+
+  .wmark{min-height:30px;text-align:center;font-size:26px;font-weight:600;
+    letter-spacing:.06em;line-height:1.2}
+  .wmark .ok{color:var(--green)}
+  .wmark .no{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px}
+  .wmark .short{display:block;font-size:14px;font-weight:500;color:var(--muted);
+    letter-spacing:0;margin-top:2px}
+  /* 26px because anything under 16px makes iOS zoom the whole page in on focus */
+  .winput{width:100%;border:2px solid var(--line);background:#fff;border-radius:18px;
+    padding:15px 16px;font:600 26px/1.2 var(--font);color:var(--ink);text-align:center;
+    scroll-margin:90px 0;
+    letter-spacing:.04em;outline:none}
+  .winput:focus{border-color:var(--blue)}
+  .winput.good{border-color:var(--green);background:var(--green-soft)}
+  .winput.bad{border-color:var(--red);background:var(--red-soft);animation:shake .45s}
+  .whint{min-height:22px;text-align:center;font-size:15px;color:var(--muted)}
+  .whint.good{color:var(--green);font-weight:600}
+  .whint.bad{color:var(--red);font-weight:600}
+  .wrow{display:flex;gap:10px}
+  .wpeek{flex:none;border:2px solid var(--line);border-radius:20px;background:#fff;
+    padding:16px 18px;font-size:17px;font-weight:600;color:var(--muted);
+    box-shadow:0 4px 0 #ded8cc}
+  .wpeek:active{transform:translateY(3px);box-shadow:0 1px 0 #ded8cc}
+  .wpeek.hide{display:none}
+  .wgo{flex:1;background:var(--blue);color:#fff;border-radius:20px;padding:16px;
+    font-size:19px;font-weight:600;box-shadow:0 4px 0 var(--blue-dark)}
+  .wgo:active{transform:translateY(3px);box-shadow:0 1px 0 var(--blue-dark)}
+
   /* ---------- the archery range ----------
      Full screen. The canvas is a fixed layer behind everything and the rest of
      the play screen keeps its ordinary flow on top of it, which is why the
@@ -548,6 +600,7 @@
       <button type="button" class="opt on" data-subject="times">✖️ Times tables</button>
       <button type="button" class="opt" data-subject="blends">🔤 Blends</button>
       <button type="button" class="opt" data-subject="scripture">📖 Scriptures</button>
+      <button type="button" class="opt" data-subject="spelling">✏️ Spelling</button>
     </div>
   </div>
 
@@ -582,7 +635,28 @@
     <p class="note" id="setsNote"></p>
   </div>
 
-  <div class="block">
+  <div class="block hide" id="unitsBlock">
+    <p class="label">Which week</p>
+    <div class="chips" id="unitChips"></div>
+    <p class="note" id="unitNote"></p>
+  </div>
+
+  <div class="block hide" id="writeBlock">
+    <p class="label">How to practise</p>
+    <div class="opts" id="writeOpts">
+      <button type="button" class="opt on" data-write="copy">Copy it</button>
+      <button type="button" class="opt" data-write="peek">Peek-a-boo</button>
+      <button type="button" class="opt" data-write="listen">🔊 Say it</button>
+    </div>
+    <p class="note" id="writeNote"></p>
+    <p class="label" style="margin-top:22px">The worksheet questions</p>
+    <div class="opts" id="extraOpts">
+      <button type="button" class="opt on" data-extra="1">Put them in</button>
+      <button type="button" class="opt" data-extra="0">Just the words</button>
+    </div>
+  </div>
+
+  <div class="block" id="modeBlock">
     <p class="label">How to answer</p>
     <div class="opts" id="modeOpts">
       <button type="button" class="opt on" data-mode="flip">Flip the card</button>
@@ -631,7 +705,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v3.9</p>
+  <p class="foot">v4.0</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -846,6 +920,29 @@
   </div>
 
   <div class="choices" id="choices"></div>
+
+  <!-- ================= writing a spelling word =================
+       Deliberately not the flip card: this needs the keyboard up with the
+       word, the marking and the box all above it. The input is never blurred
+       between cards so the keyboard stays put for the whole round, and it
+       turns off every iOS helper, or the phone would quietly correct his
+       spelling for him and the whole exercise would be pointless. -->
+  <div class="write" id="writeBox">
+    <div class="wtop">
+      <p class="wclue hide" id="wClue"></p>
+      <div class="wword" id="wWord"><span class="word" id="wText"></span><span class="blank" id="wBlank"></span></div>
+      <button type="button" class="wsay" id="wSay">🔊 Hear it again</button>
+    </div>
+    <div class="wmark" id="wMark"></div>
+    <input class="winput" id="wInput" type="text" inputmode="text" name="spellword"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           enterkeyhint="done" maxlength="32" placeholder="write it here">
+    <p class="whint" id="wHint"></p>
+    <div class="wrow">
+      <button type="button" class="wpeek hide" id="wPeek">👀 Peek</button>
+      <button type="button" class="wgo" id="wCheck">Check it</button>
+    </div>
+  </div>
 
   <!-- The archery range fills the whole phone and everything else floats on
        top of it, so the field is the screen rather than a picture of one. The
@@ -1286,8 +1383,59 @@
   function sky(){ return SKIES[skin('sky')] || null; }
   function trail(){ return TRAILS[skin('trail')] || null; }
 
+  /* =========================================================
+     Spelling. One unit a week, off the sheet that comes home.
+     Next week is a new entry in SPELLING and nothing else:
+       words      what he has to write, each with a sentence so a
+                  homophone (plain, plane) is answerable out loud
+       vocab      the meaning is the clue and he writes the word
+       compounds  the two halves, for the matching questions
+       rule       the Catch This! line at the top of the sheet
+     The month questions work themselves out against MONTHS. The
+     compound halves are the one thing spelled out here, because
+     splitting a word in two safely is not a thing to guess at.
+     ========================================================= */
+  var MONTHS = ['January','February','March','April','May','June','July',
+                'August','September','October','November','December'];
+
+  var SPELLING = [
+    {
+      unit: 1,
+      rule: 'ai is usually used in the MIDDLE of a word. ay is usually used at the END of a word.',
+      words: [
+        ['praise',    'His teacher had nothing but praise for the work he did.'],
+        ['braid',     'She wore her hair in one long braid.'],
+        ['faith',     'He kept the faith even when it was hard.'],
+        ['airplane',  'The airplane landed right on time.'],
+        ['stairway',  'He went up the stairway two steps at a time.'],
+        ['today',     'We are going to the park today.'],
+        ['daydream',  'Do not daydream while the teacher is talking.'],
+        ['maybe',     'Maybe it will rain tonight.'],
+        ['backpack',  'His backpack was heavy with books.'],
+        ['homework',  'She finished her homework before supper.'],
+        ['bookshelf', 'Put the dictionary back on the bookshelf.'],
+        ['notebook',  'He wrote the date at the top of his notebook.'],
+        ['lunchbox',  'There was an apple in his lunchbox.'],
+        ['spelling',  'We have a spelling test on Friday.'],
+        ['August',    'School starts again in August.'],
+        ['September', 'His birthday is the third of September.'],
+        ['October',   'The leaves turn colour in October.']
+      ],
+      vocab: [
+        ['frail',    'weak'],
+        ['plain',    'flat land with few trees'],
+        ['proclaim', 'to declare']
+      ],
+      compounds: [
+        ['air','plane'], ['stair','way'], ['day','dream'], ['back','pack'],
+        ['home','work'], ['book','shelf'], ['note','book'], ['lunch','box']
+      ]
+    }
+  ];
+
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
+    units: [], write: 'copy', extras: true, tries: 0,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -1304,6 +1452,8 @@
    'troubleBlock','troubleList','practiceBtn','clearMissBtn',
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'topicsBlock','topicChips','allTopicsBtn','noTopicsBtn',
+   'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
+   'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
@@ -1345,6 +1495,56 @@
   function unlock(){
     var c = audio();
     if (c && c.state === 'suspended' && c.resume) c.resume();
+    primeSpeech();
+  }
+
+  /* ---------- the voice ----------
+     Only spelling uses it. iOS will not speak before a real gesture either,
+     so it is primed from the same unlock() the sound effects use. Voices
+     arrive asynchronously, so the pick is made fresh every time rather than
+     cached at load, when the list is usually still empty. The mute button is
+     for game noises: the word being read out is the QUESTION, so it still
+     speaks when the effects are off. */
+  var canSpeak = ('speechSynthesis' in window), speechPrimed = false;
+  function pickVoice(){
+    var vs = [];
+    try { vs = window.speechSynthesis.getVoices() || []; } catch(e){ return null; }
+    var want = ['Samantha', 'Karen', 'Moira', 'Daniel', 'Google US English'];
+    var i, j;
+    for (i = 0; i < want.length; i++){
+      for (j = 0; j < vs.length; j++) if (vs[j].name === want[i]) return vs[j];
+    }
+    for (j = 0; j < vs.length; j++) if ((vs[j].lang || '').slice(0, 2) === 'en') return vs[j];
+    return null;
+  }
+  function primeSpeech(){
+    if (!canSpeak || speechPrimed) return;
+    speechPrimed = true;
+    try {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.speak(new window.SpeechSynthesisUtterance(''));
+    } catch(e){ canSpeak = false; }
+  }
+  function speak(text, rate){
+    if (!canSpeak || !text) return false;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new window.SpeechSynthesisUtterance(String(text));
+      u.rate = rate || 0.8; u.pitch = 1; u.lang = 'en-US';
+      var v = pickVoice(); if (v) u.voice = v;
+      window.speechSynthesis.speak(u);
+      return true;
+    } catch(e){ return false; }
+  }
+  function hushVoice(){
+    if (!canSpeak) return;
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+  // word, sentence, word again, which is how a spelling test is actually given
+  function sayCard(c, bare){
+    if (!c) return false;
+    var line = c.m ? (c.w + '. ' + c.m + '. ' + c.w + '.') : (c.s ? (c.w + '. ' + c.s + ' ... ' + c.w + '.') : c.w);
+    return speak(bare ? c.w : line, bare ? 0.7 : 0.78);
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
@@ -1463,6 +1663,21 @@
   function keyToPair(k){ var p = k.split('×'); return [parseInt(p[0],10), parseInt(p[1],10)]; }
   // 's:ck:duck' is a sound card, '7×8' is a times card
   function isSoundKey(k){ return k.slice(0, 2) === 's:'; }
+  function isWordKey(k){ return k.slice(0, 2) === 'w:'; }
+  // 'w:praise' back to the card it came off, whichever unit that was
+  function spellByWord(w){
+    for (var i = 0; i < SPELLING.length; i++){
+      var u = SPELLING[i], j;
+      for (j = 0; j < u.words.length; j++){
+        if (u.words[j][0] === w) return { k: 'w', w: w, s: u.words[j][1] || '', u: u.unit };
+      }
+      var v = u.vocab || [];
+      for (j = 0; j < v.length; j++){
+        if (v[j][0] === w) return { k: 'w', w: w, m: v[j][1] || '', u: u.unit };
+      }
+    }
+    return null;
+  }
   function isVerseKey(k){ return k.slice(0, 2) === 'v:'; }
   function verseByRef(ref){
     for (var i = 0; i < SCRIPTURES.length; i++){
@@ -1474,18 +1689,24 @@
   }
   // what shows on the chip
   function prettyKey(k){
+    if (isWordKey(k)) return k.slice(2);
     if (isVerseKey(k)) return k.slice(2);
     if (isSoundKey(k)) { var p = k.split(':'); return p[1] + ' \u2192 ' + p[2]; }
     return k.replace('×', ' × ');
   }
   // what shows when you tap it open
   function keyAnswer(k){
+    if (isWordKey(k)){
+      var sc = spellByWord(k.slice(2));
+      return sc ? (sc.m || sc.s || sc.w) : '';
+    }
     if (isVerseKey(k)){ var v = verseByRef(k.slice(2)); return v ? v.t : ''; }
     if (isSoundKey(k)) return 'as in ' + k.split(':')[2];
     var p = keyToPair(k);
     return (p[0] * p[1]) ? String(p[0] * p[1]) : '';
   }
   function keyToCard(k){
+    if (isWordKey(k)) return spellByWord(k.slice(2));
     if (isVerseKey(k)) return verseByRef(k.slice(2));
     if (isSoundKey(k)) { var p = k.split(':'); return { s: p[1], w: [p[2]], pick: p[2] }; }
     return keyToPair(k);
@@ -1494,12 +1715,17 @@
 
   /* ---------- settings ---------- */
   function loadSettings(){
+    if (SPELLING.length) state.units = [SPELLING[SPELLING.length - 1].unit];
     state.tables = [];
     for (var n = MIN; n <= MAX; n++) state.tables.push(n);
     try {
       var s = JSON.parse(localStorage.getItem(STORE));
       if (s){
-        if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture') state.subject = s.subject;
+        if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture'
+            || s.subject === 'spelling') state.subject = s.subject;
+        if (Array.isArray(s.units) && s.units.length) state.units = s.units;
+        if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
+        if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
         if (Array.isArray(s.topics) && s.topics.length) state.topics = s.topics;
@@ -1517,6 +1743,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
+        units: state.units, write: state.write, extras: state.extras,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
         pair: state.pair, sound: state.sound
@@ -1538,6 +1765,21 @@
       var n = parseInt(b.getAttribute('data-n'), 10);
       var i = state.tables.indexOf(n);
       if (i === -1) state.tables.push(n); else state.tables.splice(i, 1);
+      sfx.tap(); paintHome(); saveSettings();
+    });
+
+    SPELLING.forEach(function(u){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip';
+      b.setAttribute('data-unit', String(u.unit));
+      b.textContent = String(u.unit);
+      el.unitChips.appendChild(b);
+    });
+    el.unitChips.addEventListener('click', function(ev){
+      var b = ev.target.closest('.chip'); if (!b) return;
+      var n = parseInt(b.getAttribute('data-unit'), 10);
+      var i = state.units.indexOf(n);
+      if (i === -1) state.units.push(n); else state.units.splice(i, 1);
       sfx.tap(); paintHome(); saveSettings();
     });
 
@@ -1616,9 +1858,26 @@
     el.practiceBtn.textContent = 'Practice just these (' + troubleList().length + ')';
   }
 
+  var WRITE_NOTE = {
+    copy: 'The word stays on the screen and he copies it. This is the one for '
+        + 'Tuesday and Wednesday, while he is still learning them.',
+    peek: 'The word shows for a couple of seconds, then it goes and he writes it '
+        + 'from memory. Peek gives him another look if he needs one.',
+    listen: 'He never sees the word. The phone reads it out, uses it in a sentence '
+        + 'and reads it again, and he writes what he hears. This is the Thursday one.'
+  };
+  function unitSummary(){
+    var picked = state.units.map(unitByNo).filter(Boolean);
+    if (!picked.length) return 'Pick the week off the sheet that came home.';
+    var u = picked[picked.length - 1];
+    var words = u.words.length + (u.vocab || []).length;
+    return 'Unit ' + u.unit + ': ' + words + ' words. Catch this: ' + u.rule;
+  }
+
   function paintHome(){
     var blends = state.subject === 'blends';
     var verses = state.subject === 'scripture';
+    var spell = state.subject === 'spelling';
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
@@ -1629,16 +1888,28 @@
       list[i].classList.toggle('on',
         state.sets.indexOf(parseInt(list[i].getAttribute('data-set'), 10)) !== -1);
     }
+    list = el.unitChips.querySelectorAll('.chip');
+    for (i = 0; i < list.length; i++){
+      list[i].classList.toggle('on',
+        state.units.indexOf(parseInt(list[i].getAttribute('data-unit'), 10)) !== -1);
+    }
     var tl = el.topicChips.querySelectorAll('button');
     for (i = 0; i < tl.length; i++){
       tl[i].classList.toggle('on',
         state.topics.indexOf(parseInt(tl[i].getAttribute('data-topic'), 10)) !== -1);
     }
     setOn(el.subjectOpts, 'data-subject', state.subject);
-    el.tablesBlock.classList.toggle('hide', blends || verses);
+    el.tablesBlock.classList.toggle('hide', blends || verses || spell);
     el.setsBlock.classList.toggle('hide', !blends);
     el.topicsBlock.classList.toggle('hide', !verses);
+    el.unitsBlock.classList.toggle('hide', !spell);
+    el.writeBlock.classList.toggle('hide', !spell);
+    el.modeBlock.classList.toggle('hide', spell);
     el.setsNote.textContent = setsSummary();
+    el.unitNote.textContent = unitSummary();
+    el.writeNote.textContent = WRITE_NOTE[state.write] || '';
+    setOn(el.writeOpts, 'data-write', state.write);
+    setOn(el.extraOpts, 'data-extra', state.extras ? '1' : '0');
     setOn(el.modeOpts, 'data-mode', state.mode);
     setOn(el.orderOpts, 'data-shuffle', state.shuffle ? '1' : '0');
     setOn(el.timerOpts, 'data-timer', state.timer);
@@ -1650,8 +1921,13 @@
     paintPairs();
     paintPace();
 
-    var chosen = verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
-    var count = verses
+    var chosen = spell ? state.units.length
+      : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
+    var count = spell
+      ? state.units.reduce(function(n, no){
+          var u = unitByNo(no); return n + (u ? unitCards(u).length : 0);
+        }, 0)
+      : verses
       ? state.topics.reduce(function(n, i){ return n + (SCRIPTURES[i] ? SCRIPTURES[i].v.length : 0); }, 0)
       : blends
       ? state.sets.reduce(function(n, k){
@@ -1660,7 +1936,8 @@
       : state.tables.length * PER_TABLE;
     el.startBtn.disabled = chosen === 0;
     el.startBtn.textContent = chosen === 0
-      ? (verses ? 'Pick at least one subject' : blends ? 'Pick at least one set' : 'Pick at least one table')
+      ? (spell ? 'Pick at least one week' : verses ? 'Pick at least one subject'
+         : blends ? 'Pick at least one set' : 'Pick at least one table')
       : 'Start ' + count + ' cards';
     paintTrouble();
   }
@@ -1686,6 +1963,14 @@
   });
   el.noneBtn.addEventListener('click', function(){
     state.tables = []; sfx.tap(); paintHome(); saveSettings();
+  });
+  el.writeOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.write = b.getAttribute('data-write'); sfx.tap(); paintHome(); saveSettings();
+  });
+  el.extraOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.extras = b.getAttribute('data-extra') === '1'; sfx.tap(); paintHome(); saveSettings();
   });
   el.modeOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -2464,7 +2749,8 @@
   function roundName(r){
     if (r.label) return r.label;
     if (!r.table) return 'The ones just missed';
-    return r.subject === 'times' ? 'The ' + r.table + 's' : 'Set ' + r.table;
+    return r.subject === 'times' ? 'The ' + r.table + 's'
+         : r.subject === 'spelling' ? 'Unit ' + r.table : 'Set ' + r.table;
   }
   // Consecutive rounds sharing a sitting id are one sitting. Anything with no
   // id at all stands on its own, which is what old rows will look like.
@@ -2687,6 +2973,7 @@
       '<span class="tbl' + (state.subject === 'scripture' ? ' wide' : '') + '">' +
         esc(state.subject === 'times' ? b.table + 's'
           : state.subject === 'blends' ? 'Set ' + b.table
+          : state.subject === 'spelling' ? 'Unit ' + b.table
           : ((SCRIPTURES[b.table - 1] || {}).c || ('#' + b.table))) + '</span>' +
       '<span class="tot">' + fmt(b.total) + '</span>' +
       '<span class="det">' +
@@ -2812,14 +3099,35 @@
     var m = Math.floor(secs / 60), s = Math.round(secs % 60);
     return m + ':' + (s < 10 ? '0' : '') + s;
   }
+  /* How many cards are in ONE round, which is what the clock is worked out
+     from. A table and a sound set are always twelve; a scripture subject and
+     a week of spelling are however long they are, so the note has to ask
+     rather than assume, or it quotes a time that is nothing like the real one. */
+  function roundSize(){
+    if (state.subject === 'spelling'){
+      var u = unitByNo(state.units[0]);
+      return u ? unitCards(u).length : PER_TABLE;
+    }
+    if (state.subject === 'scripture'){
+      var cat = SCRIPTURES[state.topics[0]];
+      return cat ? cat.v.length : PER_TABLE;
+    }
+    return PER_TABLE;
+  }
   function paintPace(){
     el.paceLabel.textContent = state.pace + 's a card';
+    var per = roundSize();
     el.chaseNote.textContent =
-      'One chase per ' + (state.subject === 'times' ? 'table' : state.subject === 'blends' ? 'set' : 'subject') + '. ' + PER_TABLE +
+      'One chase per ' + (state.subject === 'times' ? 'table' : state.subject === 'blends' ? 'set'
+        : state.subject === 'spelling' ? 'week' : 'subject') + '. ' + per +
       ' cards at ' + state.pace + 's each, so the ' +
-      pair().runnerName + ' has ' + clock(state.pace * PER_TABLE) + ' to get home. ' +
-      'Only a right answer moves it along. Get one wrong and that card goes to the back of ' +
-      'the queue to come round again, which costs you time.';
+      pair().runnerName + ' has ' + clock(state.pace * per) + ' to get home. ' +
+      (state.subject === 'spelling'
+        ? 'Only a right answer moves it along. Get one wrong and you write that same word again '
+          + 'before anything moves, which costs you time. Writing takes longer than tapping, so '
+          + 'give him more seconds a card here than on the tables.'
+        : 'Only a right answer moves it along. Get one wrong and that card goes to the back of '
+          + 'the queue to come round again, which costs you time.');
   }
   var boardId = null;
   el.pace.addEventListener('input', function(){
@@ -2905,7 +3213,67 @@
     return rounds;
   }
 
+  /* One unit is one round, so a week's list is one escape. The words come
+     first in the data but the deck is shuffled, so the worksheet questions
+     land in among them rather than all at the end. */
+  function unitByNo(n){
+    for (var i = 0; i < SPELLING.length; i++) if (SPELLING[i].unit === n) return SPELLING[i];
+    return null;
+  }
+  function uniq(list){
+    var out = [];
+    for (var i = 0; i < list.length; i++) if (out.indexOf(list[i]) === -1) out.push(list[i]);
+    return out;
+  }
+  function wordCards(u){
+    var out = [];
+    u.words.forEach(function(row){ out.push({ k: 'w', w: row[0], s: row[1] || '', u: u.unit }); });
+    (u.vocab || []).forEach(function(row){ out.push({ k: 'w', w: row[0], m: row[1] || '', u: u.unit }); });
+    return out;
+  }
+  // the two questions off the bottom of the sheet, worked out from the unit
+  function taskCards(u){
+    var out = [];
+    var plain = u.words.map(function(r){ return r[0]; });
+    var notMonths = plain.filter(function(w){ return MONTHS.indexOf(w) === -1; });
+    plain.filter(function(w){ return MONTHS.indexOf(w) !== -1; }).forEach(function(m){
+      var pool = notMonths.slice(); shuffle(pool);
+      var opts = pool.slice(0, 3).concat([m]); shuffle(opts);
+      out.push({ k: 'm', w: m, opts: opts, u: u.unit });
+    });
+    var halves = uniq((u.compounds || []).map(function(pr){ return pr[1]; }));
+    (u.compounds || []).forEach(function(pr){
+      var pool = halves.filter(function(h){ return h !== pr[1]; }); shuffle(pool);
+      var opts = pool.slice(0, 3).concat([pr[1]]); shuffle(opts);
+      out.push({ k: 'c', a: pr[0], w: pr[1], opts: opts, u: u.unit });
+    });
+    return out;
+  }
+  function unitCards(u){
+    var out = wordCards(u);
+    return state.extras ? out.concat(taskCards(u)) : out;
+  }
+  function buildSpellRounds(){
+    var picked = state.units.slice().sort(function(a, b){ return a - b; });
+    if (state.shuffle && state.timer === 'chase') shuffle(picked);
+    var rounds = [];
+    picked.forEach(function(n){
+      var u = unitByNo(n); if (!u) return;
+      var cards = unitCards(u);
+      if (state.shuffle) shuffle(cards);
+      rounds.push({ label: 'Unit ' + u.unit, table: u.unit, cards: cards });
+    });
+    if (state.timer !== 'chase'){
+      var all = [];
+      rounds.forEach(function(r){ all = all.concat(r.cards); });
+      if (state.shuffle) shuffle(all);
+      return [{ label: '', table: 0, cards: all }];
+    }
+    return rounds;
+  }
+
   function buildRounds(){
+    if (state.subject === 'spelling') return buildSpellRounds();
     if (state.subject === 'scripture') return buildVerseRounds();
     if (state.subject === 'blends') return buildSoundRounds();
     var tables = state.tables.slice().sort(function(x, y){ return x - y; });
@@ -2932,22 +3300,34 @@
   /* ---------- a card, whichever subject it belongs to ----------
      Times cards are [3, 7]. Sound cards are {s:'ck', w:['duck']}. Everything
      below the queue treats a card as opaque and goes through these. */
-  function isSound(c){ return !!(c && c.s); }
+  function isSound(c){ return !!(c && c.s && !c.k); }
   function isVerse(c){ return !!(c && c.r && c.t); }
+  /* Spelling cards. A 'w' card is written, an 'm' or a 'c' card is tapped,
+     so which way a card is answered is a property of the CARD here and not
+     of the setting, which is why paintCard reads it per card. */
+  function isWord(c){ return !!(c && c.k === 'w'); }
+  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c')); }
+  function spellingNow(){ return state.subject === 'spelling'; }
   /* A verse is drilled both ways round. Flipping shows the reference and asks
      you to recall the words; the four button mode has to go the other way,
      since four whole verses will not fit on a phone but four references will. */
   // both answer-from-four modes work the same way round, only the flip does not
-  function picking(){ return state.mode === 'choice' || state.mode === 'shoot'; }
+  function picking(){ return !spellingNow() && (state.mode === 'choice' || state.mode === 'shoot'); }
   function cardFace(c){
+    if (isWord(c)) return c.w;
+    if (c && c.k === 'm') return 'Which one names a month?';
+    if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
   }
   function cardAnswer(c){
+    if (isWord(c) || isTask(c)) return c.w;
     if (isVerse(c)) return picking() ? c.r : c.t;
     return isSound(c) ? c.pick : String(c[0] * c[1]);
   }
   function cardKey(c){
+    if (isWord(c)) return 'w:' + c.w;
+    if (isTask(c)) return '';          // the worksheet questions are not drilled
     if (isVerse(c)) return 'v:' + c.r;
     return isSound(c) ? 's:' + c.s + ':' + c.pick : pairKey(c[0], c[1]);
   }
@@ -2989,6 +3369,7 @@
   }
 
   function cardOptions(c){
+    if (isTask(c)) return c.opts.slice();
     if (isVerse(c)) return verseOptions(c);
     if (isSound(c)) return soundOptions(c);
     var opts = distractors(c[0], c[1]).map(String);
@@ -3029,7 +3410,9 @@
   }
 
   function timeUp(){
-    if (picking()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
+    var c = card();
+    if (isWord(c)){ if (!state.answered){ sfx.timeUp(); missWrite(''); } return; }
+    if (isTask(c) || picking()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
     else if (!state.revealed) reveal();
   }
 
@@ -4162,9 +4545,9 @@
     if (!state.sessionId || Date.now() - lastRoundAt > 20 * 60 * 1000){
       state.sessionId = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     }
-    document.body.classList.toggle('choice', state.mode === 'choice');
-    document.body.classList.toggle('shoot', state.mode === 'shoot');
-    if (state.mode !== 'shoot') rangeStop();
+    document.body.classList.toggle('choice', state.mode === 'choice' && !spellingNow());
+    document.body.classList.toggle('shoot', state.mode === 'shoot' && !spellingNow());
+    if (state.mode !== 'shoot' || spellingNow()) rangeStop();
     show('play');
     chaseStart();
     paintCard();
@@ -4191,13 +4574,21 @@
     el.qsmall.textContent = text;
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
-    document.body.classList.toggle('wordy', isSound(c));
+    document.body.classList.toggle('wordy', isSound(c) || isTask(c));
     document.body.classList.toggle('versey', isVerse(c));
     paintScore();
 
-    if (state.mode === 'shoot'){
+    /* Spelling decides per card: the words are written, the two worksheet
+       questions are tapped, and both can turn up in the same round. */
+    var writing = isWord(c), tapping = isTask(c);
+    document.body.classList.toggle('write', writing);
+    if (spellingNow()) document.body.classList.toggle('choice', tapping);
+
+    if (writing){
+      paintWrite(c);
+    } else if (state.mode === 'shoot' && !tapping){
       rangeSetup(c);
-    } else if (state.mode === 'choice'){
+    } else if (tapping || state.mode === 'choice'){
       var opts = cardOptions(c);
       el.choices.innerHTML = '';
       for (var i = 0; i < opts.length; i++){
@@ -4226,19 +4617,22 @@
     toastId = setTimeout(function(){ el.toast.classList.remove('show'); }, big ? 1600 : 1500);
   }
 
-  function bump(correct){
+  /* hold keeps the card exactly where it is: spelling counts the miss and
+     then makes him write it again, so the queue must not move underneath. */
+  function bump(correct, hold){
     var key = cardKey(card());
-    noteResult(key, correct);
+    if (key) noteResult(key, correct);
 
     if (correct){
       state.right++; state.roundRight++; state.streak++;
       if (state.streak > state.bestStreak) state.bestStreak = state.streak;
     } else {
       state.wrong++; state.roundWrong++; state.streak = 0;
-      if (state.missed.indexOf(key) === -1) state.missed.push(key);
-      if (state.roundMissed.indexOf(key) === -1) state.roundMissed.push(key);
+      if (key && state.missed.indexOf(key) === -1) state.missed.push(key);
+      if (key && state.roundMissed.indexOf(key) === -1) state.roundMissed.push(key);
     }
     paintScore();
+    if (hold) return;
     clearCard(correct);      // moves the mouse, or sends the card to the back
     chaseNudge(correct);
     if (correct && state.streak >= 3 && state.streak % 3 === 0){
@@ -4305,6 +4699,183 @@
   }
   el.gotIt.addEventListener('click', function(){ unlock(); grade(true); });
   el.missedIt.addEventListener('click', function(){ unlock(); grade(false); });
+
+  /* --- writing it out ---
+     Three ways in, matching how the week goes: copy it while he is still
+     learning them, peek-a-boo in the middle, and by ear on the Thursday.
+     Getting one wrong never simply moves on. The miss is counted once, and
+     then he has to write it correctly before the card leaves; how much he
+     can see while he does that is whatever the mode allows. */
+  var PEEK_HOLD = 2600, PEEK_FLASH = 1500, peekId = null, sayAgain = 0;
+
+  function blanksFor(w){ return new Array(w.length + 1).join('_ ').trim(); }
+
+  function showWord(on, blanks){
+    clearTimeout(peekId);
+    el.wWord.classList.toggle('shown', !!on);
+    el.wWord.classList.toggle('gone', !on);
+    el.wBlank.textContent = on ? '' : (blanks || '');
+  }
+  function hideWordSoon(w, ms){
+    clearTimeout(peekId);
+    peekId = setTimeout(function(){ showWord(false, blanksFor(w)); }, ms);
+  }
+  function setWHint(msg, cls){
+    el.wHint.textContent = msg || '';
+    el.wHint.className = 'whint' + (cls ? ' ' + cls : '');
+  }
+  /* iOS only opens the keyboard from inside a gesture, so once a round is
+     going the box is never blurred: between cards it is only emptied. */
+  function focusWrite(){
+    try { el.wInput.focus(); } catch(e){}
+  }
+  function tidy(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
+
+  function paintWrite(c){
+    var mode = state.write;
+    state.tries = 0; sayAgain = 0;
+    clearTimeout(peekId);
+    el.wInput.value = '';
+    el.wInput.className = 'winput';
+    el.wMark.innerHTML = '';
+    el.wText.textContent = c.w;
+    el.wCheck.textContent = 'Check it';
+    setWHint('');
+    document.body.classList.toggle('listening', mode === 'listen');
+    /* The sentence has the word inside it, so it can only be shown when the
+       word is on screen anyway. A vocabulary meaning never gives it away, so
+       that one is the clue in all three modes. */
+    var clue = c.m ? c.m : (mode === 'copy' ? c.s : '');
+    el.wClue.textContent = clue || '';
+    el.wClue.classList.toggle('hide', !clue);
+    el.wPeek.classList.toggle('hide', mode === 'copy');
+
+    if (mode === 'copy'){
+      showWord(true);
+    } else if (mode === 'peek'){
+      showWord(true);
+      hideWordSoon(c.w, PEEK_HOLD);
+    } else {
+      showWord(false, '');
+      sayCard(c);
+    }
+    focusWrite();
+  }
+
+  /* Letter by letter, but matched on the longest run the two share rather
+     than by position, or one missing letter at the front would paint every
+     letter after it wrong. */
+  function lcsKeep(a, b){
+    var n = a.length, m = b.length, i, j, d = [];
+    for (i = 0; i <= n; i++){ d.push([]); for (j = 0; j <= m; j++) d[i].push(0); }
+    for (i = n - 1; i >= 0; i--){
+      for (j = m - 1; j >= 0; j--){
+        d[i][j] = a.charAt(i) === b.charAt(j)
+          ? d[i + 1][j + 1] + 1
+          : Math.max(d[i + 1][j], d[i][j + 1]);
+      }
+    }
+    var keep = {}, ci = 0, cj = 0;
+    while (ci < n && cj < m){
+      if (a.charAt(ci) === b.charAt(cj)){ keep[ci] = 1; ci++; cj++; }
+      else if (d[ci + 1][cj] >= d[ci][cj + 1]) ci++;
+      else cj++;
+    }
+    return keep;
+  }
+  function marked(got, want){
+    var keep = lcsKeep(got.toLowerCase(), want.toLowerCase());
+    var out = '', hit = 0, i;
+    for (i = 0; i < got.length; i++){
+      if (keep[i]) hit++;
+      out += '<span class="' + (keep[i] ? 'ok' : 'no') + '">' + esc(got.charAt(i)) + '</span>';
+    }
+    var missing = want.length - hit;
+    if (missing > 0){
+      out += '<span class="short">' + missing +
+             (missing === 1 ? ' letter is missing' : ' letters are missing') + '</span>';
+    }
+    return out;
+  }
+
+  function checkWrite(){
+    var c = card();
+    if (!c || !isWord(c) || state.caught || state.answered) return;
+    var want = c.w, got = tidy(el.wInput.value);
+    if (!got){ focusWrite(); return; }
+    if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got); return; }
+
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    state.answered = true;
+    el.wInput.classList.remove('bad');
+    el.wInput.classList.add('good');
+    el.wMark.innerHTML = marked(got, want);
+    showWord(true);
+    sfx.right();
+    var caps = got !== want;          // right letters, wrong capital
+    if (state.tries === 0){
+      setWHint(caps ? 'Right letters. It is written ' + want : 'Spot on', 'good');
+      bump(true);
+    } else {
+      setWHint('That is it: ' + want, 'good');   // the miss was already counted
+      clearCard(true); chaseNudge(true);
+    }
+    if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, caps ? 1600 : 700);
+  }
+
+  function missWrite(got){
+    var c = card();
+    if (!c || state.answered || state.caught) return;
+    stopTimer();
+    el.track.classList.add('hidden');
+    if (state.tries === 0) bump(false, true);   // one miss a card, however many goes it takes
+    state.tries++;
+    sfx.wrong();
+    el.wInput.classList.add('bad');
+    el.wMark.innerHTML = got ? marked(got, c.w) : '<span class="short">the time ran out</span>';
+    /* What he can see while he tries again is whatever the mode allows,
+       except that a second miss always shows it: stuck with no way through
+       is worse than being told. */
+    var open = state.write === 'copy' || state.write === 'peek' || state.tries >= 2;
+    if (open){
+      showWord(true);
+      if (state.write === 'peek' && state.tries < 2) hideWordSoon(c.w, PEEK_FLASH);
+    } else {
+      sayCard(c);
+    }
+    setWHint(state.tries >= 2 ? 'Copy it carefully: ' + c.w : 'Not quite, write it again', 'bad');
+    el.wCheck.textContent = 'Try again';
+    setTimeout(function(){
+      if (state.answered || state.caught || !isWord(card())) return;
+      el.wInput.value = '';
+      el.wInput.classList.remove('bad');
+      focusWrite();
+    }, 850);
+  }
+
+  el.wCheck.addEventListener('click', function(){ unlock(); checkWrite(); });
+  el.wInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' || ev.keyCode === 13){ ev.preventDefault(); unlock(); checkWrite(); }
+  });
+  // pressing it again gives the bare word, slowly, rather than the sentence over
+  el.wSay.addEventListener('click', function(){
+    unlock();
+    var c = card(); if (!isWord(c)) return;
+    sayAgain++;
+    sayCard(c, sayAgain % 2 === 1);
+    focusWrite();
+  });
+  el.wPeek.addEventListener('click', function(){
+    unlock();
+    var c = card(); if (!isWord(c)) return;
+    showWord(true);
+    hideWordSoon(c.w, PEEK_FLASH);
+    focusWrite();
+  });
+
 
   // set while the escape is playing, so tapping through the pause cannot
   // run the end of the round twice
@@ -4424,6 +4995,9 @@
 
   function finish(){
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
+    hushVoice(); clearTimeout(peekId);
+    try { el.wInput.blur(); } catch(e){}
+    document.body.classList.remove('write', 'listening');
     // whatever round was underway when this screen arrived. Cleared rounds
     // logged themselves on the way out, and roundLogged stops a second line.
     logRound(state.caught ? 'caught' : 'quit');
