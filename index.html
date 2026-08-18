@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.4">
+<meta name="x-cards-version" content="4.5">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -640,6 +640,13 @@
     <p class="note" id="scoreNote"></p>
   </div>
 
+  <div class="block hide" id="trailBlock">
+    <p class="label">What happened last time</p>
+    <pre id="trailText" style="white-space:pre-wrap;font:500 11px/1.4 ui-monospace,Menlo,monospace;
+      background:#fdeceb;border:2px solid #e0524a;border-radius:14px;padding:10px;overflow-x:auto"></pre>
+    <div class="quick"><button type="button" class="warn" id="trailClear">Clear this</button></div>
+  </div>
+
   <div class="block hide" id="troubleBlock">
     <p class="label">Keeps missing these</p>
     <div class="misses" id="troubleList"></div>
@@ -766,7 +773,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.4</p>
+  <p class="foot">v4.5</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1082,7 +1089,28 @@
     try { window.dispatchEvent(new ErrorEvent('error',
       { message: 'promise: ' + ((ev.reason && ev.reason.message) || ev.reason) })); } catch(e){}
   });
+  /* A bar on the play screen is no good if the thing going wrong is covering
+     the play screen. So every card leaves a line in a trail that is kept in
+     storage and shown on the HOME screen, which comes up fine. One photograph
+     of that says more than a dozen of a white rectangle. */
+  var TRAIL = 'seth-cards-trail-v1';
+  var trail = [];
+  function note(line){
+    try {
+      trail.push(line);
+      if (trail.length > 14) trail.shift();
+      localStorage.setItem(TRAIL, JSON.stringify(trail));
+    } catch(e){}
+  }
+  function sizeOf(node){
+    try {
+      var r = node.getBoundingClientRect();
+      return Math.round(r.width) + 'x' + Math.round(r.height);
+    } catch(e){ return '?'; }
+  }
+
   function showBoom(text){
+    note('BLANK ' + text.replace(/\n/g, ' | '));
     try {
       var bar = document.getElementById('boom');
       if (!bar){
@@ -1559,7 +1587,7 @@
   var el = {};
   ['home','play','doneScreen','chips','allBtn','noneBtn','modeOpts','orderOpts','timerOpts',
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
-   'troubleBlock','troubleList','practiceBtn','clearMissBtn',
+   'troubleBlock','troubleList','practiceBtn','clearMissBtn','trailBlock','trailText','trailClear',
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'topicsBlock','topicChips','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
@@ -1988,6 +2016,7 @@
   }
 
   function paintHome(){
+    paintTrail();
     var blends = state.subject === 'blends';
     var verses = state.subject === 'scripture';
     var spell = state.subject === 'spelling';
@@ -2062,6 +2091,20 @@
       : 'Start ' + count + ' cards';
     paintTrouble();
   }
+
+  /* Only shown when the last sitting actually went wrong, so it is invisible
+     when everything is working. */
+  function paintTrail(){
+    var lines = [];
+    try { lines = JSON.parse(localStorage.getItem(TRAIL)) || []; } catch(e){}
+    var bad = lines.some(function(l){ return l.indexOf('BLANK') === 0; });
+    el.trailBlock.classList.toggle('hide', !bad);
+    if (bad) el.trailText.textContent = lines.join('\n');
+  }
+  el.trailClear.addEventListener('click', function(){
+    try { localStorage.removeItem(TRAIL); } catch(e){}
+    trail = []; sfx.tap(); paintTrail();
+  });
 
   el.subjectOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -3541,6 +3584,8 @@
      it is left alone. */
   setInterval(function(){
     if (!el.play.classList.contains('on')) return;
+    // a backgrounded tab measures everything as nothing, which is not a fault
+    if (document.hidden || !window.innerHeight) return;
     var doc = document.documentElement;
     var over = doc.scrollHeight - window.innerHeight;
     var at = window.pageYOffset || doc.scrollTop || 0;
@@ -4792,6 +4837,12 @@
     }
     startTimer();
     chaseResume();
+    // written last, so it describes the card as it ended up rather than as it started
+    note('#' + (state.cleared + 1) + ' ' + (isWord(c) ? 'write ' + c.w : isTask(c) ? 'tap' : 'other')
+       + ' body=[' + document.body.className + ']'
+       + ' wb=' + sizeOf(el.writeBox) + ' ink=' + sizeOf(el.inkBox) + ' ch=' + sizeOf(el.choices)
+       + ' doc=' + document.documentElement.scrollHeight + ' win=' + window.innerHeight
+       + ' y=' + Math.round(window.pageYOffset || 0));
   }
 
   var toastId = null;
