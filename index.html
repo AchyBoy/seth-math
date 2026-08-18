@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.1">
+<meta name="x-cards-version" content="4.2">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -336,6 +336,61 @@
     font-size:19px;font-weight:600;box-shadow:0 4px 0 var(--blue-dark)}
   .wgo:active{transform:translateY(3px);box-shadow:0 1px 0 var(--blue-dark)}
 
+  /* ---------- writing it with the Pencil ----------
+     Ruled like handwriting paper, because a word written across a blank box
+     comes out at whatever size and sits nowhere. Nothing in here is read by
+     the page: the ink is kept as it was drawn, and he marks himself against
+     the spelling once it is shown. */
+  .ink{position:relative;border:2px solid var(--line);border-radius:22px;background:#fff;
+    height:190px;touch-action:none;overflow:hidden;box-shadow:0 6px 18px rgba(32,36,46,.06)}
+  .ink canvas{display:block;width:100%;height:100%;touch-action:none}
+  .inkhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#c9c4b8;font-size:19px;pointer-events:none}
+  .inkhint.hide{display:none}
+  .inkrow{display:flex;gap:10px}
+  .inkrow .small{flex:none;border:2px solid var(--line);border-radius:20px;background:#fff;
+    padding:14px 16px;font-size:16px;font-weight:600;color:var(--muted);box-shadow:0 4px 0 #ded8cc}
+  .inkrow .small:active{transform:translateY(3px);box-shadow:0 1px 0 #ded8cc}
+  .inkrow .small[disabled]{opacity:.42;box-shadow:none;transform:none}
+  .wgrade{display:none;gap:10px}
+  .wgrade.on{display:flex}
+  .wgrade .gbtn{flex:1;border-radius:20px;padding:16px;font-size:18px;font-weight:600;color:#fff}
+  .wgrade .yes{background:var(--green);box-shadow:0 4px 0 var(--green-dark)}
+  .wgrade .no{background:var(--red);box-shadow:0 4px 0 #b93f38}
+  .wgrade .gbtn:active{transform:translateY(3px)}
+  /* keyboard bits and Pencil bits are the same screen, one set at a time */
+  body.hand .winput,body.hand .wrow{display:none}
+  body.hand .ink,body.hand .inkrow{display:flex}
+  body:not(.hand) .ink,body:not(.hand) .inkrow,body:not(.hand) .wgrade{display:none}
+  body.hand .inkrow.hide{display:none}
+  .ink{display:none}
+
+  /* ---------- the page he hands in ----------
+     Off screen until the printer asks for it. The ink is redrawn as SVG so it
+     comes out at the printer's own resolution rather than at the size of a
+     phone canvas. */
+  .sheet{display:none}
+  .sheet .shead{display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:10px}
+  .sheet .swho{font-size:18px;font-weight:700}
+  .sheet .swhat{font-size:13px}
+  .sheet ol{list-style:none;counter-reset:sw}
+  .sheet li{counter-increment:sw;display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid #bbb;height:40px;page-break-inside:avoid}
+  .sheet li::before{content:counter(sw) ".";width:26px;text-align:right;
+    font-size:13px;color:#444;flex:none}
+  .sheet .slot{flex:1;height:100%;display:flex;align-items:center}
+  .sheet .slot svg{height:34px;width:auto;max-width:100%}
+  .sheet .flag{flex:none;width:22px;text-align:center;font-size:13px;color:#444}
+  .sheet .foot{margin-top:10px;font-size:11px;color:#555}
+  @media print{
+    @page{margin:14mm}
+    body{background:#fff}
+    .screen,.toast{display:none !important}
+    .sheet{display:block !important}
+    .sheet svg{stroke:#111}
+  }
+
   /* ---------- the archery range ----------
      Full screen. The canvas is a fixed layer behind everything and the rest of
      the play screen keeps its ordinary flow on top of it, which is why the
@@ -649,6 +704,12 @@
       <button type="button" class="opt" data-write="listen">🔊 Say it</button>
     </div>
     <p class="note" id="writeNote"></p>
+    <p class="label" style="margin-top:22px">What he writes with</p>
+    <div class="opts" id="handOpts">
+      <button type="button" class="opt on" data-hand="1">✏️ Apple Pencil</button>
+      <button type="button" class="opt" data-hand="0">Keyboard</button>
+    </div>
+    <p class="note" id="handNote"></p>
     <p class="label" style="margin-top:22px">The worksheet questions</p>
     <div class="opts" id="extraOpts">
       <button type="button" class="opt on" data-extra="1">Put them in</button>
@@ -705,7 +766,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.1</p>
+  <p class="foot">v4.2</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -937,12 +998,27 @@
     <input class="winput" id="wInput" type="text" inputmode="text" name="spellword"
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
            enterkeyhint="done" maxlength="32" placeholder="write it here">
+    <div class="ink" id="inkBox">
+      <canvas id="inkCv"></canvas>
+      <span class="inkhint" id="inkHint">write it here</span>
+    </div>
     <p class="whint" id="wHint"></p>
     <div class="wrow">
       <button type="button" class="wpeek hide" id="wPeek">👀 Peek</button>
       <button type="button" class="wgo" id="wCheck">Check it</button>
     </div>
+    <div class="inkrow" id="inkRow">
+      <button type="button" class="small" id="inkUndo">↩︎ Undo</button>
+      <button type="button" class="small" id="inkClear">Clear</button>
+      <button type="button" class="small" id="inkPeek">👀 Peek</button>
+      <button type="button" class="wgo" id="inkDone">Done</button>
+    </div>
+    <div class="wgrade" id="inkGrade">
+      <button type="button" class="gbtn yes" id="inkYes">I got it</button>
+      <button type="button" class="gbtn no" id="inkNo">Missed it</button>
+    </div>
   </div>
+
 
   <!-- The archery range fills the whole phone and everything else floats on
        top of it, so the field is the screen rather than a picture of one. The
@@ -983,10 +1059,17 @@
       <button type="button" class="link" id="studyMissed">Study these</button>
     </div>
 
+    <button type="button" class="again hide" id="printBtn">🖨 Print his sheet</button>
     <button type="button" class="again" id="againBtn">Go again</button>
     <button type="button" class="link" id="changeBtn">Home</button>
   </div>
 </div>
+
+<!-- ================= the page he hands in =================
+     Outside every screen on purpose. The print stylesheet hides .screen, and
+     a block inside something hidden does not come back by asking to be shown,
+     so this has to be a sibling of the screens rather than a child of one. -->
+<div class="sheet" id="sheet"></div>
 
 <script>
 (function(){
@@ -1435,7 +1518,7 @@
 
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], write: 'copy', extras: true, tries: 0,
+    units: [], write: 'copy', extras: true, tries: 0, hand: true,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -1454,6 +1537,8 @@
    'topicsBlock','topicChips','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
+   'handOpts','handNote','inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkPeek','inkDone',
+   'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
@@ -1726,6 +1811,7 @@
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
+        if (typeof s.hand === 'boolean') state.hand = s.hand;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
         if (Array.isArray(s.topics) && s.topics.length) state.topics = s.topics;
@@ -1743,7 +1829,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
-        units: state.units, write: state.write, extras: state.extras,
+        units: state.units, write: state.write, extras: state.extras, hand: state.hand,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
         pair: state.pair, sound: state.sound
@@ -1908,6 +1994,14 @@
     el.setsNote.textContent = setsSummary();
     el.unitNote.textContent = unitSummary();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
+    el.handNote.textContent = state.hand
+      ? 'He writes each word on the line with the Pencil, and the page keeps the ink exactly '
+        + 'as he drew it. Nothing here can read handwriting, so it shows him the spelling once '
+        + 'he is done and he says whether he got it. At the end it prints the lot on one page '
+        + 'for his teacher.'
+      : 'He types the words and the app marks them itself, letter by letter. Nothing is kept '
+        + 'to print.';
+    setOn(el.handOpts, 'data-hand', state.hand ? '1' : '0');
     setOn(el.writeOpts, 'data-write', state.write);
     setOn(el.extraOpts, 'data-extra', state.extras ? '1' : '0');
     setOn(el.modeOpts, 'data-mode', state.mode);
@@ -1963,6 +2057,10 @@
   });
   el.noneBtn.addEventListener('click', function(){
     state.tables = []; sfx.tap(); paintHome(); saveSettings();
+  });
+  el.handOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.hand = b.getAttribute('data-hand') === '1'; sfx.tap(); paintHome(); saveSettings();
   });
   el.writeOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -3426,7 +3524,10 @@
 
   function timeUp(){
     var c = card();
-    if (isWord(c)){ if (!state.answered){ sfx.timeUp(); missWrite(''); } return; }
+    if (isWord(c)){
+      if (!state.answered){ sfx.timeUp(); state.hand ? inkReveal() : missWrite(''); }
+      return;
+    }
     if (isTask(c) || picking()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
     else if (!state.revealed) reveal();
   }
@@ -4764,6 +4865,11 @@
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
     el.wPeek.classList.toggle('hide', mode === 'copy');
+    el.inkPeek.classList.toggle('hide', mode === 'copy');
+    document.body.classList.toggle('hand', !!state.hand);
+    el.inkGrade.classList.remove('on');
+    el.inkRow.classList.remove('hide');
+    if (state.hand){ inkReset(); el.wCheck.textContent = 'Check it'; }
 
     if (mode === 'copy'){
       showWord(true);
@@ -4774,7 +4880,7 @@
       showWord(false, '');
       sayCard(c);
     }
-    focusWrite();
+    if (!state.hand) focusWrite();
   }
 
   /* Letter by letter, but matched on the longest run the two share rather
@@ -4890,6 +4996,261 @@
     hideWordSoon(c.w, PEEK_FLASH);
     focusWrite();
   });
+
+  /* --- writing it with the Pencil ---
+     Nothing on this page can read handwriting, so the ink is never marked by
+     the app: he writes the word, the spelling comes up, and he says whether
+     he got it. What the app still does is keep every stroke exactly as he
+     drew it, so the whole week prints on one page for his teacher. */
+  var ink = { strokes: [], cur: null, w: 0, h: 0, g: null, penSeen: false, drawing: false };
+  var SHEET = 'seth-cards-sheet-v1';
+  var sheetInk = { unit: 0, words: {} };
+
+  function loadSheet(){
+    try {
+      var v = JSON.parse(localStorage.getItem(SHEET));
+      if (v && v.words) sheetInk = { unit: v.unit || 0, words: v.words };
+    } catch(e){}
+  }
+  function saveSheet(){
+    try { localStorage.setItem(SHEET, JSON.stringify(sheetInk)); } catch(e){}
+  }
+
+  function inkSetup(){
+    var box = el.inkBox.getBoundingClientRect();
+    var dpr = Math.min(3, window.devicePixelRatio || 1);
+    ink.w = Math.round(box.width) || 320;
+    ink.h = Math.round(box.height) || 190;
+    el.inkCv.width = Math.round(ink.w * dpr);
+    el.inkCv.height = Math.round(ink.h * dpr);
+    var g = el.inkCv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ink.g = g;
+    return g;
+  }
+  /* Ruled like handwriting paper. A word written across an empty box comes
+     out at whatever size and sits nowhere, and it has to sit somewhere or the
+     printed page looks like twenty different hands. */
+  function inkPaint(){
+    var g = inkSetup();
+    g.clearRect(0, 0, ink.w, ink.h);
+    var top = ink.h * 0.18, mid = ink.h * 0.46, base = ink.h * 0.74;
+    g.strokeStyle = '#dbe6ff'; g.lineWidth = 1.5; g.setLineDash([]);
+    [top, base].forEach(function(y){
+      g.beginPath(); g.moveTo(12, y); g.lineTo(ink.w - 12, y); g.stroke();
+    });
+    g.setLineDash([5, 7]);
+    g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
+    g.setLineDash([]);
+    g.strokeStyle = '#1b2330'; g.lineWidth = 3.4; g.lineCap = 'round'; g.lineJoin = 'round';
+    ink.strokes.forEach(function(st){
+      if (st.length === 1){
+        g.beginPath(); g.arc(st[0][0], st[0][1], 1.8, 0, 6.284);
+        g.fillStyle = '#1b2330'; g.fill(); return;
+      }
+      g.beginPath(); g.moveTo(st[0][0], st[0][1]);
+      for (var i = 1; i < st.length; i++) g.lineTo(st[i][0], st[i][1]);
+      g.stroke();
+    });
+    el.inkHint.classList.toggle('hide', ink.strokes.length > 0);
+    el.inkUndo.disabled = !ink.strokes.length;
+    el.inkClear.disabled = !ink.strokes.length;
+  }
+  function inkReset(){
+    ink.strokes = []; ink.cur = null; ink.drawing = false;
+    inkPaint();
+  }
+  function inkPos(ev){
+    var b = el.inkBox.getBoundingClientRect();
+    return [Math.round((ev.clientX - b.left) * 10) / 10,
+            Math.round((ev.clientY - b.top) * 10) / 10];
+  }
+  /* Palm rejection, and the only reason pointerType is looked at: once a real
+     pen has touched the glass, a hand resting on it is ignored for the rest
+     of the sitting. Before that a finger still draws, so it can be tried out
+     on a phone or with a mouse. */
+  function inkAllowed(ev){
+    if (ev.pointerType === 'pen'){ ink.penSeen = true; return true; }
+    return !ink.penSeen;
+  }
+  el.inkBox.addEventListener('pointerdown', function(ev){
+    if (!state.hand || state.answered || !inkAllowed(ev)) return;
+    ev.preventDefault();
+    try { el.inkBox.setPointerCapture(ev.pointerId); } catch(e){}
+    ink.drawing = true;
+    ink.cur = [inkPos(ev)];
+    ink.strokes.push(ink.cur);
+    el.inkHint.classList.add('hide');
+    el.inkUndo.disabled = false; el.inkClear.disabled = false;
+    if (!ink.g) inkPaint();
+  });
+  el.inkBox.addEventListener('pointermove', function(ev){
+    if (!ink.drawing || !ink.cur || !ink.g) return;
+    ev.preventDefault();
+    // The Pencil reports faster than the screen redraws, so take the lot.
+    // An empty list is a real answer from some browsers, not a missing one.
+    var pts = ev.getCoalescedEvents ? ev.getCoalescedEvents() : null;
+    if (!pts || !pts.length) pts = [ev];
+    for (var i = 0; i < pts.length; i++){
+      var pt = inkPos(pts[i]), last = ink.cur[ink.cur.length - 1];
+      ink.cur.push(pt);
+      ink.g.beginPath(); ink.g.moveTo(last[0], last[1]); ink.g.lineTo(pt[0], pt[1]); ink.g.stroke();
+    }
+  });
+  function inkUp(ev){
+    if (!ink.drawing) return;
+    ink.drawing = false; ink.cur = null;
+    try { el.inkBox.releasePointerCapture(ev.pointerId); } catch(e){}
+  }
+  el.inkBox.addEventListener('pointerup', inkUp);
+  el.inkBox.addEventListener('pointercancel', inkUp);
+  el.inkBox.addEventListener('pointerleave', inkUp);
+
+  /* Turning the iPad over changes the box under the ink. The strokes are kept
+     in box pixels, so they are scaled to the new one rather than left behind
+     at coordinates that no longer mean anything. */
+  var inkSizeId = null;
+  window.addEventListener('resize', function(){
+    if (!document.body.classList.contains('hand')) return;
+    clearTimeout(inkSizeId);
+    inkSizeId = setTimeout(function(){
+      var b = el.inkBox.getBoundingClientRect();
+      var nw = Math.round(b.width), nh = Math.round(b.height);
+      if (!nw || !nh || !ink.w || !ink.h || (nw === ink.w && nh === ink.h)) return;
+      var sx = nw / ink.w, sy = nh / ink.h;
+      ink.strokes.forEach(function(st){
+        st.forEach(function(pt){
+          pt[0] = Math.round(pt[0] * sx * 10) / 10;
+          pt[1] = Math.round(pt[1] * sy * 10) / 10;
+        });
+      });
+      inkPaint();
+    }, 150);
+  });
+
+  el.inkUndo.addEventListener('click', function(){ unlock(); ink.strokes.pop(); inkPaint(); });
+  el.inkClear.addEventListener('click', function(){ unlock(); inkReset(); });
+  el.inkPeek.addEventListener('click', function(){
+    unlock();
+    var c = card(); if (!isWord(c)) return;
+    if (state.write === 'listen') sayCard(c, true);
+    showWord(true);
+    hideWordSoon(c.w, PEEK_FLASH);
+  });
+
+  // the spelling comes up and he checks his own writing against it
+  function inkReveal(){
+    var c = card();
+    if (!c || !isWord(c) || state.answered) return;
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    showWord(true);
+    el.wClue.classList.add('hide');
+    setWHint('Check every letter. Did you get it?', '');
+    el.inkGrade.classList.add('on');
+    el.inkRow.classList.add('hide');
+  }
+  el.inkDone.addEventListener('click', function(){
+    unlock();
+    if (!ink.strokes.length){ setWHint('Write the word first', 'bad'); return; }
+    inkReveal();
+  });
+
+  function keepInk(c, missed){
+    var u = c.u || 0;
+    // a different week is a different page, so the old one goes
+    if (sheetInk.unit !== u){ sheetInk = { unit: u, words: {} }; }
+    sheetInk.words[c.w] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
+    saveSheet();
+  }
+
+  function inkMark(ok){
+    var c = card();
+    if (!c || !isWord(c) || state.answered || state.caught) return;
+    el.inkGrade.classList.remove('on');
+    if (ok){
+      sfx.right();
+      state.answered = true;
+      keepInk(c, state.tries > 0);
+      if (state.tries === 0) bump(true);
+      else { clearCard(true); chaseNudge(true); }   // the miss was already counted
+      setWHint('Kept for the sheet', 'good');
+      if (state.caught) return;
+      clearTimeout(advanceId);
+      advanceId = setTimeout(step, 550);
+      return;
+    }
+    if (state.tries === 0) bump(false, true);       // one miss a word, however many goes
+    state.tries++;
+    sfx.wrong();
+    el.inkRow.classList.remove('hide');
+    inkReset();
+    showWord(true);
+    setWHint('Have another go, the word is up there', 'bad');
+    chaseResume();
+  }
+  el.inkYes.addEventListener('click', function(){ unlock(); inkMark(true); });
+  el.inkNo.addEventListener('click', function(){ unlock(); inkMark(false); });
+
+  /* ---------- the page he hands in ----------
+     The strokes go out as one SVG path each, so it prints at the printer's
+     own resolution rather than at the size of the box he drew in, and it is
+     cropped to the ink or a short word would print with a field of white
+     around it. */
+  function inkSVG(rec){
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    rec.s.forEach(function(st){
+      st.forEach(function(pt){
+        if (pt[0] < x0) x0 = pt[0]; if (pt[0] > x1) x1 = pt[0];
+        if (pt[1] < y0) y0 = pt[1]; if (pt[1] > y1) y1 = pt[1];
+      });
+    });
+    if (x0 > x1) return '';
+    x0 -= 6; y0 -= 6; x1 += 6; y1 += 6;
+    var d = rec.s.map(function(st){
+      return 'M' + st.map(function(pt){
+        return (pt[0] - x0).toFixed(1) + ' ' + (pt[1] - y0).toFixed(1);
+      }).join('L');
+    }).join(' ');
+    return '<svg viewBox="0 0 ' + (x1 - x0).toFixed(1) + ' ' + (y1 - y0).toFixed(1) + '" '
+         + 'xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet">'
+         + '<path d="' + d + '" fill="none" stroke="#111" stroke-width="3.2" '
+         + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  function sheetUnit(){
+    return unitByNo(sheetInk.unit) || unitByNo(state.units[0]) || SPELLING[SPELLING.length - 1];
+  }
+  function sheetWords(u){
+    return u.words.map(function(r){ return r[0]; })
+      .concat((u.vocab || []).map(function(r){ return r[0]; }));
+  }
+  function hasSheet(){
+    var u = sheetUnit(); if (!u) return false;
+    return sheetWords(u).some(function(w){ return !!sheetInk.words[w]; });
+  }
+  function buildSheet(){
+    var u = sheetUnit(); if (!u) return false;
+    var rows = sheetWords(u).map(function(w){
+      var rec = sheetInk.words[w];
+      return '<li><span class="slot">' + (rec ? inkSVG(rec) : '') + '</span>'
+           + '<span class="flag">' + (rec && rec.missed ? '•' : '') + '</span></li>';
+    }).join('');
+    var when = new Date().toLocaleDateString(undefined,
+      { day: 'numeric', month: 'long', year: 'numeric' });
+    el.sheet.innerHTML =
+      '<div class="shead"><span class="swho">' + esc(me.name || 'Spelling') + '</span>'
+      + '<span class="swhat">Unit ' + u.unit + ' &middot; ' + esc(when) + '</span></div>'
+      + '<ol>' + rows + '</ol>'
+      + '<p class="foot">Written with the Apple Pencil. A dot marks a word that took '
+      + 'more than one go.</p>';
+    return true;
+  }
+  el.printBtn.addEventListener('click', function(){
+    unlock();
+    if (!buildSheet()) return;
+    setTimeout(function(){ window.print(); }, 60);
+  });
+
 
 
   // set while the escape is playing, so tapping through the pause cannot
@@ -5012,7 +5373,8 @@
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
     hushVoice(); clearTimeout(peekId);
     try { el.wInput.blur(); } catch(e){}
-    document.body.classList.remove('write', 'listening');
+    document.body.classList.remove('write', 'listening', 'hand');
+    el.printBtn.classList.toggle('hide', !hasSheet());
     // whatever round was underway when this screen arrived. Cleared rounds
     // logged themselves on the way out, and roundLogged stops a second line.
     logRound(state.caught ? 'caught' : 'quit');
@@ -5101,6 +5463,7 @@
 
   loadArt();
   loadSettings();
+  loadSheet();
   loadMe();
   loadRecord();
   buildChips();
