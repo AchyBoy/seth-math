@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="3.8">
+<meta name="x-cards-version" content="3.9">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -456,6 +456,30 @@
   .req .yn .yes{color:var(--green-dark);border-color:var(--green)}
   .req .yn .no{color:var(--muted)}
 
+  /* ---------- the history a grown-up reads ----------
+     One card per sitting, the rounds inside it in the order they happened.
+     Deliberately plainer than the child's side of the app: this is a record,
+     not a game, and it has to stay readable with a dozen sittings on screen. */
+  .hist{display:flex;flex-direction:column;gap:10px}
+  .sit{border:2px solid var(--line);background:#fff;border-radius:16px;padding:12px 14px}
+  .sit .when{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .sit .when b{font-size:16px;font-weight:600}
+  .sit .when em{font-style:normal;font-size:13px;color:var(--muted);white-space:nowrap;flex:none}
+  .sit .tally{font-size:13px;color:var(--muted);margin-top:3px}
+  .sit .rnd{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;
+    border-top:1px solid var(--line)}
+  .sit .rnd .nm{flex:1;min-width:0;font-size:15px;font-weight:600;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sit .rnd .dur{flex:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .sit .pip{flex:none;font-size:12px;font-weight:600;border-radius:999px;padding:3px 9px}
+  .sit .pip.ok{color:var(--green-dark);background:var(--green-soft)}
+  .sit .pip.bad{color:#a8352e;background:var(--red-soft)}
+  .sit .pip.meh{color:var(--muted);background:#f3f1ec}
+  .sit .mrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .sit .mk{font-size:13px;font-weight:600;border:1.5px solid #f3cdc9;background:var(--red-soft);
+    color:#a8352e;border-radius:9px;padding:3px 8px}
+  .sit .mlab{font-size:13px;color:var(--muted);margin-top:8px}
+
   .empty{color:var(--muted);font-size:15px;line-height:1.45;
     border:2px dashed var(--line);border-radius:16px;padding:16px;text-align:center}
 
@@ -607,7 +631,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v3.8</p>
+  <p class="foot">v3.9</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -734,6 +758,15 @@
   <div class="block hide" id="pendBlock">
     <p class="label">Waiting on you</p>
     <div class="reqs" id="pendList"></div>
+  </div>
+
+  <div class="block hide" id="histBlock">
+    <p class="label">What they have been doing</p>
+    <p class="note" id="histSum" style="margin-top:0;margin-bottom:12px"></p>
+    <div class="hist" id="histList"></div>
+    <div class="quick">
+      <button type="button" id="histMore" class="hide">Show more</button>
+    </div>
   </div>
 
   <div class="block hide" id="rewardBlock">
@@ -1260,7 +1293,9 @@
     queue: [], total: 0, cleared: 0,
     revealed: false, answered: false,
     right: 0, wrong: 0, streak: 0, bestStreak: 0,
-    missed: [], startedAt: 0, caught: false, practice: false, scoreView: 'pace'
+    missed: [], startedAt: 0, caught: false, practice: false, scoreView: 'pace',
+    // per ROUND, for the history: the whole sitting is state.missed above
+    roundMissed: [], roundStartedAt: 0, roundLogged: false, sessionId: ''
   };
 
   var el = {};
@@ -1277,6 +1312,7 @@
    'shopScreen','shopCoins','capNote','waitBlock','waitList','shopTabs',
    'prizeBlock','prizeList','wishText','wishGo','lookBlock','skyList','trailList','pairList','shopBack','parentBtn',
    'parentScreen','codeBlock','codeLabel','codeField','codeNote','codeErr','codeGo',
+   'histBlock','histSum','histList','histMore',
    'pendBlock','pendList','rewardBlock','rewardList','addLabel',
    'rwEmoji','rwTitle','rwCost','rwRepeats','rwErr','rwSave','rwCancel','rwRemove','rwGuide',
    'mailBlock','mailField','mailSave','mailMsg','codeChange','parentBack',
@@ -2252,6 +2288,7 @@
     codeMode = shop.hasParent ? 'open' : 'set';
     el.codeBlock.classList.remove('hide');
     el.pendBlock.classList.add('hide');
+    el.histBlock.classList.add('hide');
     el.rewardBlock.classList.add('hide');
     el.mailBlock.classList.add('hide');
     el.codeLabel.textContent = codeMode === 'set' ? 'Make a grown-ups code' : 'The grown-ups code';
@@ -2387,6 +2424,7 @@
       }));
     });
 
+    paintHistory();
     el.mailField.value = parentData.email || '';
     el.rwGuide.textContent = 'They earn ' + shop.perRound + ' coins for clearing a set, up to '
       + shop.dayCap + ' a day, plus one coin for every 100 points they beat their own record by. '
@@ -2394,6 +2432,152 @@
       + 'week or two of practice.';
     paintRewardForm();
   }
+
+  /* ---------- what practice actually happened ----------
+     Rounds come back flat and newest first. They are gathered into sittings
+     and days HERE rather than on the server, because only the browser knows
+     which local day one of these timestamps fell on.
+
+     The scores block on the child's screen only ever shows a best, which says
+     nothing about the evening it came from. This is the other question a
+     grown-up asks: did he sit down at all, for how long, and what is still
+     going wrong. */
+  var histAll = false;
+  var SITTINGS_FIRST = 6;
+
+  function mmss(secs){
+    var m = Math.floor(secs / 60), s = Math.round(secs % 60);
+    if (s === 60){ m++; s = 0; }
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function dayWord(d){
+    var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    var days = Math.floor((midnight - d) / 86400000) + 1;
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  function timeWord(d){
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  // what the round was called, for rows saved before labels were sent
+  function roundName(r){
+    if (r.label) return r.label;
+    if (!r.table) return 'The ones just missed';
+    return r.subject === 'times' ? 'The ' + r.table + 's' : 'Set ' + r.table;
+  }
+  // Consecutive rounds sharing a sitting id are one sitting. Anything with no
+  // id at all stands on its own, which is what old rows will look like.
+  function sittings(rows){
+    var out = [], cur = null;
+    rows.forEach(function(r){
+      if (!cur || !r.session || r.session !== cur.id){
+        cur = { id: r.session || ('one-' + out.length), rounds: [] };
+        out.push(cur);
+      }
+      cur.rounds.push(r);
+    });
+    return out;
+  }
+
+  function paintHistory(){
+    var rows = (parentData && parentData.history) || [];
+    el.histBlock.classList.remove('hide');
+    el.histList.innerHTML = '';
+
+    if (!rows.length){
+      var none = document.createElement('p');
+      none.className = 'empty';
+      none.textContent = 'Nothing recorded yet. Every round they play from now on '
+        + 'lands here: when they sat down, how long each one took, what they missed '
+        + 'and what it paid.';
+      el.histList.appendChild(none);
+      el.histSum.textContent = '';
+      el.histMore.classList.add('hide');
+      return;
+    }
+
+    // the week at a glance, before any of the detail
+    var weekAgo = Date.now() - 7 * 86400000;
+    var week = rows.filter(function(r){ return new Date(r.at).getTime() >= weekAgo; });
+    var wSecs = 0, wCoins = 0, wWrong = 0;
+    week.forEach(function(r){ wSecs += r.seconds; wCoins += r.coins; wWrong += r.wrong; });
+    var wSits = sittings(week).length;
+    var wMins = Math.round(wSecs / 60);
+    el.histSum.textContent = week.length
+      ? 'Last 7 days: ' + wSits + (wSits === 1 ? ' sitting, ' : ' sittings, ')
+        + (wMins < 1 ? 'under a minute practising, '
+                     : wMins + (wMins === 1 ? ' minute practising, ' : ' minutes practising, '))
+        // answers rather than cards: a card missed twice was answered wrong twice
+        + wWrong + (wWrong === 1 ? ' answer wrong, ' : ' answers wrong, ')
+        + fmt(wCoins) + (wCoins === 1 ? ' coin earned.' : ' coins earned.')
+      : 'Nothing in the last 7 days. The most recent is below.';
+
+    var all = sittings(rows);
+    var show = histAll ? all : all.slice(0, SITTINGS_FIRST);
+    show.forEach(function(sit){
+      // newest first on the way in, so put the rounds back in the order they
+      // were actually played
+      var rounds = sit.rounds.slice().reverse();
+      var first = new Date(rounds[0].at);
+      var secs = 0, coins = 0, right = 0, wrong = 0;
+      rounds.forEach(function(r){
+        secs += r.seconds; coins += r.coins; right += r.right; wrong += r.wrong;
+      });
+
+      var box = document.createElement('div');
+      box.className = 'sit';
+      var head = document.createElement('div');
+      head.className = 'when';
+      head.innerHTML = '<b>' + esc(dayWord(first) + ', ' + timeWord(first)) + '</b>'
+        + '<em>' + mmss(secs) + '</em>';
+      box.appendChild(head);
+
+      var tally = document.createElement('div');
+      tally.className = 'tally';
+      tally.textContent = rounds.length + (rounds.length === 1 ? ' round · ' : ' rounds · ')
+        + right + ' right, ' + wrong + ' wrong'
+        + (coins ? ' · 🪙 ' + coins + (coins === 1 ? ' coin' : ' coins') : '');
+      box.appendChild(tally);
+
+      rounds.forEach(function(r){
+        var line = document.createElement('div');
+        line.className = 'rnd';
+        var pip = r.outcome === 'cleared' ? '<span class="pip ok">finished</span>'
+                : r.outcome === 'caught'  ? '<span class="pip bad">caught</span>'
+                                          : '<span class="pip meh">stopped</span>';
+        line.innerHTML = '<span class="nm">' + esc(roundName(r))
+          + (r.isBest ? ' 🏆' : '') + '</span>' + pip
+          + '<span class="dur">' + mmss(r.seconds) + '</span>';
+        box.appendChild(line);
+
+        if (r.missed && r.missed.length){
+          var mrow = document.createElement('div');
+          mrow.className = 'mrow';
+          r.missed.forEach(function(k){
+            var chip = document.createElement('span');
+            chip.className = 'mk';
+            chip.textContent = prettyKey(k);
+            mrow.appendChild(chip);
+          });
+          box.appendChild(mrow);
+        } else if (r.outcome === 'cleared' && !r.wrong){
+          var clean = document.createElement('div');
+          clean.className = 'mlab';
+          clean.textContent = 'Every card right first go';
+          box.appendChild(clean);
+        }
+      });
+      el.histList.appendChild(box);
+    });
+
+    el.histMore.classList.toggle('hide', all.length <= SITTINGS_FIRST);
+    el.histMore.textContent = histAll ? 'Show less'
+      : 'Show the other ' + (all.length - SITTINGS_FIRST);
+  }
+  el.histMore.addEventListener('click', function(){
+    sfx.tap(); histAll = !histAll; paintHistory();
+  });
 
   function paintRewardForm(){
     var editing = !!editingReward;
@@ -2602,14 +2786,13 @@
     sfx.tap(); paintScores();
   });
 
-  // Called when a chase round is cleared. Silent on failure by design.
-  function postScore(tableNo, seconds, right, wrong, onResult){
-    if (!me.token || !chaseOn()){ onResult(null); return; }
-    apiCall('/score', { method: 'POST', body: {
-      token: me.token, subject: state.subject, table: tableNo, pace: state.pace,
-      cards: state.total,
-      right: right, wrong: wrong, seconds: Math.round(seconds * 10) / 10
-    }}).then(function(res){
+  // Called at the end of every round, however it ended. Silent on failure by
+  // design. The server decides whether what is being posted is worth points;
+  // a round that was walked away from is posted purely for the history.
+  function postRound(body, onResult){
+    if (!me.token){ onResult(null); return; }
+    body.token = me.token;
+    apiCall('/score', { method: 'POST', body: body }).then(function(res){
       // A rejected session used to vanish silently and the child would finish
       // table after table with nothing saved. Say so instead.
       if (res && res.status === 401){
@@ -2618,6 +2801,8 @@
         onResult(null); return;
       }
       if (!res || !res.ok){ onResult(null); return; }
+      // a round that was only recorded comes back with nothing scored on it
+      if (!res.data || !res.data.score){ onResult(null); return; }
       onResult(res.data);
       refreshMe(); refreshBoard();
     });
@@ -3944,6 +4129,8 @@
     // the score is per table, so these count this round only, unlike
     // state.right / state.wrong which run across the whole session
     state.roundRight = 0; state.roundWrong = 0;
+    // and the same again for the history line this round will leave behind
+    state.roundMissed = []; state.roundStartedAt = Date.now(); state.roundLogged = false;
   }
   function card(){ return state.queue[0]; }
   function clearCard(correct){
@@ -3967,6 +4154,14 @@
     state.streak = 0; state.bestStreak = 0;
     state.missed = []; state.caught = false; state.lastScore = null;
     state.startedAt = Date.now();
+    /* One id for the whole sitting, so the grown-ups history gathers the three
+       tables done back to back into one evening rather than three. Go again is
+       the same sitting, which is why this is a gap since the last round rather
+       than a fresh id per run: a child pressing it four times has sat down
+       once. Twenty minutes apart and it is a new sitting. */
+    if (!state.sessionId || Date.now() - lastRoundAt > 20 * 60 * 1000){
+      state.sessionId = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
     document.body.classList.toggle('choice', state.mode === 'choice');
     document.body.classList.toggle('shoot', state.mode === 'shoot');
     if (state.mode !== 'shoot') rangeStop();
@@ -4041,6 +4236,7 @@
     } else {
       state.wrong++; state.roundWrong++; state.streak = 0;
       if (state.missed.indexOf(key) === -1) state.missed.push(key);
+      if (state.roundMissed.indexOf(key) === -1) state.roundMissed.push(key);
     }
     paintScore();
     clearCard(correct);      // moves the mouse, or sends the card to the back
@@ -4114,17 +4310,29 @@
   // run the end of the round twice
   var breaking = false;
 
-  /* A cleared table is worth a score. The chase time is used rather than the
-     wall clock because that is what the lane was showing, so the points agree
-     with what the child just watched. The server does the actual sums. */
-  function submitRound(){
-    var t = round().table;
-    if (!(t >= MIN && t <= MAX)) return;          // trouble-spot practice has no table
-    var secs = chase.spent, right = state.roundRight, wrong = state.roundWrong;
-    // no clock ran, so there is nothing honest to score. Only reachable if the
-    // frame loop never ticked, never in normal play.
-    if (!(secs >= 1)) return;
-    postScore(t, secs, right, wrong, function(data){
+  /* Every round leaves a line behind: cleared, caught, or given up on. Only a
+     cleared chase round can be worth points, and the server decides that, not
+     this. The chase time is what gets reported rather than the wall clock,
+     because the lane is what the child was watching, so the points agree with
+     what they just saw. With no chase running there is no lane, so the wall
+     clock stands in for the history. */
+  var lastRoundAt = 0;          // when the last round ended, for the sitting id
+  function logRound(outcome){
+    if (state.roundLogged) return;
+    var r = round();
+    if (!r) return;
+    var right = state.roundRight, wrong = state.roundWrong;
+    if (!right && !wrong) return;      // nothing was answered, so nothing happened
+    var t = (r.table >= MIN && r.table <= MAX) ? r.table : 0;   // 0 is a revision deck
+    var secs = chaseOn() ? chase.spent : (Date.now() - state.roundStartedAt) / 1000;
+    state.roundLogged = true;
+    lastRoundAt = Date.now();
+    postRound({
+      subject: state.subject, table: t, pace: state.pace, cards: state.total,
+      right: right, wrong: wrong, seconds: Math.round(secs * 10) / 10,
+      outcome: outcome, practice: !!state.practice, chase: chaseOn(),
+      session: state.sessionId, label: r.label || '', missed: state.roundMissed
+    }, function(data){
       if (!data) return;
       state.lastScore = data;
       // lands after the escape message, so they do not fight for the same spot
@@ -4158,8 +4366,10 @@
       sfx.escape();
       say('runner', LINES.escape, true);
       toast(round().label + ' got away! ' + pair().runner, true);
-      submitRound();
     }
+    // outside the chase test: a round cleared with the timer off scores
+    // nothing, but it is still practice that happened and belongs in the log
+    logRound('cleared');
     if (state.roundIdx + 1 >= state.rounds.length){
       setTimeout(finish, chaseOn() ? 1100 : 0);
       return;
@@ -4214,6 +4424,9 @@
 
   function finish(){
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
+    // whatever round was underway when this screen arrived. Cleared rounds
+    // logged themselves on the way out, and roundLogged stops a second line.
+    logRound(state.caught ? 'caught' : 'quit');
     var graded = state.right + state.wrong;
     var secs = Math.round((Date.now() - state.startedAt) / 1000);
     var m = Math.floor(secs / 60), s = secs % 60;
