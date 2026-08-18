@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.8">
+<meta name="x-cards-version" content="4.9">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -729,6 +729,14 @@
       <button type="button" class="opt" data-hand="0">Keyboard</button>
     </div>
     <p class="note" id="handNote"></p>
+    <div class="block hide" id="markBlock" style="margin:22px 0 0">
+      <p class="label">Who says if it is right</p>
+      <div class="opts" id="markOpts">
+        <button type="button" class="opt on" data-mark="1">The app reads it</button>
+        <button type="button" class="opt" data-mark="0">He marks himself</button>
+      </div>
+      <p class="note" id="markNote"></p>
+    </div>
     <p class="label" style="margin-top:22px">The worksheet questions</p>
     <div class="opts" id="extraOpts">
       <button type="button" class="opt on" data-extra="1">Put them in</button>
@@ -785,7 +793,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.8</p>
+  <p class="foot">v4.9</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1585,7 +1593,7 @@
 
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], write: 'copy', extras: true, tries: 0, hand: true,
+    units: [], write: 'copy', extras: true, tries: 0, hand: true, autoMark: true,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -1604,7 +1612,8 @@
    'topicsBlock','topicChips','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
-   'handOpts','handNote','inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkPeek','inkDone',
+   'handOpts','handNote','markBlock','markOpts','markNote',
+   'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkPeek','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
@@ -1879,6 +1888,7 @@
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
+        if (typeof s.autoMark === 'boolean') state.autoMark = s.autoMark;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
         if (Array.isArray(s.topics) && s.topics.length) state.topics = s.topics;
@@ -1897,6 +1907,7 @@
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
         units: state.units, write: state.write, extras: state.extras, hand: state.hand,
+        autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
         pair: state.pair, sound: state.sound
@@ -2070,6 +2081,14 @@
       : 'He types the words and the app marks them itself, letter by letter. Nothing is kept '
         + 'to print.';
     setOn(el.handOpts, 'data-hand', state.hand ? '1' : '0');
+    setOn(el.markOpts, 'data-mark', state.autoMark ? '1' : '0');
+    el.markBlock.classList.toggle('hide', !spell || !state.hand);
+    el.markNote.textContent = state.autoMark
+      ? 'His writing is sent to be read and marked, so he is told there and then and '
+        + 'writes it again if it is wrong. If it cannot be read, or you are offline, he '
+        + 'marks himself instead. Costs a fraction of a penny a word.'
+      : 'The spelling comes up once he is done and he says whether he got it. Nothing '
+        + 'leaves the iPad.';
     setOn(el.writeOpts, 'data-write', state.write);
     setOn(el.extraOpts, 'data-extra', state.extras ? '1' : '0');
     setOn(el.modeOpts, 'data-mode', state.mode);
@@ -2139,6 +2158,10 @@
   });
   el.noneBtn.addEventListener('click', function(){
     state.tables = []; sfx.tap(); paintHome(); saveSettings();
+  });
+  el.markOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.autoMark = b.getAttribute('data-mark') === '1'; sfx.tap(); paintHome(); saveSettings();
   });
   el.handOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -5005,7 +5028,13 @@
     document.body.classList.toggle('hand', !!state.hand);
     el.inkGrade.classList.remove('on');
     el.inkRow.classList.remove('hide');
-    if (state.hand){ inkReset(); el.wCheck.textContent = 'Check it'; }
+    if (state.hand){
+      checking = false;
+      inkReset();
+      el.inkDone.textContent = 'Done';
+      el.inkDone.disabled = false;
+      el.wCheck.textContent = 'Check it';
+    }
 
     if (mode === 'copy'){
       showWord(true);
@@ -5274,6 +5303,69 @@
     hideWordSoon(c.w, PEEK_FLASH);
   });
 
+  /* The ink as a picture for the checker: cropped to the writing, black on
+     white, no bigger than it needs to be. A tight crop is both the cheapest
+     a vision call gets and the easiest thing for it to read. */
+  function inkPNG(){
+    if (!ink.strokes.length) return '';
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    ink.strokes.forEach(function(st){
+      st.forEach(function(pt){
+        if (pt[0] < x0) x0 = pt[0]; if (pt[0] > x1) x1 = pt[0];
+        if (pt[1] < y0) y0 = pt[1]; if (pt[1] > y1) y1 = pt[1];
+      });
+    });
+    if (x0 > x1) return '';
+    x0 -= 14; y0 -= 14; x1 += 14; y1 += 14;
+    var w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+    var scale = Math.min(2.5, 620 / w, 300 / h);
+    var cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w * scale));
+    cv.height = Math.max(1, Math.round(h * scale));
+    var g = cv.getContext('2d');
+    if (!g) return '';
+    g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+    g.setTransform(scale, 0, 0, scale, -x0 * scale, -y0 * scale);
+    g.strokeStyle = '#000'; g.lineWidth = 3.4; g.lineCap = 'round'; g.lineJoin = 'round';
+    ink.strokes.forEach(function(st){
+      if (st.length === 1){
+        g.beginPath(); g.arc(st[0][0], st[0][1], 1.8, 0, 6.284);
+        g.fillStyle = '#000'; g.fill(); return;
+      }
+      g.beginPath(); g.moveTo(st[0][0], st[0][1]);
+      for (var i = 1; i < st.length; i++) g.lineTo(st[i][0], st[i][1]);
+      g.stroke();
+    });
+    try { return cv.toDataURL('image/png'); } catch(e){ return ''; }
+  }
+
+  /* Send the writing off to be read. Anything that is not a clear yes or no
+     comes back as null and he marks himself, which is what this did before
+     the checker existed: not signed in, offline, over the daily ceiling,
+     writing it could not make out. It never leaves him stuck waiting. */
+  function askTheChecker(c){
+    var img = state.autoMark && me.token ? inkPNG() : '';
+    if (!img){ inkReveal(); return; }
+    checking = true;
+    setWHint('Reading it…', '');
+    el.inkDone.textContent = 'Reading…';
+    el.inkDone.disabled = true;
+    apiCall('/handwriting', { method: 'POST',
+      body: { token: me.token, word: c.w, image: img } }).then(function(res){
+      checking = false;
+      el.inkDone.textContent = 'Done';
+      el.inkDone.disabled = false;
+      // he may have quit or moved on while it was thinking
+      if (card() !== c || state.answered || state.caught) return;
+      var d = res && res.ok ? res.data : null;
+      if (!d || d.ok === null || d.ok === undefined){ inkReveal(); return; }
+      showWord(true);
+      el.wClue.classList.add('hide');
+      inkMark(!!d.ok, d.read || '');
+    });
+  }
+  var checking = false;
+
   // the spelling comes up and he checks his own writing against it
   function inkReveal(){
     var c = card();
@@ -5288,8 +5380,14 @@
   }
   el.inkDone.addEventListener('click', function(){
     unlock();
+    if (checking) return;
     if (!ink.strokes.length){ setWHint('Write the word first', 'bad'); return; }
-    inkReveal();
+    var c = card();
+    if (!c || !isWord(c) || state.answered || state.caught) return;
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    el.inkGrade.classList.remove('on');
+    askTheChecker(c);
   });
 
   function keepInk(c, missed){
@@ -5301,7 +5399,7 @@
     buildSheet();     // kept current, so Share > Print never catches it empty
   }
 
-  function inkMark(ok){
+  function inkMark(ok, read){
     var c = card();
     if (!c || !isWord(c) || state.answered || state.caught) return;
     el.inkGrade.classList.remove('on');
@@ -5321,9 +5419,12 @@
     state.tries++;
     sfx.wrong();
     el.inkRow.classList.remove('hide');
+    el.inkDone.textContent = 'Done';
+    el.inkDone.disabled = false;
     inkReset();
     showWord(true);
-    setWHint('Have another go, the word is up there', 'bad');
+    setWHint(read ? 'That reads as \u201C' + read + '\u201D. Have another go'
+                  : 'Have another go, the word is up there', 'bad');
     chaseResume();
   }
   el.inkYes.addEventListener('click', function(){ unlock(); inkMark(true); });
