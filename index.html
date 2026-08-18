@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.9">
+<meta name="x-cards-version" content="4.11">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -793,7 +793,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.9</p>
+  <p class="foot">v4.11</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -2084,9 +2084,12 @@
     setOn(el.markOpts, 'data-mark', state.autoMark ? '1' : '0');
     el.markBlock.classList.toggle('hide', !spell || !state.hand);
     el.markNote.textContent = state.autoMark
-      ? 'His writing is sent to be read and marked, so he is told there and then and '
-        + 'writes it again if it is wrong. If it cannot be read, or you are offline, he '
-        + 'marks himself instead. Costs a fraction of a penny a word.'
+      ? (me.token
+          ? 'His writing is sent to be read and marked, so he is told there and then and '
+            + 'writes it again if it is wrong. If it cannot be read, or you are offline, he '
+            + 'marks himself instead. Costs a fraction of a penny a word.'
+          : '\u26A0\uFE0F He needs to be signed in for this, otherwise he marks himself. '
+            + 'Tap the name at the top of this screen.')
       : 'The spelling comes up once he is done and he says whether he got it. Nothing '
         + 'leaves the iPad.';
     setOn(el.writeOpts, 'data-write', state.write);
@@ -5343,9 +5346,18 @@
      comes back as null and he marks himself, which is what this did before
      the checker existed: not signed in, offline, over the daily ceiling,
      writing it could not make out. It never leaves him stuck waiting. */
+  /* ⚠️ EVERY way out of here says which way it went. The first report of this
+     was "there was no ai", and there was no way to tell from the screen
+     whether it had been skipped, refused, or had failed - which cost a round
+     of guessing at it. A silent fallback and a broken feature look identical. */
   function askTheChecker(c){
-    var img = state.autoMark && me.token ? inkPNG() : '';
-    if (!img){ inkReveal(); return; }
+    if (!state.autoMark){ inkReveal('You have it set to him marking himself'); return; }
+    // signed in is required: the endpoint spends real money, and the player is
+    // how it is held to a sane number of words a day
+    if (!me.token){ inkReveal('Not signed in, so he marks this one himself'); return; }
+    var img = inkPNG();
+    if (!img){ inkReveal('Could not make a picture of that, mark it yourself'); return; }
+
     checking = true;
     setWHint('Reading it…', '');
     el.inkDone.textContent = 'Reading…';
@@ -5357,8 +5369,16 @@
       el.inkDone.disabled = false;
       // he may have quit or moved on while it was thinking
       if (card() !== c || state.answered || state.caught) return;
-      var d = res && res.ok ? res.data : null;
-      if (!d || d.ok === null || d.ok === undefined){ inkReveal(); return; }
+      if (!res){ inkReveal('Could not reach the checker, mark it yourself'); return; }
+      if (res.status === 401){ inkReveal('Signed out, so mark this one yourself'); return; }
+      if (!res.ok){ inkReveal('Checker said no (' + res.status + '), mark it yourself'); return; }
+      var d = res.data;
+      if (!d || d.ok === null || d.ok === undefined){
+        inkReveal(d && d.why === 'capped'
+          ? 'That is enough reading for today, mark it yourself'
+          : 'Could not read that one. Did you get it?');
+        return;
+      }
       showWord(true);
       el.wClue.classList.add('hide');
       inkMark(!!d.ok, d.read || '');
@@ -5367,14 +5387,14 @@
   var checking = false;
 
   // the spelling comes up and he checks his own writing against it
-  function inkReveal(){
+  function inkReveal(why){
     var c = card();
     if (!c || !isWord(c) || state.answered) return;
     stopTimer(); chasePause(); hushVoice();
     el.track.classList.add('hidden');
     showWord(true);
     el.wClue.classList.add('hide');
-    setWHint('Check every letter. Did you get it?', '');
+    setWHint(why || 'Check every letter. Did you get it?', '');
     el.inkGrade.classList.add('on');
     el.inkRow.classList.add('hide');
   }
