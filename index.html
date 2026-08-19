@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.17">
+<meta name="x-cards-version" content="4.18">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -419,6 +419,16 @@
   body.group #writeBlock,body.group #chaseBlock .slide,
   body.group #chaseBlock .pairgap{display:none}
 
+  .stands{display:flex;flex-direction:column;gap:6px}
+  .stand{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;
+    background:#fff;border:2px solid var(--line)}
+  .stand.me{border-color:var(--blue);background:var(--blue-soft)}
+  .stand .place{flex:none;width:26px;font-weight:700;color:var(--muted);font-size:15px}
+  .stand .who{flex:1;font-weight:600;font-size:17px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stand .pts{flex:none;font-weight:700;font-size:17px;color:var(--blue)}
+  .stand.top .place{color:var(--amber)}
+
   /* ---------- the archery range ----------
      Full screen. The canvas is a fixed layer behind everything and the rest of
      the play screen keeps its ordinary flow on top of it, which is why the
@@ -657,6 +667,13 @@
     <span class="chev">›</span>
   </button>
 
+  <div class="block hide" id="standBlock">
+    <p class="label">Where everyone stands</p>
+    <div class="stands" id="standList"></div>
+    <p class="note">Everyone's total across all the subjects. Only rounds played
+      with the chase on count towards it.</p>
+  </div>
+
   <div class="block hide" id="scoreBlock">
     <p class="label" id="scoreLabel">Your best at 10s a card</p>
     <div class="opts" id="viewOpts">
@@ -813,7 +830,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.17</p>
+  <p class="foot">v4.18</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1348,6 +1365,22 @@
         t: "And without controversy great is the mystery of godliness: God was manifest in the flesh, justified in the Spirit, seen of angels, preached unto the Gentiles, believed on in the world, received up into glory." },
       { r: "Revelation 1:8",
         t: "I am Alpha and Omega, the beginning and the ending, saith the Lord, which is, and which was, and which is to come, the Almighty." },
+          { r: "Isaiah 9:6",
+        t: "For unto us a child is born, unto us a son is given: and the government shall be upon his shoulder: and his name shall be called Wonderful, Counsellor, The mighty God, The everlasting Father, The Prince of Peace." },
+      { r: "Deuteronomy 32:39",
+        t: "See now that I, even I, am he, and there is no god with me: I kill, and I make alive; I wound, and I heal: neither is there any that can deliver out of my hand." },
+      { r: "1 Timothy 2:5",
+        t: "For there is one God, and one mediator between God and men, the man Christ Jesus;" },
+      { r: "James 2:19",
+        t: "Thou believest that there is one God; thou doest well: the devils also believe, and tremble." },
+      { r: "Ephesians 4:6",
+        t: "One God and Father of all, who is above all, and through all, and in you all." },
+      { r: "Isaiah 45:21",
+        t: "Tell ye, and bring them near; yea, let them take counsel together: who hath declared this from ancient time? who hath told it from that time? have not I the LORD? and there is no God else beside me; a just God and a Saviour; there is none beside me." },
+      { r: "Psalm 86:10",
+        t: "For thou art great, and doest wondrous things: thou art God alone." },
+      { r: "Galatians 3:20",
+        t: "Now a mediator is not a mediator of one, but God is one." },
     ] },
     { c: "Baptism", v: [
       { r: "Acts 2:38",
@@ -1649,6 +1682,7 @@
    'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
+   'standBlock','standList',
    'scoreBlock','scoreLabel','viewOpts','scoreList','scoreNote','grand','grandTotal','grandLabel',
    'purseBtn','coinCount','shopWord','waitDot',
    'shopScreen','shopCoins','capNote','waitBlock','waitList','shopTabs',
@@ -2426,7 +2460,8 @@
         me.kit = res.data.kit || 'all';
         me.hasCheer = !!res.data.hasCheer; cheerData = null;
         clearShop(); takePocket(res.data);
-        saveMe(); adoptRecord(res.data.misses); paintWho(); refreshBoard(); refreshShop();
+        saveMe(); adoptRecord(res.data.misses); paintWho();
+        refreshBoard(); refreshShop(); refreshStandings();
         sfx.right();
         show('home');
       });
@@ -3435,6 +3470,28 @@
         : 'Only a right answer moves it along. Get one wrong and that card goes to the back of '
           + 'the queue to come round again, which costs you time.');
   }
+  /* Everyone's name and one total. No breakdown on purpose: which subjects
+     somebody is weakest at is their business, and a table of columns is an
+     invitation to pick on whoever is bottom of one. */
+  function refreshStandings(){
+    if (!me.token){ el.standBlock.classList.add('hide'); return; }
+    apiCall('/standings?token=' + encodeURIComponent(me.token)).then(function(res){
+      var d = res && res.ok ? res.data : null;
+      var rows = d && d.standings ? d.standings : [];
+      el.standBlock.classList.toggle('hide', rows.length < 2);
+      if (rows.length < 2) return;
+      el.standList.innerHTML = '';
+      rows.forEach(function(r){
+        var div = document.createElement('div');
+        div.className = 'stand' + (r.name === d.you ? ' me' : '') + (r.place === 1 ? ' top' : '');
+        div.innerHTML = '<span class="place">' + (r.place === 1 ? '🏆' : r.place) + '</span>'
+          + '<span class="who">' + esc(r.name) + '</span>'
+          + '<span class="pts">' + fmt(r.total) + '</span>';
+        el.standList.appendChild(div);
+      });
+    });
+  }
+
   var boardId = null;
   el.pace.addEventListener('input', function(){
     state.pace = parseInt(el.pace.value, 10);
@@ -5834,6 +5891,7 @@
       // no list of what was missed: that is the answer key by another name
       paintMissBox(el.missBox, el.missList, []);
       refreshBoard();
+      refreshStandings();
     });
   }
 
@@ -5992,7 +6050,7 @@
   paintWho();
   // all best-effort; if the network is out the game just plays offline
   refreshMe();
-  if (me.token){ refreshBoard(); refreshShop(); }
+  if (me.token){ refreshBoard(); refreshShop(); refreshStandings(); }
 })();
 </script>
 
