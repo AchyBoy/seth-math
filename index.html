@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.20">
+<meta name="x-cards-version" content="4.21">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -830,7 +830,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.20</p>
+  <p class="foot">v4.21</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -5829,7 +5829,11 @@
       chasePause();
       sfx.escape();
       say('runner', LINES.escape, true);
-      toast(round().label + ' got away! ' + pair().runner, true);
+      /* ⚠️ It is the RUNNER that gets away, not the subject. This read fine
+         while every round was called "The 3s" and turned funny the moment a
+         round was called Holiness or Unit 1. */
+      toast((round().label ? round().label + ' done, the ' : 'The ')
+        + pair().runnerName + ' got away! ' + pair().runner, true);
     }
     // outside the chase test: a round cleared with the timer off scores
     // nothing, but it is still practice that happened and belongs in the log
@@ -5929,8 +5933,11 @@
     hushVoice(); clearTimeout(peekId);
     try { el.wInput.blur(); } catch(e){}
     document.body.classList.remove('write', 'listening', 'hand');
-    el.printBtn.classList.toggle('hide', !hasSheet());
-    if (hasSheet()) buildSheet();
+    // the sheet is his spelling handwriting, so it belongs to a spelling round
+    // and nowhere else; it was turning up after scriptures on a shared phone
+    var canPrint = state.subject === 'spelling' && !groupKit() && hasSheet();
+    el.printBtn.classList.toggle('hide', !canPrint);
+    if (canPrint) buildSheet();
     // A dealt round is marked by the server, so none of the page's own
     // bookkeeping applies to it: no self-reported run, no local score.
     if (state.dealt){
@@ -5954,7 +5961,7 @@
       el.doneTitle.textContent = 'The ' + pair().chaserName + ' got the ' + pair().runnerName;
       el.doneRing.textContent = '';
       el.doneCards.textContent = round().label
-        ? 'Caught during ' + round().label.toLowerCase() : 'Caught';
+        ? 'Caught during ' + round().label : 'Caught';   // not lowercased: "one god" read badly
       el.doneStreak.textContent = graded
         ? state.right + ' right, ' + state.wrong + ' missed' : '';
       el.againBtn.textContent = 'Try again';
