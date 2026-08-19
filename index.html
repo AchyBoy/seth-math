@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.16">
+<meta name="x-cards-version" content="4.17">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -808,8 +808,12 @@
     <p class="note" id="chaseNote"></p>
   </div>
 
+  <p class="note hide" id="studyNote" style="border:2px solid var(--amber);
+     border-radius:14px;padding:10px 12px;margin-bottom:12px;color:var(--ink)">
+    📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
+    and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.16</p>
+  <p class="foot">v4.17</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1654,7 +1658,7 @@
    'pendBlock','pendList','rewardBlock','rewardList','addLabel',
    'rwEmoji','rwTitle','rwCost','rwRepeats','rwErr','rwSave','rwCancel','rwRemove','rwGuide',
    'mailBlock','mailField','mailSave','mailMsg','codeChange','parentBack',
-   'startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
+   'studyNote','startBtn','count','score','quitBtn','track','fill','lane','cat','mouse','hole','bubble','roundTag','gapTag',
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'range','shootQ','rangeCv','windTag','pad','knob','fireBtn',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
@@ -2070,6 +2074,7 @@
      hangs off the kit the SERVER handed us, and the round is graded there too,
      so switching it off in a console buys nothing but a different looking home
      screen. One clock for everybody, fixed to match what the server scores. */
+  var kitSettled = false;
   function paintKit(){
     var group = groupKit();
     document.body.classList.toggle('group', group);
@@ -2078,6 +2083,26 @@
     state.mode = 'choice';        // self marking cannot be scored, so it is out
     state.pace = GROUP_PACE;
     if (!state.topics.length) state.topics = [0];
+    /* The chase is the game for a group who are competing, so it is what they
+       land on. Set ONCE per device against its own flag, rather than inferred
+       from whether any settings exist: a youth signing in on a phone that has
+       had a family account on it would otherwise inherit whatever that account
+       last chose. After that it is theirs to change, and turning it off to
+       study has to stick. */
+    if (!kitSettled){
+      kitSettled = true;
+      var flag = 'seth-cards-group-ready';
+      var first = true;
+      try { first = !localStorage.getItem(flag); } catch(e){}
+      if (first){
+        state.timer = 'chase';
+        try { localStorage.setItem(flag, '1'); } catch(e){}
+        saveSettings();
+      } else if (state.timer === 'card'){
+        state.timer = 'chase';    // per card has no controls here, so it cannot stay
+        saveSettings();
+      }
+    }
   }
 
   function paintHome(){
@@ -2164,6 +2189,9 @@
     // one subject at a time for the group, so a round is one whole thing to beat
     if (groupKit() && state.topics.length > 1) state.topics = [state.topics[0]];
     el.startBtn.disabled = chosen === 0;
+    if (groupKit()){
+      el.studyNote.classList.toggle('hide', chaseOn());
+    } else el.studyNote.classList.add('hide');
     el.startBtn.textContent = chosen === 0
       ? (spell ? 'Pick at least one week' : verses ? 'Pick at least one subject'
          : blends ? 'Pick at least one set' : 'Pick at least one table')
@@ -2265,6 +2293,9 @@
       var key = list[i].getAttribute('data-pair'), p = null;
       for (var j = 0; j < PAIRS.length; j++) if (PAIRS[j].key === key) p = PAIRS[j];
       var locked = p && !pairOk(p);
+      // The group have no shop, so "🔒 in the shop" is an advert for something
+      // that does not exist for them. The bought pairs are simply not there.
+      list[i].classList.toggle('hide', !!(locked && groupKit()));
       list[i].classList.toggle('locked', !!locked);
       list[i].classList.toggle('on', !locked && key === state.pair);
       var who = list[i].querySelector('.who');
@@ -4909,7 +4940,8 @@
 
     state.revealed = false; state.answered = false;
     el.card.classList.remove('flip');
-    el.count.textContent = (state.cleared + 1) + ' / ' + state.total;
+    el.count.textContent = (state.cleared + 1) + ' / ' + state.total
+      + (state.dealt && !chaseOn() ? '  📖 studying' : '');
     el.q.textContent = text;
     el.qsmall.textContent = text;
     el.a.textContent = answer;
@@ -5795,6 +5827,7 @@
       el.doneCards.textContent = Math.round(d.right / (n || 1) * 100) + '% right';
       el.doneStreak.textContent = d.scored
         ? (d.isBest ? 'New best, ' : '') + fmt(d.score.total) + ' points'
+        : d.why === 'study' ? '📖 Studying, so no points and not on the scoreboard'
         : d.why === 'toofast' ? 'Too quick to have been read, so no points'
         : d.why === 'stale' ? 'Left too long, so no points' : '';
       el.doneTime.textContent = 'in ' + d.seconds.toFixed(2) + 's';
@@ -5878,7 +5911,8 @@
     el.startBtn.disabled = true;
     el.startBtn.textContent = 'Dealing…';
     apiCall('/round/start', { method: 'POST',
-      body: { token: me.token, topic: state.topics[0], pace: GROUP_PACE } }).then(function(res){
+      body: { token: me.token, topic: state.topics[0], pace: GROUP_PACE,
+              counts: chaseOn() } }).then(function(res){
       el.startBtn.disabled = false;
       paintHome();
       if (res && res.status === 429 && res.data && res.data.waitSeconds){
