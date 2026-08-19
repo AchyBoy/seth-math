@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.12">
+<meta name="x-cards-version" content="4.13">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -795,7 +795,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.12</p>
+  <p class="foot">v4.13</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -5331,7 +5331,12 @@
     if (x0 > x1) return '';
     x0 -= 14; y0 -= 14; x1 += 14; y1 += 14;
     var w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
-    var scale = Math.min(2.5, 620 / w, 300 / h);
+    /* ⚠️ Big enough to be read. The first real word came back "could not read
+       that one" partly because this capped the picture at 620px wide and then
+       it was sent at low detail on top, so the model was given a small thin
+       copy of a rough scrawl. It is rendered at up to about 1200px now, and
+       the stroke thickens with it because the width is in the same units. */
+    var scale = Math.max(1, Math.min(3, 1200 / w, 620 / h));
     var cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(w * scale));
     cv.height = Math.max(1, Math.round(h * scale));
