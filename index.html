@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.21">
+<meta name="x-cards-version" content="4.22">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -830,7 +830,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.21</p>
+  <p class="foot">v4.22</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -5923,6 +5923,12 @@
       el.doneTime.textContent = 'in ' + d.seconds.toFixed(2) + 's';
       // no list of what was missed: that is the answer key by another name
       paintMissBox(el.missBox, el.missList, []);
+      /* ⚠️ refreshMe() as well. The board and the standings were refreshed and
+         the player's OWN bests were not, and those are what the home screen
+         draws - so a round that scored 312 was recorded correctly and the
+         screen went on showing the score from before it, which reads exactly
+         like the round having earned nothing. */
+      refreshMe();
       refreshBoard();
       refreshStandings();
     });
