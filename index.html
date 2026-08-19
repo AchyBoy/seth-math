@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.23">
+<meta name="x-cards-version" content="4.24">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -413,6 +413,7 @@
   }
 
   /* what a youth group account simply does not have */
+  body.group #topicsBlock .quick,
   body.group #subjBlock,body.group #modeBlock,body.group #orderBlock,
   body.group #troubleBlock,body.group #purseBtn,body.group #secsBlock,
   body.group #tablesBlock,body.group #setsBlock,body.group #unitsBlock,
@@ -718,9 +719,7 @@
       <button type="button" id="allTopicsBtn">All</button>
       <button type="button" id="noTopicsBtn">None</button>
     </div>
-    <p class="note">King James, so the words are the ones he will hear read aloud.
-      Flip the card to check yourself, or switch to Pick the answer and match the verse
-      to where it is found.</p>
+    <p class="note" id="topicNote"></p>
   </div>
 
   <div class="block" id="tablesBlock">
@@ -830,7 +829,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.23</p>
+  <p class="foot">v4.24</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1692,7 +1691,7 @@
    'secsBlock','secsOpts','chaseBlock','pairOpts','pace','paceLabel','chaseNote',
    'troubleBlock','troubleList','practiceBtn','clearMissBtn','trailBlock','trailText','trailClear',
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
-   'topicsBlock','topicChips','allTopicsBtn','noTopicsBtn',
+   'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
@@ -2048,8 +2047,16 @@
     el.topicChips.addEventListener('click', function(ev){
       var b = ev.target.closest('button'); if (!b) return;
       var i = parseInt(b.getAttribute('data-topic'), 10);
-      var at = state.topics.indexOf(i);
-      if (at === -1) state.topics.push(i); else state.topics.splice(at, 1);
+      /* ⚠️ One at a time for the group, so a tap PICKS rather than toggles.
+         Toggling left One God impossible to get rid of: tapping another added
+         it, the list was trimmed back to the first, and tapping One God to
+         clear it left the list empty, which is refilled with One God. */
+      if (groupKit()){
+        state.topics = [i];
+      } else {
+        var at = state.topics.indexOf(i);
+        if (at === -1) state.topics.push(i); else state.topics.splice(at, 1);
+      }
       sfx.tap(); paintHome(); saveSettings();
     });
     el.allTopicsBtn.addEventListener('click', function(){
@@ -2192,6 +2199,11 @@
     el.writeBlock.classList.toggle('hide', !spell);
     el.modeBlock.classList.toggle('hide', spell);
     el.setsNote.textContent = setsSummary();
+    el.topicNote.textContent = groupKit()
+      ? 'One subject a round. Read the verse and pick where it is found. King James, '
+        + 'so the words are the ones you will hear read aloud.'
+      : 'King James, so the words are the ones he will hear read aloud. Flip the card to '
+        + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
     el.handNote.textContent = state.hand
@@ -2239,8 +2251,9 @@
           return n + SOUNDS.slice((k - 1) * SOUNDS_PER_SET, k * SOUNDS_PER_SET).length;
         }, 0)
       : state.tables.length * PER_TABLE;
-    // one subject at a time for the group, so a round is one whole thing to beat
-    if (groupKit() && state.topics.length > 1) state.topics = [state.topics[0]];
+    // belt and braces: whatever happens, the group has exactly one chosen,
+    // and it is the one most recently picked rather than the oldest
+    if (groupKit() && state.topics.length > 1) state.topics = [state.topics[state.topics.length - 1]];
     el.startBtn.disabled = chosen === 0;
     if (groupKit()){
       el.studyNote.classList.toggle('hide', chaseOn());
