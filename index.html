@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.18">
+<meta name="x-cards-version" content="4.19">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -830,7 +830,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.18</p>
+  <p class="foot">v4.19</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1257,12 +1257,17 @@
   function loadMe(){
     try {
       var s = JSON.parse(localStorage.getItem(WHO));
-      if (s && s.token && s.name){ me.token = s.token; me.name = s.name; }
+      if (s && s.token && s.name){
+        me.token = s.token; me.name = s.name;
+        // the kit the server last told us, so the first paint is already right
+        if (s.kit) me.kit = s.kit;
+      }
     } catch(e){}
   }
   function saveMe(){
     try {
-      if (me.token) localStorage.setItem(WHO, JSON.stringify({token: me.token, name: me.name}));
+      if (me.token) localStorage.setItem(WHO,
+        JSON.stringify({token: me.token, name: me.name, kit: me.kit || 'all'}));
       else localStorage.removeItem(WHO);
     } catch(e){}
   }
@@ -1407,6 +1412,20 @@
         t: "He that believeth and is baptized shall be saved; but he that believeth not shall be damned." },
       { r: "John 3:5",
         t: "Jesus answered, Verily, verily, I say unto thee, Except a man be born of water and of the Spirit, he cannot enter into the kingdom of God." },
+          { r: "Ephesians 4:5",
+        t: "One Lord, one faith, one baptism," },
+      { r: "1 Corinthians 10:1-2",
+        t: "Moreover, brethren, I would not that ye should be ignorant, how that all our fathers were under the cloud, and all passed through the sea; And were all baptized unto Moses in the cloud and in the sea;" },
+      { r: "Acts 9:18",
+        t: "And immediately there fell from his eyes as it had been scales: and he received sight forthwith, and arose, and was baptized." },
+      { r: "Acts 10:47",
+        t: "Can any man forbid water, that these should not be baptized, which have received the Holy Ghost as well as we?" },
+      { r: "Galatians 3:26",
+        t: "For ye are all the children of God by faith in Christ Jesus." },
+      { r: "Romans 6:3",
+        t: "Know ye not, that so many of us as were baptized into Jesus Christ were baptized into his death?" },
+      { r: "Acts 8:36",
+        t: "And as they went on their way, they came unto a certain water: and the eunuch said, See, here is water; what doth hinder me to be baptized?" },
     ] },
     { c: "Holy Ghost", v: [
       { r: "Acts 2:4",
@@ -1855,7 +1874,7 @@
     cheerData = null; cheerAudio = null;
     // the purse belongs to the player too, and a wallet following the wrong
     // child would be worse than not having one at all
-    clearShop(); parentCode = ''; parentData = null;
+    clearShop(); parentCode = ''; parentData = null; me.kit = 'all'; kitSettled = false;
     saveMe();
     loadRecord();          // back to the guest record on this device
     paintWho();
@@ -3275,9 +3294,15 @@
       if (!res) return;                       // offline, keep what we have
       if (!res.ok){ forgetPlayer(); return; }
       me.name = res.data.name; me.bests = res.data.bests || [];
+      /* ⚠️ The kit has to be taken here too. Signing in set it and a reload
+         threw it away, so a youth group account came back from every refresh
+         with the whole home screen on it - the family's subjects, the shop,
+         the lot. paintHome() below, or the screen keeps whatever it drew
+         before the answer arrived. */
+      me.kit = res.data.kit || 'all';
       me.hasCheer = !!res.data.hasCheer;
       takePocket(res.data);
-      saveMe(); adoptRecord(res.data.misses); paintWho();
+      saveMe(); adoptRecord(res.data.misses); paintWho(); paintHome();
     });
   }
   function refreshBoard(){
