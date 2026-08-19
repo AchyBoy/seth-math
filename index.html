@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.25">
+<meta name="x-cards-version" content="4.26">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -829,7 +829,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.25</p>
+  <p class="foot">v4.26</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -839,19 +839,30 @@
   </div>
   <p class="sub">Scores are saved against your name, so they follow you to any phone or tablet.</p>
 
+  <!-- ⚠️ No list of who else plays here. It was a nice shortcut while this was
+       one family on one phone, and it stops being one the moment the link goes
+       out to a youth group: twenty of them would arrive at the front door
+       reading the children's first names. Everyone types their own name now,
+       which also gives Apple's password manager a username field to fill,
+       something the tap-a-name version never had. -->
   <div class="block" id="pickBlock">
-    <p class="label">Tap your name</p>
-    <div class="names" id="nameList"></div>
     <div class="quick">
       <button type="button" id="newPlayerBtn">I am new here</button>
     </div>
   </div>
 
-  <div class="block hide" id="pinBlock">
+  <form class="block hide" id="pinBlock" onsubmit="return false">
     <p class="label" id="pinLabel">Password</p>
-    <input class="field" id="newName" type="text" autocomplete="off" autocapitalize="words"
+    <!-- ⚠️ autocomplete="off" was on both of these, which is the one thing that
+         tells iOS NOT to offer to save or fill a password. username plus
+         current-password (swapped to new-password when making an account) is
+         what the keychain looks for, and the form wrapper is what makes Safari
+         offer to save it afterwards. -->
+    <input class="field" id="newName" type="text" name="username"
+           autocomplete="username" autocapitalize="words"
            placeholder="Your name" maxlength="24">
-    <input class="field" id="pinField" type="password" autocomplete="off"
+    <input class="field" id="pinField" type="password" name="password"
+           autocomplete="current-password"
            inputmode="text" placeholder="Password, 4 or more" maxlength="64">
     <input class="field hide" id="codeJoin" type="text" autocomplete="off"
            autocapitalize="none" spellcheck="false"
@@ -861,8 +872,8 @@
     <p class="err" id="authErr"></p>
     <p class="hintline" id="authHint"></p>
     <button type="button" class="start" id="authGo" disabled>Go</button>
-    <button type="button" class="link" id="authBack">Back to the names</button>
-  </div>
+    <button type="button" class="link" id="authBack">Back</button>
+  </form>
 
   <div class="block hide" id="cheerBlock">
     <p class="label">Grown ups: a well done message</p>
@@ -1697,7 +1708,7 @@
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkPeek','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
-   'whoBtn','whoLabel','whoScreen','pickBlock','nameList','newPlayerBtn','pinBlock','pinLabel',
+   'whoBtn','whoLabel','whoScreen','pickBlock','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
    'cheerBlock','cheerWho','recBtn','playCheerBtn','delCheerBtn','cheerFile','cheerMsg','pickFileLabel',
    'standBlock','standList',
@@ -2402,34 +2413,13 @@
     });
   }
 
+  /* Straight to the form. /players is not called at all any more: the only
+     thing it was for was the list of everybody's names, and that list is the
+     thing being removed. */
   function openWho(){
     sfx.tap();
-    showAuthPick();
     show('who');
-    apiCall('/players').then(function(res){
-      el.nameList.innerHTML = '';
-      var names = (res && res.ok && res.data.players) || [];
-      if (!names.length){
-        var p = document.createElement('span');
-        p.className = 'none';
-        p.textContent = res ? 'Nobody has signed up yet. Be the first.'
-                            : 'Cannot reach the scoreboard right now.';
-        el.nameList.appendChild(p);
-        return;
-      }
-      names.forEach(function(n){
-        var b = document.createElement('button');
-        b.type = 'button'; b.textContent = n;
-        b.addEventListener('click', function(){ showAuthPin('login', n); });
-        el.nameList.appendChild(b);
-      });
-    });
-  }
-  function showAuthPick(){
-    el.pickBlock.classList.remove('hide');
-    el.pinBlock.classList.add('hide');
-    el.authErr.textContent = '';
-    el.pinField.value = ''; el.newName.value = '';
+    showAuthPin('login', me.name || '');
   }
   function showAuthPin(mode, name){
     authMode = mode; authName = name || '';
@@ -2437,19 +2427,21 @@
     el.pinBlock.classList.remove('hide');
     el.authErr.textContent = '';
     el.pinField.value = '';
-    el.newName.classList.toggle('hide', mode === 'login');
-    el.pinLabel.textContent = mode === 'login'
-      ? 'Password for ' + name
+    el.newName.classList.remove('hide');       // typed in both modes now
+    el.newName.value = name || '';
+    // the keychain treats making an account and signing in differently
+    el.pinField.setAttribute('autocomplete', mode === 'signup' ? 'new-password' : 'current-password');
+    el.pinLabel.textContent = mode === 'login' ? 'Your name and password'
       : 'Make yourself a player';
     el.authGo.textContent = mode === 'login' ? 'Sign in' : 'Create player';
     gateAuthGo();
-    setTimeout(function(){ (mode === 'login' ? el.pinField : el.newName).focus(); }, 60);
+    setTimeout(function(){ el.newName.focus(); }, 60);
   }
 
   /* The button stays dead until what is typed would actually be accepted, so
      nobody submits something we are only going to bounce back at them. */
   function authReady(){
-    var name = authMode === 'login' ? authName : el.newName.value.trim();
+    var name = el.newName.value.trim();
     if (name.length < 2 || el.pinField.value.length < 4) return false;
     // a new player needs the code; signing in again does not
     return authMode !== 'signup' || !!el.codeJoin.value.trim();
@@ -2458,11 +2450,11 @@
     el.codeJoin.classList.toggle('hide', authMode !== 'signup');
     var ok = authReady();
     el.authGo.disabled = !ok;
-    if (!ok && !el.pinField.value && authMode === 'signup' && !el.newName.value.trim()){
+    if (!ok && !el.pinField.value && !el.newName.value.trim()){
       el.authHint.textContent = 'Pick a name, then a password of 4 or more';
     } else if (el.pinField.value.length && el.pinField.value.length < 4){
       el.authHint.textContent = 'A bit longer, 4 characters or more';
-    } else if (authMode === 'signup' && el.newName.value.trim().length < 2){
+    } else if (el.newName.value.trim().length < 2){
       el.authHint.textContent = 'Type your name first';
     } else if (authMode === 'signup' && !el.codeJoin.value.trim()){
       el.authHint.textContent = 'You need the code you were given';
@@ -2474,7 +2466,7 @@
   function doAuth(){
     if (!authReady()) return;
     var pin = el.pinField.value;
-    var name = authMode === 'login' ? authName : el.newName.value.trim();
+    var name = el.newName.value.trim();
     el.authErr.textContent = '';
     el.authGo.disabled = true;
     el.authGo.textContent = 'Just a second...';
@@ -2505,13 +2497,14 @@
 
   el.whoBtn.addEventListener('click', openWho);
   el.newPlayerBtn.addEventListener('click', function(){ sfx.tap(); showAuthPin('signup', ''); });
-  el.authBack.addEventListener('click', function(){ sfx.tap(); showAuthPick(); });
+  el.authBack.addEventListener('click', function(){ sfx.tap(); showAuthPin('login', ''); });
   el.authGo.addEventListener('click', doAuth);
   el.pinField.addEventListener('input', gateAuthGo);
   el.newName.addEventListener('input', gateAuthGo);
   el.codeJoin.addEventListener('input', gateAuthGo);
   el.pinField.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') doAuth(); });
   el.newName.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') el.pinField.focus(); });
+
   el.skipAuth.addEventListener('click', function(){ allowAnon = true; sfx.tap(); show('home'); });
 
   /* ⚠️ There is no home screen until somebody is signed in. Without an account
@@ -6117,7 +6110,7 @@
   buildChips();
   buildPairs();
   paintHome();
-  if (!me.token) show('who');      // nothing before signing in
+  if (!me.token){ show('who'); showAuthPin('login', ''); }   // nothing before signing in
   // built once on the way in, so a Share > Print straight after a reload
   // finds last night's page rather than a blank one
   if (hasSheet()) buildSheet();
