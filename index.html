@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.13">
+<meta name="x-cards-version" content="4.14">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -795,7 +795,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.13</p>
+  <p class="foot">v4.14</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -4809,6 +4809,7 @@
     state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
     state.missed = []; state.caught = false; state.lastScore = null;
+    written = 0; lastCheer = -99;
     state.startedAt = Date.now();
     /* One id for the whole sitting, so the grown-ups history gathers the three
        tables done back to back into one evening rather than three. Go again is
@@ -4824,7 +4825,9 @@
     show('play');
     chaseStart();
     paintCard();
-    if (state.mode === 'shoot' && !toldAboutShooting){
+    // the archer hint has no business turning up in a spelling round, which it
+    // did whenever Shoot it was the last thing chosen on another subject
+    if (state.mode === 'shoot' && !spellingNow() && !toldAboutShooting){
       toldAboutShooting = true;
       setTimeout(function(){ toast('Left thumb looks, right thumb shoots'); }, 900);
     }
@@ -5396,7 +5399,7 @@
       }
       showWord(true);
       el.wClue.classList.add('hide');
-      inkMark(!!d.ok, d.read || '');
+      inkMark(!!d.ok, d.read || '', d.cheer || '');
     });
   }
   var checking = false;
@@ -5434,13 +5437,30 @@
     buildSheet();     // kept current, so Share > Print never catches it empty
   }
 
-  function inkMark(ok, read){
+  /* When it says something to him. Praise on all twenty stops meaning anything
+     by about the sixth, so it is kept for the moments it lands: the first word
+     of the sitting, any word he has just put right after missing it, and one
+     in four otherwise. It stands down when the streak toast is already firing,
+     rather than the two of them fighting over the same spot. */
+  var written = 0, lastCheer = -99;
+  function maybeCheer(cheer, fixedIt){
+    if (!cheer) return;
+    var streakToast = state.streak >= 3 && state.streak % 3 === 0;
+    if (streakToast) return;
+    if (!(fixedIt || written === 1 || written - lastCheer >= 4)) return;
+    lastCheer = written;
+    setTimeout(function(){ toast(cheer); }, 300);
+  }
+
+  function inkMark(ok, read, cheer){
     var c = card();
     if (!c || !isWord(c) || state.answered || state.caught) return;
     el.inkGrade.classList.remove('on');
     if (ok){
       sfx.right();
       state.answered = true;
+      written++;
+      maybeCheer(cheer, state.tries > 0);
       keepInk(c, state.tries > 0);
       if (state.tries === 0) bump(true);
       else { clearCard(true); chaseNudge(true); }   // the miss was already counted
