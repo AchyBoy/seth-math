@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.19">
+<meta name="x-cards-version" content="4.20">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -830,7 +830,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.19</p>
+  <p class="foot">v4.20</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -5029,7 +5029,11 @@
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
     document.body.classList.toggle('wordy', isSound(c) || isTask(c));
-    document.body.classList.toggle('versey', isVerse(c));
+    /* ⚠️ A dealt card is a verse too. This keyed off the old card's own shape
+       (r and t), and a server dealt one carries text and opts instead, so a
+       whole verse rendered at times-tables size - eighty four pixels, over the
+       top of the answer buttons, and nothing could be tapped. */
+    document.body.classList.toggle('versey', isVerse(c) || isDealt(c));
     paintScore();
 
     /* Spelling decides per card: the words are written, the two worksheet
