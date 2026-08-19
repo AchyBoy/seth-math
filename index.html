@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.24">
+<meta name="x-cards-version" content="4.25">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -829,7 +829,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.24</p>
+  <p class="foot">v4.25</p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -880,7 +880,7 @@
     <p class="hintline" id="cheerMsg"></p>
   </div>
 
-  <button type="button" class="link" id="skipAuth">Play without saving scores</button>
+  <button type="button" class="link hide" id="skipAuth">Play without saving scores</button>
   <button type="button" class="link hide" id="signOutBtn">Sign out</button>
   <p class="warnnote hide" id="signOutNote">Signing out only forgets you on this device.
     Your scores stay safe under your name, and come back the moment you sign in again.</p>
@@ -2377,6 +2377,10 @@
 
   /* ---------- signing in ---------- */
   var authMode = 'login', authName = '';
+  /* Set only by the skip button, which is hidden. It exists so the escape hatch
+     is one line to restore rather than a rewrite, if signing in ever proves too
+     much friction for the family. */
+  var allowAnon = false;
 
   function paintWho(){
     el.whoLabel.innerHTML = me.name
@@ -2508,7 +2512,20 @@
   el.codeJoin.addEventListener('input', gateAuthGo);
   el.pinField.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') doAuth(); });
   el.newName.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') el.pinField.focus(); });
-  el.skipAuth.addEventListener('click', function(){ sfx.tap(); show('home'); });
+  el.skipAuth.addEventListener('click', function(){ allowAnon = true; sfx.tap(); show('home'); });
+
+  /* ⚠️ There is no home screen until somebody is signed in. Without an account
+     there is no kit, so the page fell back to the family's view and handed a
+     youth group the times tables, the spelling, the archer and the shop before
+     they had typed a code - and the code was supposed to be the whole gate.
+     Signing in is once per device and it sticks, so this costs the family a tap
+     the first time and nothing after that. */
+  function gateOnSignIn(){
+    if (me.token) return false;
+    show('who');
+    return true;
+  }
+  el.signOutBtn.addEventListener('click', function(){ setTimeout(gateOnSignIn, 0); });
   el.signOutBtn.addEventListener('click', function(){
     forgetPlayer(); sfx.tap(); show('home');
   });
@@ -4950,6 +4967,8 @@
     try { document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch(e){}
   }
   function show(screen){
+    // the one door in, and it is shut until somebody signs in
+    if (screen === 'home' && !me.token && !allowAnon) screen = 'who';
     toTop();
     el.home.classList.toggle('on', screen === 'home');
     el.play.classList.toggle('on', screen === 'play');
@@ -6098,6 +6117,7 @@
   buildChips();
   buildPairs();
   paintHome();
+  if (!me.token) show('who');      // nothing before signing in
   // built once on the way in, so a Share > Print straight after a reload
   // finds last night's page rather than a blank one
   if (hasSheet()) buildSheet();
