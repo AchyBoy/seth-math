@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.14">
+<meta name="x-cards-version" content="4.15">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -347,8 +347,13 @@
      the spelling once it is shown. */
   .ink{position:relative;border:2px solid var(--line);border-radius:22px;background:#fff;
     height:190px;touch-action:none;overflow:hidden;box-shadow:0 6px 18px rgba(32,36,46,.06)}
-  body.hand .ink{flex:1 1 auto;height:auto;min-height:200px;max-height:52vh}
+  body.hand .ink{flex:1 1 auto;height:auto;min-height:200px;max-height:min(58vh,600px)}
   body.write.hand .wpanel{flex:1}
+  /* The 560px column is right for reading and wrong for writing: on an iPad it
+     left the pad narrower than the word while most of the glass sat empty
+     either side. Writing mode widens to the screen. Phones are already under
+     the cap, so nothing changes there. */
+  body.write .screen.on{max-width:min(96vw,1040px)}
   .ink canvas{display:block;width:100%;height:100%;touch-action:none}
   .inkhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:#c9c4b8;font-size:19px;pointer-events:none}
@@ -795,7 +800,7 @@
   </div>
 
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.14</p>
+  <p class="foot">v4.15</p>
 </div>
 
 <!-- ================= who is playing ================= -->
