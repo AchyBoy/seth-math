@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.26">
+<meta name="x-cards-version" content="4.27">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -360,7 +360,12 @@
   .inkhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:#c9c4b8;font-size:19px;pointer-events:none}
   .inkhint.hide{display:none}
-  .inkrow{display:flex;gap:10px}
+  /* Five buttons will not sit on one phone line, so the row wraps rather
+     than squeezing Done down to nothing. */
+  .inkrow{display:flex;gap:10px;flex-wrap:wrap}
+  /* The rubber is a mode, not an action, so it stays lit while it is on. */
+  .inkrow .small.on{color:#fff;background:var(--blue);border-color:var(--blue);
+    box-shadow:0 4px 0 var(--blue-dark)}
   .inkrow .small{flex:none;border:2px solid var(--line);border-radius:20px;background:#fff;
     padding:14px 16px;font-size:16px;font-weight:600;color:var(--muted);box-shadow:0 4px 0 #ded8cc}
   .inkrow .small:active{transform:translateY(3px);box-shadow:0 1px 0 #ded8cc}
@@ -1087,6 +1092,7 @@
     <div class="inkrow" id="inkRow">
       <button type="button" class="small" id="inkUndo">↩︎ Undo</button>
       <button type="button" class="small" id="inkClear">Clear</button>
+      <button type="button" class="small" id="inkRub">🧽 Rub out</button>
       <button type="button" class="small" id="inkPeek">👀 Peek</button>
       <button type="button" class="wgo" id="inkDone">Done</button>
     </div>
@@ -1706,7 +1712,7 @@
    'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
-   'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkPeek','inkDone',
+   'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
@@ -5423,7 +5429,9 @@
      the app: he writes the word, the spelling comes up, and he says whether
      he got it. What the app still does is keep every stroke exactly as he
      drew it, so the whole week prints on one page for his teacher. */
-  var ink = { strokes: [], cur: null, w: 0, h: 0, g: null, penSeen: false, drawing: false };
+  var ink = { strokes: [], cur: null, w: 0, h: 0, g: null, penSeen: false, drawing: false,
+               tool: 'pen', past: [], rubbing: false, rubAt: null };
+  var RUB = 14;
   var SHEET = 'seth-cards-sheet-v1';
   var sheetInk = { unit: 0, words: {} };
 
@@ -5481,12 +5489,43 @@
       for (var i = 1; i < st.length; i++) g.lineTo(st[i][0], st[i][1]);
       g.stroke();
     });
+    /* The rubber ring goes on last so it sits over the ink it is about to
+       take, which is the only thing telling him how big a bite it is. */
+    if (ink.rubbing && ink.rubAt){
+      g.strokeStyle = '#9aa3b5'; g.lineWidth = 1.5; g.setLineDash([4, 4]);
+      g.beginPath(); g.arc(ink.rubAt[0], ink.rubAt[1], RUB, 0, 6.284); g.stroke();
+      g.setLineDash([]);
+    }
     el.inkHint.classList.toggle('hide', ink.strokes.length > 0);
-    el.inkUndo.disabled = !ink.strokes.length;
+    el.inkUndo.disabled = !ink.past.length;
     el.inkClear.disabled = !ink.strokes.length;
+  }
+  /* ⚠️ Undo has to REMEMBER, it cannot just drop the last stroke off the end
+     any more. After a rub there is no last stroke to drop and popping one
+     would take away a letter he never touched. Everything that changes the
+     ink puts a copy of it here first. */
+  function inkSnap(){
+    ink.past.push(ink.strokes.map(function(st){
+      return st.map(function(pt){ return [pt[0], pt[1]]; });
+    }));
+    if (ink.past.length > 40) ink.past.shift();
+    el.inkUndo.disabled = false;
+  }
+  function sameInk(a, b){
+    if (a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) if (a[i].length !== b[i].length) return false;
+    return true;
+  }
+  function inkTool(t){
+    ink.tool = t;
+    el.inkRub.classList.toggle('on', t === 'rub');
   }
   function inkReset(){
     ink.strokes = []; ink.cur = null; ink.drawing = false;
+    ink.past = []; ink.rubbing = false; ink.rubAt = null;
+    /* A new word starts with the pencil. Leaving the rubber on from the last
+       one means his first stroke goes nowhere and the pad reads as dead. */
+    inkTool('pen');
     inkPaint();
   }
   function inkPos(ev){
@@ -5502,18 +5541,85 @@
     if (ev.pointerType === 'pen'){ ink.penSeen = true; return true; }
     return !ink.penSeen;
   }
+  /* The rubber takes out the bit it touches, not the whole stroke, so the
+     tail of a y can go without the letter going with it. A stroke it lands in
+     the middle of comes back as the two pieces either side, which keeps every
+     stroke a plain run of points: the page he hands in prints each one as a
+     single SVG path, and that only holds while nothing clever is in the list.
+     ⚠️ Segments are measured, not just points. A quick straight line is four
+     points, so testing points alone would rub at its corners and nowhere in
+     between, and it would read as a rubber that misses. */
+  function ptNear(a, p, r){
+    var dx = a[0] - p[0], dy = a[1] - p[1];
+    return dx * dx + dy * dy <= r * r;
+  }
+  function segNear(a, b, p, r){
+    var vx = b[0] - a[0], vy = b[1] - a[1];
+    var wx = p[0] - a[0], wy = p[1] - a[1];
+    var L = vx * vx + vy * vy, t = L ? (wx * vx + wy * vy) / L : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    var dx = a[0] + t * vx - p[0], dy = a[1] + t * vy - p[1];
+    return dx * dx + dy * dy <= r * r;
+  }
+  function rubOut(p){
+    var out = [], hit = false;
+    ink.strokes.forEach(function(st){
+      if (st.length === 1){
+        if (ptNear(st[0], p, RUB)) hit = true; else out.push(st);
+        return;
+      }
+      var run = [];
+      for (var i = 0; i < st.length; i++){
+        var inside = ptNear(st[i], p, RUB);
+        var swept = !inside && i > 0 && segNear(st[i - 1], st[i], p, RUB);
+        if (inside || swept){
+          hit = true;
+          // A single point left over from a cut is a speck, not a mark he
+          // made, so a piece has to be two points to survive.
+          if (run.length > 1) out.push(run);
+          run = swept ? [st[i]] : [];
+        } else {
+          run.push(st[i]);
+        }
+      }
+      if (run.length > 1) out.push(run);
+    });
+    if (!hit) return false;
+    ink.strokes = out;
+    return true;
+  }
   el.inkBox.addEventListener('pointerdown', function(ev){
     if (!state.hand || state.answered || !inkAllowed(ev)) return;
     ev.preventDefault();
     try { el.inkBox.setPointerCapture(ev.pointerId); } catch(e){}
+    var p = inkPos(ev);
+    if (ink.tool === 'rub'){
+      // One snapshot for the whole sweep, so Undo puts back everything that
+      // sweep took rather than handing it back a frame at a time.
+      inkSnap();
+      ink.rubbing = true; ink.rubAt = p;
+      rubOut(p); inkPaint();
+      return;
+    }
+    inkSnap();
     ink.drawing = true;
-    ink.cur = [inkPos(ev)];
+    ink.cur = [p];
     ink.strokes.push(ink.cur);
     el.inkHint.classList.add('hide');
-    el.inkUndo.disabled = false; el.inkClear.disabled = false;
+    el.inkClear.disabled = false;
     if (!ink.g) inkPaint();
   });
   el.inkBox.addEventListener('pointermove', function(ev){
+    if (ink.rubbing){
+      ev.preventDefault();
+      var rp = ev.getCoalescedEvents ? ev.getCoalescedEvents() : null;
+      if (!rp || !rp.length) rp = [ev];
+      for (var j = 0; j < rp.length; j++){ ink.rubAt = inkPos(rp[j]); rubOut(ink.rubAt); }
+      // One repaint for the move, not one per coalesced point: taking ink away
+      // means redrawing the whole pad, and the Pencil sends these in handfuls.
+      inkPaint();
+      return;
+    }
     if (!ink.drawing || !ink.cur || !ink.g) return;
     ev.preventDefault();
     // The Pencil reports faster than the screen redraws, so take the lot.
@@ -5527,6 +5633,15 @@
     }
   });
   function inkUp(ev){
+    if (ink.rubbing){
+      ink.rubbing = false; ink.rubAt = null;
+      try { el.inkBox.releasePointerCapture(ev.pointerId); } catch(e){}
+      /* A sweep over bare paper took nothing out, and leaving its snapshot
+         there would give him an Undo that visibly does nothing. */
+      if (ink.past.length && sameInk(ink.past[ink.past.length - 1], ink.strokes)) ink.past.pop();
+      inkPaint();
+      return;
+    }
     if (!ink.drawing) return;
     ink.drawing = false; ink.cur = null;
     try { el.inkBox.releasePointerCapture(ev.pointerId); } catch(e){}
@@ -5557,8 +5672,26 @@
     }, 150);
   });
 
-  el.inkUndo.addEventListener('click', function(){ unlock(); ink.strokes.pop(); inkPaint(); });
-  el.inkClear.addEventListener('click', function(){ unlock(); inkReset(); });
+  el.inkUndo.addEventListener('click', function(){
+    unlock();
+    if (!ink.past.length) return;
+    ink.strokes = ink.past.pop();
+    inkPaint();
+  });
+  el.inkClear.addEventListener('click', function(){
+    unlock();
+    /* Clear goes through the history now instead of calling inkReset, so a
+       mis-tap on it does not cost him the whole word. */
+    if (ink.strokes.length) inkSnap();
+    ink.strokes = []; ink.cur = null; ink.drawing = false;
+    ink.rubbing = false; ink.rubAt = null;
+    inkTool('pen');
+    inkPaint();
+  });
+  el.inkRub.addEventListener('click', function(){
+    unlock(); sfx.tap();
+    inkTool(ink.tool === 'rub' ? 'pen' : 'rub');
+  });
   el.inkPeek.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
