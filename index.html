@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.29">
+<meta name="x-cards-version" content="4.30">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -383,6 +383,16 @@
   body.hand .inkrow.hide{display:none}
   .ink{display:none}
 
+  /* How many times a word gets written. Big targets, because it is tapped
+     with a thumb while the iPad is being handed over. */
+  .stepper{display:flex;align-items:center;gap:16px}
+  .step{width:58px;height:58px;flex:none;border:2px solid var(--line);background:#fff;
+    border-radius:18px;font:700 28px/1 inherit;color:inherit;cursor:pointer}
+  .step:active{transform:scale(.96)}
+  .step:disabled{opacity:.3}
+  .stepval{font-size:30px;font-weight:700;min-width:46px;text-align:center;
+    font-variant-numeric:tabular-nums}
+
   /* ---------- every page already written ----------
      A record a grown-up reads, so it is plainer than the child's side: what
      week it was, what day, and how much of it got done. */
@@ -446,7 +456,8 @@
   body.group #subjBlock,body.group #modeBlock,body.group #orderBlock,
   body.group #troubleBlock,body.group #purseBtn,body.group #secsBlock,
   body.group #tablesBlock,body.group #setsBlock,body.group #unitsBlock,
-  body.group #writeBlock,body.group #pagesBlock,body.group #chaseBlock .slide,
+  body.group #writeBlock,body.group #pagesBlock,body.group #timesBlock,
+  body.group #chaseBlock .slide,
   body.group #chaseBlock .pairgap{display:none}
 
   .stands{display:flex;flex-direction:column;gap:6px}
@@ -774,6 +785,16 @@
     <p class="label">Which week</p>
     <div class="chips" id="unitChips"></div>
     <p class="note" id="unitNote"></p>
+  </div>
+
+  <div class="block hide" id="timesBlock">
+    <p class="label">How many times</p>
+    <div class="stepper">
+      <button type="button" class="step" id="timesDown">&minus;</button>
+      <span class="stepval" id="timesVal">1</span>
+      <button type="button" class="step" id="timesUp">+</button>
+    </div>
+    <p class="note" id="timesNote"></p>
   </div>
 
   <!-- Every page written, so one can be printed again long after the round
@@ -1684,9 +1705,10 @@
        vocab      the meaning is the clue and she writes the word
        compounds  the two halves, for the matching questions
        rule       the Catch This! line at the top of the sheet
-       twice      set when the teacher wants every word written twice.
-                  Each word comes round twice in the deck and the printed
-                  page gives it two lines
+       times      how many times the teacher wants each word written, when
+                  it is more than once. It is the STARTING value only: the
+                  How many times stepper on the home screen overrides it per
+                  week, and that choice is what sticks
      The month questions work themselves out against MONTHS. The
      compound halves are the one thing spelled out here, because
      splitting a word in two safely is not a thing to guess at.
@@ -1728,7 +1750,7 @@
       ]
     },
     {
-      id: 2, who: 'Bailey', unit: 1, twice: true,
+      id: 2, who: 'Bailey', unit: 1, times: 2,
       rule: 'The prefix un- means "not". The suffix -ible means "can be done". '
           + 'The root omni means "all" and the root terr means "earth". '
           + 'Pro tip: I before E, except after C, or when sounded like A as in neighbor and weigh.',
@@ -1772,7 +1794,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], write: 'copy', extras: true, tries: 0, hand: true, autoMark: true,
+    units: [], times: {}, write: 'copy', extras: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -1791,6 +1813,7 @@
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
+   'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'writeBlock','writeOpts','writeNote','extraOpts','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
@@ -2070,6 +2093,7 @@
         if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture'
             || s.subject === 'spelling') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
+        if (s.times && typeof s.times === 'object') state.times = s.times;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
@@ -2091,7 +2115,8 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
-        units: state.units, write: state.write, extras: state.extras, hand: state.hand,
+        units: state.units, times: state.times,
+        write: state.write, extras: state.extras, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
@@ -2244,8 +2269,9 @@
     if (!picked.length) return 'Pick the week off the sheet that came home.';
     var u = picked[picked.length - 1];
     var words = u.words.length + (u.vocab || []).length;
+    var n = unitTimes(u);
     return 'Unit ' + u.unit + ': ' + words + ' words'
-      + (u.twice ? ', each one written twice' : '') + '. Catch this: ' + u.rule;
+      + (n > 1 ? ', each one written ' + timesWord(n) : '') + '. Catch this: ' + u.rule;
   }
 
   /* A youth group account sees scriptures and nothing else: no times tables,
@@ -2324,6 +2350,7 @@
       : 'King James, so the words are the ones he will hear read aloud. Flip the card to '
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
+    paintTimes();
     paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
     el.handNote.textContent = state.hand
@@ -3753,6 +3780,21 @@
     if (!me.name) return SPELLING.slice();
     return SPELLING.filter(function(u){ return sameWho(u.who, me.name); });
   }
+  /* How many times each word gets written this week. The list can arrive
+     carrying one (Bailey's sheet asks for two), but the stepper on the home
+     screen is what decides, and it is remembered PER WEEK: the count belongs
+     to the sheet that came home, not to the app. Keyed by unit id, which is
+     unique across both children, so one map is safe. */
+  var TIMES_MAX = 5;
+  function unitTimes(u){
+    if (!u) return 1;
+    var set = state.times ? state.times[u.id] : 0;
+    var n = set || u.times || (u.twice ? 2 : 1);
+    return Math.max(1, Math.min(TIMES_MAX, n));
+  }
+  function timesWord(n){
+    return n === 1 ? 'once' : n === 2 ? 'twice' : n + ' times';
+  }
   function unitById(id){
     var mine = myUnits();
     for (var i = 0; i < mine.length; i++) if (mine[i].id === id) return mine[i];
@@ -3773,12 +3815,12 @@
     for (var i = 0; i < list.length; i++) if (out.indexOf(list[i]) === -1) out.push(list[i]);
     return out;
   }
-  /* `twice` is the teacher asking for every word written twice, so the word
-     comes round a second time as its own card rather than the same card being
-     replayed. `n` is which go it is: it keys the ink apart so both are kept,
-     and the printed page gives the word two lines. */
+  /* Asked for more than once, a word comes round again as its OWN card
+     rather than the same card being replayed. `n` is which go it is: it keys
+     the ink apart so every go is kept, and the printed page gives the word
+     that many slots on its one numbered line. */
   function wordCards(u){
-    var out = [], copies = u.twice ? 2 : 1;
+    var out = [], copies = unitTimes(u);
     for (var n = 1; n <= copies; n++){
       (function(n){
         u.words.forEach(function(row){ out.push({ k: 'w', w: row[0], s: row[1] || '', u: u.id, n: n }); });
@@ -5416,7 +5458,10 @@
     el.wInput.className = 'winput';
     el.wMark.innerHTML = '';
     el.wText.textContent = c.w;
-    el.inkHint.textContent = c.n > 1 ? 'and once more' : 'write it here';
+    var goes = unitTimes(unitById(c.u));
+    el.inkHint.textContent = !c.n || c.n < 2 ? 'write it here'
+      : goes === 2 ? 'and once more'
+      : 'go ' + c.n + ' of ' + goes;
     el.wCheck.textContent = 'Check it';
     setWHint('');
     document.body.classList.toggle('listening', mode === 'listen');
@@ -5626,7 +5671,8 @@
   function currentPage(unit){
     var id = unit + ':' + today(), i;
     for (i = 0; i < pages.length; i++) if (pages[i].id === id) return pages[i];
-    var made = { id: id, unit: unit, day: today(), at: Date.now(), words: {} };
+    var made = { id: id, unit: unit, day: today(), at: Date.now(),
+                 times: unitTimes(unitById(unit)), words: {} };
     pages.unshift(made);
     // a term of pages is a lot of ink in a 5MB drawer, so the oldest go
     if (pages.length > PAGE_CAP) pages.length = PAGE_CAP;
@@ -6008,6 +6054,8 @@
   function keepInk(c, missed){
     var pg = currentPage(c.u || 0);
     pg.words[inkKey(c)] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
+    // turning the stepper up part way through a day widens the page it is on
+    pg.times = Math.max(pg.times || 1, c.n || 1);
     pg.at = Date.now();
     savePages();
     buildSheet(pg);   // kept current, so Share > Print never catches it empty
@@ -6089,14 +6137,25 @@
   /* One row per word, in the order they are numbered on the sheet that came
      home, so the teacher can read it against her own list. A week written
      twice puts both goes on the one row rather than numbering to sixty. */
-  function sheetRows(u){
+  function wordKeys(w, times){
+    var keys = [w], i;
+    for (i = 2; i <= times; i++) keys.push(w + '#' + i);
+    return keys;
+  }
+  function sheetRows(u, times){
+    var t = times || unitTimes(u);
     return u.words.map(function(r){ return r[0]; })
       .concat((u.vocab || []).map(function(r){ return r[0]; }))
-      .map(function(w){ return { w: w, keys: u.twice ? [w, w + '#2'] : [w] }; });
+      .map(function(w){ return { w: w, keys: wordKeys(w, t) }; });
+  }
+  /* ⚠️ A page keeps the count it was WRITTEN at. Turning the stepper up next
+     week must not reopen last week's page with empty slots on it. */
+  function pageTimes(pg){
+    return Math.max(1, Math.min(TIMES_MAX, pg.times || unitTimes(unitById(pg.unit)) || 1));
   }
   function pageSlots(pg){
     var u = unitById(pg.unit); if (!u) return { done: 0, all: 0 };
-    var list = sheetRows(u), done = 0, all = 0;
+    var list = sheetRows(u, pageTimes(pg)), done = 0, all = 0;
     list.forEach(function(row){
       row.keys.forEach(function(k){ all++; if (pg.words[k]) done++; });
     });
@@ -6113,7 +6172,7 @@
     if (!pg) return false;
     var u = unitById(pg.unit); if (!u) return false;
     sheetPage = pg;
-    var list = sheetRows(u);
+    var list = sheetRows(u, pageTimes(pg));
     var rows = list.map(function(row){
       var missed = false;
       var slots = row.keys.map(function(k){
@@ -6148,6 +6207,36 @@
     setTimeout(function(){ try { window.print(); } catch(e){} }, 60);
   }
   el.printBtn.addEventListener('click', function(){ unlock(); printPage(sheetPage); });
+
+  /* The stepper. It sets the count for whatever weeks are ticked, so what it
+     shows is always what the Start button is about to deal. */
+  function paintTimes(){
+    var picked = state.units.map(unitById).filter(Boolean);
+    var u = picked[picked.length - 1];
+    var show = state.subject === 'spelling' && !groupKit() && !!u;
+    el.timesBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    var n = unitTimes(u), words = u.words.length + (u.vocab || []).length;
+    el.timesVal.textContent = String(n);
+    el.timesDown.disabled = n <= 1;
+    el.timesUp.disabled = n >= TIMES_MAX;
+    el.timesNote.textContent = n === 1
+      ? 'Each word once. Turn it up when the teacher wants the list written out '
+        + 'more than once.'
+      : 'Each word ' + timesWord(n) + ', so ' + (words * n) + ' cards. The page still '
+        + 'has one numbered line a word, with ' + n + ' goes on it.';
+  }
+  function bumpTimes(d){
+    var picked = state.units.map(unitById).filter(Boolean);
+    if (!picked.length) return;
+    var cur = unitTimes(picked[picked.length - 1]);
+    var next = Math.max(1, Math.min(TIMES_MAX, cur + d));
+    if (next === cur) return;
+    picked.forEach(function(u){ state.times[u.id] = next; });
+    unlock(); sfx.tap(); paintHome(); saveSettings();
+  }
+  el.timesUp.addEventListener('click', function(){ bumpTimes(1); });
+  el.timesDown.addEventListener('click', function(){ bumpTimes(-1); });
 
   /* The list a grown-up prints from. Newest first, because the one wanted is
      almost always the one just written. */
