@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.39">
+<meta name="x-cards-version" content="4.40">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -791,6 +791,7 @@
       <button type="button" class="opt" data-subject="blends">🔤 Blends</button>
       <button type="button" class="opt" data-subject="scripture">📖 Scriptures</button>
       <button type="button" class="opt" data-subject="spelling">✏️ Spelling</button>
+      <button type="button" class="opt" data-subject="sentence">📝 Sentences</button>
     </div>
   </div>
 
@@ -827,6 +828,12 @@
     <p class="label">Which week</p>
     <div class="chips" id="unitChips"></div>
     <p class="note" id="unitNote"></p>
+  </div>
+
+  <div class="block hide" id="lessonBlock">
+    <p class="label">Which lesson</p>
+    <div class="chips" id="lessonChips"></div>
+    <p class="note" id="lessonNote"></p>
   </div>
 
   <div class="block hide" id="redBlock">
@@ -1875,10 +1882,91 @@
     }
   ];
 
+
+  /* =========================================================
+     SENTENCES, off his Abeka Language 3 worksheets. Lesson 6
+     teaches declarative, interrogative and exclamatory; lesson 7
+     adds imperative, a sentence that gives a command, and then
+     mixes all four.
+
+     ⚠️ THE CHOICES ARE PER LESSON, not one set of four for
+     everything. Lesson 6's sheet only offers Dec., Int. and Exc.,
+     and several of its sentences are commands: "let's find your
+     library card right now" is Exc. on a sheet that has not met
+     Imp. yet, and offering him a fourth button there would mark
+     him wrong for the answer his teacher wants.
+
+     `t` is the sentence as it is PRINTED, with no capital at the
+     front and no end mark, because supplying both is the exercise.
+
+     ⚠️ NO CAPITALS DRILL, on purpose. The sheets print every proper
+     noun already capitalised (Indian, Miss Anderson, North America,
+     Yellowstone National Park, United States) and leave only the
+     first letter lowercase, so a "which words need a capital"
+     question would have the same answer twenty three times and
+     teach nothing. Instead the sentence is shown put right, capital
+     and end mark both, once he has answered.
+     ========================================================= */
+  /* The NAME and what it DOES, kept apart, because they are needed in two
+     different sentences: "a declarative sentence tells you something" reads
+     right on its own and turns into nonsense after "because it is". */
+  var SENTENCE_KINDS = {
+    'Dec.': { n: 'declarative',    d: 'tells you something' },
+    'Int.': { n: 'interrogative',  d: 'asks a question' },
+    'Exc.': { n: 'exclamatory',    d: 'shows strong feeling' },
+    'Imp.': { n: 'imperative',     d: 'gives a command' }
+  };
+  function kindSays(k){
+    var v = SENTENCE_KINDS[k]; if (!v) return '';
+    return (/^[aeiou]/.test(v.n) ? 'an ' : 'a ') + v.n + ' sentence ' + v.d;
+  }
+  var SENTENCES = [
+    {
+      id: 6, who: 'Seth', lesson: 6,
+      rule: 'Dec. for declarative, Int. for interrogative, Exc. for exclamatory. '
+          + 'Mark the capital letters and put the end mark on.',
+      choices: ['Dec.', 'Int.', 'Exc.'],
+      lines: [
+        ["i can't find my library card anywhere", 'Dec.', '.'],
+        ['why do you need it', 'Int.', '?'],
+        ['last week, our teacher taught us about nocturnal creatures', 'Dec.', '.'],
+        ['the library has books about raccoons and bats', 'Dec.', '.'],
+        ['are you afraid of bats', 'Int.', '?'],
+        ['no, Indian flying foxes only eat fruit', 'Dec.', '.'],
+        ["they don't hurt people", 'Dec.', '.'],
+        ["i just can't imagine one thousand bats hanging from trees", 'Exc.', '!'],
+        ["don't you want to learn more about these huge bats", 'Int.', '?'],
+        ["let's find your library card right now", 'Exc.', '!']
+      ]
+    },
+    {
+      id: 7, who: 'Seth', lesson: 7,
+      rule: 'An imperative sentence gives a command. It begins with a capital letter '
+          + 'and usually ends with a period. Imp. for imperative, and the other three '
+          + 'as before.',
+      choices: ['Dec.', 'Int.', 'Exc.', 'Imp.'],
+      lines: [
+        ['hey, I just found a huge book about nocturnal animals', 'Exc.', '!'],
+        ['help me carry it to the table', 'Imp.', '.'],
+        ['what beautiful pictures these are', 'Exc.', '!'],
+        ['turn the page so we can see what is next', 'Imp.', '.'],
+        ['Miss Anderson, please look at this picture', 'Imp.', '.'],
+        ['wow, I had no idea there were so many creatures of the night', 'Exc.', '!'],
+        ['read these facts about gray wolves', 'Imp.', '.'],
+        ['do you know that gray wolves once lived in most of North America', 'Int.', '?'],
+        ['these beautiful animals hunted moose, deer, buffalo, and other large animals', 'Dec.', '.'],
+        ['for years, people hunted the wolves until the wolves were almost gone', 'Dec.', '.'],
+        ['scientists released a small pack of wolves into Yellowstone National Park', 'Dec.', '.'],
+        ['wow, there are now over 4,000 wolves in the United States', 'Exc.', '!'],
+        ['if you want to know more, find books about the gray wolf', 'Imp.', '.']
+      ]
+    }
+  ];
+
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    units: [], lessons: [], times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -1900,6 +1988,7 @@
    'redBlock','redChips','redNote','redPractice','redClear',
    'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote',
    'resumeBlock','resumeBtn','resumeNote','resumeDrop',
+   'lessonBlock','lessonChips','lessonNote',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
@@ -2179,8 +2268,9 @@
       var s = JSON.parse(localStorage.getItem(STORE));
       if (s){
         if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture'
-            || s.subject === 'spelling') state.subject = s.subject;
+            || s.subject === 'spelling' || s.subject === 'sentence') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
+        if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
         if (s.times && typeof s.times === 'object') state.times = s.times;
         if (s.redTimes && typeof s.redTimes === 'object') state.redTimes = s.redTimes;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
@@ -2205,7 +2295,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
-        units: state.units, times: state.times, redTimes: state.redTimes,
+        units: state.units, lessons: state.lessons, times: state.times, redTimes: state.redTimes,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
@@ -2217,6 +2307,17 @@
 
   /* The chips are rebuilt on every player change, not once at boot, because
      which weeks exist depends on who is signed in. */
+  function paintLessonChips(){
+    el.lessonChips.innerHTML = '';
+    myLessons().forEach(function(u){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip';
+      b.setAttribute('data-lesson', String(u.id));
+      b.textContent = String(u.lesson);
+      el.lessonChips.appendChild(b);
+    });
+    fixLessons();
+  }
   function paintUnitChips(){
     var mine = myUnits(), owners = {};
     mine.forEach(function(u){ if (u.who) owners[u.who] = 1; });
@@ -2246,6 +2347,15 @@
       var n = parseInt(b.getAttribute('data-n'), 10);
       var i = state.tables.indexOf(n);
       if (i === -1) state.tables.push(n); else state.tables.splice(i, 1);
+      sfx.tap(); paintHome(); saveSettings();
+    });
+
+    paintLessonChips();
+    el.lessonChips.addEventListener('click', function(ev){
+      var b = ev.target.closest('.chip'); if (!b) return;
+      var n = parseInt(b.getAttribute('data-lesson'), 10);
+      var i = state.lessons.indexOf(n);
+      if (i === -1) state.lessons.push(n); else state.lessons.splice(i, 1);
       sfx.tap(); paintHome(); saveSettings();
     });
 
@@ -2349,6 +2459,18 @@
     listen: 'He never sees the word. The phone reads it out, uses it in a sentence '
         + 'and reads it again, and he writes what he hears. This is the Thursday one.'
   };
+  function sentenceSummary(){
+    var picked = state.lessons.map(lessonById).filter(Boolean);
+    if (!picked.length) return 'Pick a lesson.';
+    var n = 0, kinds = {};
+    picked.forEach(function(u){
+      n += u.lines.length;
+      u.choices.forEach(function(k){ kinds[k] = 1; });
+    });
+    var names = Object.keys(kinds).map(kindSays);
+    return n + ' sentences, two questions each, so ' + (n * 2) + ' cards: which kind of '
+      + 'sentence it is, then which mark it ends with. ' + names.join('; ') + '.';
+  }
   function unitSummary(){
     if (!myUnits().length){
       return me.name
@@ -2406,6 +2528,7 @@
     var blends = state.subject === 'blends';
     var verses = state.subject === 'scripture';
     var spell = state.subject === 'spelling';
+    var sent = state.subject === 'sentence';
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
@@ -2426,13 +2549,20 @@
       tl[i].classList.toggle('on',
         state.topics.indexOf(parseInt(tl[i].getAttribute('data-topic'), 10)) !== -1);
     }
+    list = el.lessonChips.querySelectorAll('.chip');
+    for (i = 0; i < list.length; i++){
+      list[i].classList.toggle('on',
+        state.lessons.indexOf(parseInt(list[i].getAttribute('data-lesson'), 10)) !== -1);
+    }
     setOn(el.subjectOpts, 'data-subject', state.subject);
-    el.tablesBlock.classList.toggle('hide', blends || verses || spell);
+    el.lessonBlock.classList.toggle('hide', !sent);
+    el.lessonNote.textContent = sentenceSummary();
+    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent);
     el.setsBlock.classList.toggle('hide', !blends);
     el.topicsBlock.classList.toggle('hide', !verses);
     el.unitsBlock.classList.toggle('hide', !spell);
     el.writeBlock.classList.toggle('hide', !spell);
-    el.modeBlock.classList.toggle('hide', spell);
+    el.modeBlock.classList.toggle('hide', spell || sent);
     el.setsNote.textContent = setsSummary();
     el.topicNote.textContent = groupKit()
       ? 'One subject a round. Read the verse and pick where it is found. King James, '
@@ -2492,9 +2622,14 @@
     paintPairs();
     paintPace();
 
-    var chosen = spell ? state.units.length
+    var chosen = sent ? state.lessons.length : spell ? state.units.length
       : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
-    var count = spell
+    // two cards a sentence, which kind and which mark
+    var count = sent
+      ? state.lessons.reduce(function(n, id){
+          var u = lessonById(id); return n + (u ? u.lines.length * 2 : 0);
+        }, 0)
+      : spell
       ? state.units.reduce(function(n, no){
           var u = unitById(no); return n + (u ? unitCards(u).length : 0);
         }, 0)
@@ -2513,7 +2648,8 @@
       el.studyNote.classList.toggle('hide', chaseOn());
     } else el.studyNote.classList.add('hide');
     el.startBtn.textContent = chosen === 0
-      ? (spell ? 'Pick at least one week' : verses ? 'Pick at least one subject'
+      ? (sent ? 'Pick at least one lesson'
+         : spell ? 'Pick at least one week' : verses ? 'Pick at least one subject'
          : blends ? 'Pick at least one set' : 'Pick at least one table')
       : 'Start ' + count + ' cards';
     paintTrouble();
@@ -3977,6 +4113,45 @@
     var out = wordCards(u);
     return state.extras ? out.concat(taskCards(u)) : out;
   }
+  function myLessons(){
+    if (!me.name) return SENTENCES.slice();
+    return SENTENCES.filter(function(u){ return sameWho(u.who, me.name); });
+  }
+  function lessonById(id){
+    var mine = myLessons();
+    for (var i = 0; i < mine.length; i++) if (mine[i].id === id) return mine[i];
+    return null;
+  }
+  function fixLessons(){
+    var mine = myLessons();
+    state.lessons = state.lessons.filter(function(id){
+      return mine.some(function(u){ return u.id === id; });
+    });
+    if (!state.lessons.length && mine.length) state.lessons = mine.map(function(u){ return u.id; });
+  }
+  /* Two cards a sentence: which kind it is, then which mark it takes. They are
+     dealt as a PAIR next to each other rather than shuffled apart, because the
+     mark follows from the kind and answering them together is the point. A
+     question takes a question mark; being asked that ten cards later is a
+     different, easier exercise. */
+  function buildSentenceRounds(){
+    var picked = state.lessons.slice().sort(function(a, b){ return a - b; });
+    var all = [];
+    picked.forEach(function(n){
+      var u = lessonById(n); if (!u) return;
+      var pairs = u.lines.map(function(row){
+        var t = row[0], kind = row[1], mark = row[2];
+        return [
+          { k: 'st', t: t, mark: mark, w: kind, opts: u.choices.slice(), u: u.id },
+          { k: 'sm', t: t, mark: mark, w: mark, wKind: kind, opts: ['.', '?', '!'], u: u.id }
+        ];
+      });
+      if (state.shuffle) shuffle(pairs);
+      pairs.forEach(function(pr){ all = all.concat(pr); });
+    });
+    return [{ label: '', table: 0, cards: all }];
+  }
+
   function buildSpellRounds(){
     var picked = state.units.slice().sort(function(a, b){ return a - b; });
     if (state.shuffle && state.timer === 'chase') shuffle(picked);
@@ -3997,6 +4172,7 @@
   }
 
   function buildRounds(){
+    if (state.subject === 'sentence') return buildSentenceRounds();
     if (state.subject === 'spelling') return buildSpellRounds();
     if (state.subject === 'scripture') return buildVerseRounds();
     if (state.subject === 'blends') return buildSoundRounds();
@@ -4040,7 +4216,18 @@
      everything about the writing panel, the ink and the retry applies. */
   function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd')); }
   function isDef(c){ return !!(c && c.k === 'd'); }
-  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c')); }
+  /* 'st' asks which kind of sentence it is, 'sm' which mark it ends with.
+     Both are tapped, so they ride the same choice machinery as the worksheet
+     questions rather than growing a second one. */
+  function isTask(c){
+    return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'st' || c.k === 'sm'));
+  }
+  function isSent(c){ return !!(c && (c.k === 'st' || c.k === 'sm')); }
+  function sentenceNow(){ return state.subject === 'sentence'; }
+  // the sentence put right: capital at the front, mark on the end
+  function fixedUp(c){
+    return c.t.charAt(0).toUpperCase() + c.t.slice(1) + c.mark;
+  }
   function spellingNow(){ return state.subject === 'spelling'; }
   /* A verse is drilled both ways round. Flipping shows the reference and asks
      you to recall the words; the four button mode has to go the other way,
@@ -4050,6 +4237,7 @@
   function cardFace(c){
     if (isDealt(c)) return c.text;
     if (isWord(c)) return c.w;
+    if (isSent(c)) return c.t;
     if (c && c.k === 'm') return 'Which one names a month?';
     if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
@@ -5383,11 +5571,12 @@
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
     document.body.classList.toggle('wordy', isSound(c) || isTask(c));
+    // a whole sentence at times-tables size runs off the screen
+    document.body.classList.toggle('versey', isVerse(c) || isDealt(c) || isSent(c));
     /* ⚠️ A dealt card is a verse too. This keyed off the old card's own shape
        (r and t), and a server dealt one carries text and opts instead, so a
        whole verse rendered at times-tables size - eighty four pixels, over the
        top of the answer buttons, and nothing could be tapped. */
-    document.body.classList.toggle('versey', isVerse(c) || isDealt(c));
     paintScore();
 
     /* Spelling decides per card: the words are written, the two worksheet
@@ -5521,11 +5710,26 @@
     }
     if (state.mode === 'shoot') rangeSettle(picked, answer);
     if (picked !== null) correct ? sfx.right() : sfx.wrong();
+    /* ⭐ A SENTENCE CARD SAYS WHY. His two mistakes on the worksheet were both
+       the same reasoning slip, going by what a sentence is ABOUT rather than
+       what it DOES: Yellowstone and wolves felt exciting so he put Exc., and
+       "if you want to know more, find books" reads like a question so he put
+       Int. A red button teaches him nothing about that, the reason does. */
+    if (isSent(card())){
+      var c = card();
+      var kind = SENTENCE_KINDS[c.k === 'st' ? c.w : (c.wKind || '')] || null;
+      el.hint.textContent = correct
+        ? fixedUp(c)
+        : (c.k === 'st'
+            ? c.w + ' \u2014 ' + kindSays(c.w) + '. ' + fixedUp(c)
+            : 'It takes ' + c.w + ' because it is ' + (kind ? kind.n : 'that kind')
+              + ', it ' + (kind ? kind.d : '') + '. ' + fixedUp(c));
+    }
     bump(correct);
     if (state.caught) return;
 
     clearTimeout(advanceId);
-    advanceId = setTimeout(step, correct ? 700 : 1500);
+    advanceId = setTimeout(step, correct ? 900 : isSent(card()) ? 3200 : 1500);
   }
 
   el.choices.addEventListener('click', function(ev){
