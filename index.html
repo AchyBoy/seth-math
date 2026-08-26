@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.34">
+<meta name="x-cards-version" content="4.35">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -811,6 +811,11 @@
   <div class="block hide" id="redBlock">
     <p class="label">What the teacher marked</p>
     <div class="wchips" id="redChips"></div>
+    <div class="stepper" id="redStep">
+      <button type="button" class="step" id="redDown">&minus;</button>
+      <span class="stepval" id="redVal">3</span>
+      <button type="button" class="step" id="redUp">+</button>
+    </div>
     <p class="note" id="redNote"></p>
     <div class="quick">
       <button type="button" id="redPractice">Write just these</button>
@@ -1841,7 +1846,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], times: {}, write: 'copy', extras: true, tries: 0, hand: true, autoMark: true,
+    units: [], times: {}, redTimes: {}, write: 'copy', extras: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -1861,6 +1866,7 @@
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
+   'redStep','redVal','redUp','redDown',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','ver',
@@ -2143,6 +2149,7 @@
             || s.subject === 'spelling') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (s.times && typeof s.times === 'object') state.times = s.times;
+        if (s.redTimes && typeof s.redTimes === 'object') state.redTimes = s.redTimes;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
@@ -2164,7 +2171,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
-        units: state.units, times: state.times,
+        units: state.units, times: state.times, redTimes: state.redTimes,
         write: state.write, extras: state.extras, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
@@ -3875,11 +3882,16 @@
      the ink apart so every go is kept, and the printed page gives the word
      that many slots on its one numbered line. */
   function wordCards(u){
-    var out = [], copies = unitTimes(u);
-    for (var n = 1; n <= copies; n++){
+    var out = [], most = 1;
+    unitWords(u).forEach(function(w){ most = Math.max(most, wordTimes(u, w)); });
+    for (var n = 1; n <= most; n++){
       (function(n){
-        u.words.forEach(function(row){ out.push({ k: 'w', w: row[0], s: row[1] || '', u: u.id, n: n }); });
-        (u.vocab || []).forEach(function(row){ out.push({ k: 'w', w: row[0], m: row[1] || '', u: u.id, n: n }); });
+        u.words.forEach(function(row){
+          if (wordTimes(u, row[0]) >= n) out.push({ k: 'w', w: row[0], s: row[1] || '', u: u.id, n: n });
+        });
+        (u.vocab || []).forEach(function(row){
+          if (wordTimes(u, row[0]) >= n) out.push({ k: 'w', w: row[0], m: row[1] || '', u: u.id, n: n });
+        });
       })(n);
     }
     return out;
@@ -5768,7 +5780,8 @@
     var id = unit + ':' + today(), i;
     for (i = 0; i < pages.length; i++) if (pages[i].id === id) return pages[i];
     var made = { id: id, unit: unit, day: today(), at: Date.now(),
-                 times: unitTimes(unitById(unit)), words: {} };
+                 times: unitTimes(unitById(unit)),
+                 slots: planFor(unitById(unit)), words: {} };
     pages.unshift(made);
     // a term of pages is a lot of ink in a 5MB drawer, so the oldest go
     if (pages.length > PAGE_CAP) pages.length = PAGE_CAP;
@@ -5824,9 +5837,28 @@
     return u.words.map(function(r){ return r[0]; })
       .concat((u.vocab || []).map(function(r){ return r[0]; }));
   }
-  // is this card one of the words the teacher marked on the test
-  function isRed(c){
-    return !!(c && c.w && (redpen[c.u] || []).indexOf(c.w) !== -1);
+  /* ⭐ THE COUNT IS PER WORD NOW (Andrew's call, 2026-08-26): after a trial
+     test the words the teacher marked get written three times and the rest of
+     the list once. It used to be one number for the whole week. Its own
+     stepper, remembered per week beside the other one, because it belongs to
+     the sheet that came home rather than to the app. */
+  var RED_TIMES = 3;
+  function redTimes(u){
+    if (!u) return RED_TIMES;
+    var set = state.redTimes ? state.redTimes[u.id] : 0;
+    return Math.max(1, Math.min(TIMES_MAX, set || RED_TIMES));
+  }
+  // the ONLY thing that should ever answer how many goes a word gets
+  function wordTimes(u, w){
+    return redFor(u).indexOf(w) !== -1 ? redTimes(u) : unitTimes(u);
+  }
+  /* What the round is ABOUT to ask for, word by word. Stamped onto the page
+     the day it is started so a third go he never got round to still prints as
+     an empty slot: the teacher should see the word was set three times. */
+  function planFor(u){
+    var out = {};
+    if (u) unitWords(u).forEach(function(w){ out[w] = wordTimes(u, w); });
+    return out;
   }
   function redCount(){
     var n = 0;
@@ -5851,15 +5883,29 @@
         el.redChips.appendChild(b);
       });
     });
-    var n = redCount();
+    var n = redCount(), u = picked[picked.length - 1], t = redTimes(u);
     el.redPractice.disabled = n === 0;
     el.redPractice.textContent = n ? 'Write just these (' + n + ')' : 'Write just these';
     el.redClear.classList.toggle('hide', n === 0);
-    el.redNote.textContent = n === 0
-      ? 'Tap the words the red pen marked on his test. Those are the ones worth '
-        + 'writing the night before a test, and the rest of the list he already has.'
-      : n + (n === 1 ? ' word' : ' words') + ' marked. Write just these deals only those, '
-        + 'whichever way is chosen below, and nothing is scored.';
+    el.redStep.classList.toggle('hide', n === 0);
+    el.redVal.textContent = String(t);
+    el.redDown.disabled = t <= 1;
+    el.redUp.disabled = t >= TIMES_MAX;
+    if (n === 0){
+      el.redNote.textContent = 'Tap the words the red pen marked on his trial test. '
+        + 'Those are the ones worth the extra goes, and the rest of the list he has.';
+      return;
+    }
+    // exactly what Start is about to deal, counted rather than described
+    var cards = 0;
+    picked.forEach(function(uu){
+      unitWords(uu).forEach(function(w){ cards += wordTimes(uu, w); });
+    });
+    var rest = 0;
+    picked.forEach(function(uu){ rest += unitWords(uu).length - redFor(uu).length; });
+    el.redNote.textContent = n + (n === 1 ? ' word' : ' words') + ' marked, written '
+      + timesWord(t) + ' each, and the other ' + rest + ' once. Start deals all '
+      + cards + ' of them. Write just these deals only the marked ones, unscored.';
   }
 
   var READS = 'seth-cards-reads-v1';
@@ -6189,17 +6235,13 @@
      of guessing at it. A silent fallback and a broken feature look identical. */
   function askTheChecker(c){
     if (!state.autoMark){ inkReveal('You have it set to marking it yourself'); return; }
-    /* ⭐ THE FIRST GO ONLY (Andrew's call, after it rejected a word he had
-       written himself and thought was good). A wrong verdict does not just
-       misinform, it makes the word be written AGAIN, so a word asked for
-       twice turned up three times and read as a broken repeat count. Reading
-       the first go still catches a real mistake early, and the goes after it
-       are marked by the person holding the iPad, who can actually see it. */
-    /* ⭐ EXCEPT ON THE WORDS THE TEACHER MARKED (Andrew's call). First go only
-       is a saving: it buys back half the readings on words that were never in
-       doubt. A word the red pen already caught IS the doubt, so every go at
-       one of those is read, however many times it comes round. */
-    if (c.n > 1 && !isRed(c)){ inkReveal('Second go, so this one is yours to mark'); return; }
+    /* ⭐ EVERY GO IS READ (Andrew's call, 2026-08-26). It read the FIRST go only
+       from v4.31, because back then a wrong no cost a miss on the record AND
+       another writing, so half the readings were given up to halve that cost.
+       v4.33 took the sting out: a no became an opinion, shown with what it
+       read beside the real word for a person to confirm. With the downside
+       gone the saving is not worth having, and the second and third goes at a
+       word are exactly where a tired hand slips. */
     /* ⭐ THE CHECKER DOES NOT GET A VOTE ON A CAPITAL. It compares without
        case on purpose (server side), because a model transcribing cursive
        cannot reliably tell august from August and a wrong no costs a whole
@@ -6287,8 +6329,13 @@
   function keepInk(c, missed){
     var pg = currentPage(c.u || 0);
     pg.words[inkKey(c)] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
-    // turning the stepper up part way through a day widens the page it is on
-    pg.times = Math.max(pg.times || 1, c.n || 1);
+    /* ⚠️ Widen the WORD, never the page. Turning a stepper up part way
+       through a day still has to widen what it lands on, but pg.times is the
+       fallback for every word without a slot of its own, so widening that
+       because ONE word got a third go would put three slots against all
+       twenty. */
+    pg.slots = pg.slots || {};
+    pg.slots[c.w] = Math.max(pg.slots[c.w] || 1, c.n || 1);
     pg.at = Date.now();
     savePages();
     buildSheet(pg);   // kept current, so Share > Print never catches it empty
@@ -6375,20 +6422,26 @@
     for (i = 2; i <= times; i++) keys.push(w + '#' + i);
     return keys;
   }
-  function sheetRows(u, times){
-    var t = times || unitTimes(u);
-    return u.words.map(function(r){ return r[0]; })
-      .concat((u.vocab || []).map(function(r){ return r[0]; }))
-      .map(function(w){ return { w: w, keys: wordKeys(w, t) }; });
-  }
-  /* ⚠️ A page keeps the count it was WRITTEN at. Turning the stepper up next
+  /* ⚠️ A page keeps the count it was WRITTEN at. Turning a stepper up next
      week must not reopen last week's page with empty slots on it. */
   function pageTimes(pg){
     return Math.max(1, Math.min(TIMES_MAX, pg.times || unitTimes(unitById(pg.unit)) || 1));
   }
+  /* Per word, falling back to the page's one count. That fallback is what
+     keeps every page written before the count went per word printing exactly
+     as it always did: they have no slots map, so every word takes pg.times. */
+  function pageWordTimes(pg, w){
+    var per = pg && pg.slots && pg.slots[w];
+    return Math.max(1, Math.min(TIMES_MAX, per || pageTimes(pg)));
+  }
+  function sheetRows(u, pg){
+    return unitWords(u).map(function(w){
+      return { w: w, keys: wordKeys(w, pg ? pageWordTimes(pg, w) : unitTimes(u)) };
+    });
+  }
   function pageSlots(pg){
     var u = unitById(pg.unit); if (!u) return { done: 0, all: 0 };
-    var list = sheetRows(u, pageTimes(pg)), done = 0, all = 0;
+    var list = sheetRows(u, pg), done = 0, all = 0;
     list.forEach(function(row){
       row.keys.forEach(function(k){ all++; if (pg.words[k]) done++; });
     });
@@ -6405,7 +6458,7 @@
     if (!pg) return false;
     var u = unitById(pg.unit); if (!u) return false;
     sheetPage = pg;
-    var list = sheetRows(u, pageTimes(pg));
+    var list = sheetRows(u, pg);
     var rows = list.map(function(row){
       var missed = false;
       var slots = row.keys.map(function(k){
@@ -6453,11 +6506,13 @@
     el.timesVal.textContent = String(n);
     el.timesDown.disabled = n <= 1;
     el.timesUp.disabled = n >= TIMES_MAX;
+    var marked = redCount();
+    var which = marked ? 'Every word he did NOT miss' : 'Each word';
     el.timesNote.textContent = n === 1
-      ? 'Each word once. Turn it up when the teacher wants the list written out '
-        + 'more than once.'
-      : 'Each word ' + timesWord(n) + ', so ' + (words * n) + ' cards. The page still '
-        + 'has one numbered line a word, with ' + n + ' goes on it.';
+      ? which + ' once. Turn it up when the teacher wants the whole list written '
+        + 'out more than once.'
+      : which + ' ' + timesWord(n) + (marked ? '' : ', so ' + (words * n) + ' cards')
+        + '. The page still has one numbered line a word, with the goes on it.';
   }
   function bumpTimes(d){
     var picked = state.units.map(unitById).filter(Boolean);
@@ -6470,6 +6525,18 @@
   }
   el.timesUp.addEventListener('click', function(){ bumpTimes(1); });
   el.timesDown.addEventListener('click', function(){ bumpTimes(-1); });
+
+  function bumpRed(d){
+    var picked = redUnits();
+    if (!picked.length) return;
+    var cur = redTimes(picked[picked.length - 1]);
+    var next = Math.max(1, Math.min(TIMES_MAX, cur + d));
+    if (next === cur) return;
+    picked.forEach(function(u){ state.redTimes[u.id] = next; });
+    unlock(); sfx.tap(); paintHome(); saveSettings();
+  }
+  el.redUp.addEventListener('click', function(){ bumpRed(1); });
+  el.redDown.addEventListener('click', function(){ bumpRed(-1); });
 
   /* Only where it DISAGREED, which is the only interesting case: a long
      word read back nearly right is the checker slipping, a word read back as
