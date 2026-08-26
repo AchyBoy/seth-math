@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.32">
+<meta name="x-cards-version" content="4.33">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -397,6 +397,15 @@
   /* ---------- every page already written ----------
      A record a grown-up reads, so it is plainer than the child's side: what
      week it was, what day, and how much of it got done. */
+  .reads{display:flex;flex-direction:column;gap:6px}
+  .rd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+    border:2px solid var(--line);background:#fff;border-radius:14px;padding:9px 12px}
+  .rd .want{font-size:15px;font-weight:600}
+  .rd .arrow{font-size:13px;color:var(--muted)}
+  .rd .got{font-size:15px;font-weight:600;color:#a8352e}
+  .rd .got.none{color:var(--muted);font-weight:500;font-style:italic}
+  .rd .rwhen{flex:1;text-align:right;font-size:12px;color:var(--muted);white-space:nowrap}
+
   .pages{display:flex;flex-direction:column;gap:8px}
   .pg{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
     border:2px solid var(--line);background:#fff;border-radius:16px;padding:11px 14px;
@@ -458,6 +467,7 @@
   body.group #troubleBlock,body.group #purseBtn,body.group #secsBlock,
   body.group #tablesBlock,body.group #setsBlock,body.group #unitsBlock,
   body.group #writeBlock,body.group #pagesBlock,body.group #timesBlock,
+  body.group #readsBlock,
   body.group #chaseBlock .slide,
   body.group #chaseBlock .pairgap{display:none}
 
@@ -796,6 +806,16 @@
       <button type="button" class="step" id="timesUp">+</button>
     </div>
     <p class="note" id="timesNote"></p>
+  </div>
+
+  <!-- Only the disagreements, so an empty list means it has been agreeing. -->
+  <div class="block hide" id="readsBlock">
+    <p class="label">What the checker read</p>
+    <div class="reads" id="readsList"></div>
+    <div class="quick">
+      <button type="button" class="warn" id="clearReads">Clear this list</button>
+    </div>
+    <p class="note" id="readsNote"></p>
   </div>
 
   <!-- Every page written, so one can be printed again long after the round
@@ -1821,6 +1841,7 @@
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
+   'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
@@ -2358,6 +2379,7 @@
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
     paintTimes();
+    paintReads();
     paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
     el.handNote.textContent = state.hand
@@ -2551,6 +2573,7 @@
     // so are the word lists and the handwriting, for the same reason
     paintUnitChips();
     loadPages();
+    loadReads();
     if (hasSheet()) buildSheet();
     paintHome();       // the week and the pages just changed underneath it
     paintCheer();
@@ -5716,6 +5739,34 @@
   // which go it was, so writing a word twice keeps both hands and not the last one
   function inkKey(c){ return c.w + (c.n > 1 ? '#' + c.n : ''); }
 
+  /* ⭐ WHAT THE CHECKER READ, kept only when it DISAGREED. The verdict used
+     to live on screen for a second and then be gone, so "it rejected a word
+     that should have passed" could not be looked into by either of us: the
+     server writes the reading to its own console and nothing else keeps it.
+     Now the disagreements are a list a grown-up can read, which is the only
+     way to tell a misread from a real misspelling, and the only evidence for
+     changing the model. Per child. */
+  var READS = 'seth-cards-reads-v1';
+  var READS_CAP = 60;
+  var reads = [];
+  function readsKey(){ return READS + (me.name ? ':' + me.name.toLowerCase() : ':guest'); }
+  function loadReads(){
+    reads = [];
+    try {
+      var v = JSON.parse(localStorage.getItem(readsKey()));
+      if (v && v.length) reads = v;
+    } catch(e){}
+  }
+  function saveReads(){
+    try { localStorage.setItem(readsKey(), JSON.stringify(reads)); } catch(e){}
+  }
+  function noteRead(c, read, ok){
+    if (ok) return;                       // agreement is not worth the room
+    reads.unshift({ w: c.w, r: read || '', day: today(), at: Date.now() });
+    if (reads.length > READS_CAP) reads.length = READS_CAP;
+    saveReads();
+  }
+
   function inkSetup(){
     var box = el.inkBox.getBoundingClientRect();
     var dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -6051,14 +6102,30 @@
       if (!res.ok){ inkReveal('Checker said no (' + res.status + '), mark it yourself'); return; }
       var d = res.data;
       if (!d || d.ok === null || d.ok === undefined){
+        // a word it could not read counts against it too, but the daily
+        // ceiling is not a failure of reading and does not go on the list
+        if (!d || d.why !== 'capped') noteRead(c, '', false);
         inkReveal(d && d.why === 'capped'
           ? 'That is enough reading for today, mark it yourself'
           : 'Could not read that one. Did you get it?');
         return;
       }
+      noteRead(c, d.read || '', !!d.ok);
       showWord(true);
       el.wClue.classList.add('hide');
-      inkMark(!!d.ok, d.read || '', d.cheer || '');
+      /* ⭐ A NO IS AN OPINION, NOT A VERDICT (Andrew's call, after it turned
+         down simultaneously and ungracious, both written out by him). The
+         model is never told what word to expect, or it reads what it expects
+         and waves a misspelling through, so it transcribes blind and long
+         words with joined up letters are exactly where it slips. Marking that
+         wrong on its own used to cost a miss on the record AND another
+         writing. It says what it read, the word is on screen beside it, and
+         the person holding the iPad decides. A YES still passes on its own,
+         which is the whole point of having it. */
+      if (d.ok){ inkMark(true, d.read || '', d.cheer || ''); return; }
+      inkReveal(d.read
+        ? 'That reads as \u201C' + d.read + '\u201D. Did you get it?'
+        : 'It did not think so. Did you get it?');
     });
   }
   var checking = false;
@@ -6273,6 +6340,37 @@
   }
   el.timesUp.addEventListener('click', function(){ bumpTimes(1); });
   el.timesDown.addEventListener('click', function(){ bumpTimes(-1); });
+
+  /* Only where it DISAGREED, which is the only interesting case: a long
+     word read back nearly right is the checker slipping, a word read back as
+     something quite different is usually the writing. */
+  function paintReads(){
+    var show = state.subject === 'spelling' && !groupKit() && !!me.token && reads.length > 0;
+    el.readsBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    el.readsList.innerHTML = '';
+    reads.slice(0, 12).forEach(function(r){
+      var d = document.createElement('div');
+      d.className = 'rd';
+      d.innerHTML = '<span class="want">' + esc(r.w) + '</span>'
+                  + '<span class="arrow">read as</span>'
+                  + '<span class="got' + (r.r ? '' : ' none') + '">'
+                  + esc(r.r || 'could not read it') + '</span>'
+                  + '<span class="rwhen">' + esc(shortWhen(r.day)) + '</span>';
+      el.readsList.appendChild(d);
+    });
+    el.readsNote.textContent = 'Only the words the checker did not agree with, newest first'
+      + (reads.length > 12 ? ' (' + reads.length + ' in all, showing 12)' : '')
+      + '. It is never told what the word should be, so a long word coming back nearly '
+      + 'right is the checker slipping rather than the spelling.';
+  }
+  function shortWhen(day){
+    var d = new Date((day || today()) + 'T12:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  el.clearReads.addEventListener('click', function(){
+    reads = []; saveReads(); sfx.tap(); paintHome();
+  });
 
   /* The list a grown-up prints from. Newest first, because the one wanted is
      almost always the one just written. */
@@ -6618,6 +6716,7 @@
   loadSettings();
   loadMe();          // before the pages: whose they are decides which are read
   loadPages();
+  loadReads();
   loadRecord();
   buildChips();
   buildPairs();
