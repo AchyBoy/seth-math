@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.28">
+<meta name="x-cards-version" content="4.29">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -383,6 +383,21 @@
   body.hand .inkrow.hide{display:none}
   .ink{display:none}
 
+  /* ---------- every page already written ----------
+     A record a grown-up reads, so it is plainer than the child's side: what
+     week it was, what day, and how much of it got done. */
+  .pages{display:flex;flex-direction:column;gap:8px}
+  .pg{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    border:2px solid var(--line);background:#fff;border-radius:16px;padding:11px 14px;
+    font:inherit;color:inherit;cursor:pointer}
+  .pg:active{transform:scale(.99)}
+  .pg .nm{flex:none;font-size:16px;font-weight:600}
+  .pg .dy{flex:1;min-width:0;font-size:14px;color:var(--muted);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pg .ct{flex:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .pg .pr{flex:none;font-size:17px}
+  .pg.part .ct{color:#a8352e}
+
   /* ---------- the page he hands in ----------
      Off screen until the printer asks for it. The ink is redrawn as SVG so it
      comes out at the printer's own resolution rather than at the size of a
@@ -431,7 +446,7 @@
   body.group #subjBlock,body.group #modeBlock,body.group #orderBlock,
   body.group #troubleBlock,body.group #purseBtn,body.group #secsBlock,
   body.group #tablesBlock,body.group #setsBlock,body.group #unitsBlock,
-  body.group #writeBlock,body.group #chaseBlock .slide,
+  body.group #writeBlock,body.group #pagesBlock,body.group #chaseBlock .slide,
   body.group #chaseBlock .pairgap{display:none}
 
   .stands{display:flex;flex-direction:column;gap:6px}
@@ -761,6 +776,14 @@
     <p class="note" id="unitNote"></p>
   </div>
 
+  <!-- Every page written, so one can be printed again long after the round
+       that made it. Going home instead of pressing Print used to lose it. -->
+  <div class="block hide" id="pagesBlock">
+    <p class="label">Lessons</p>
+    <div class="pages" id="pagesList"></div>
+    <p class="note" id="pagesNote"></p>
+  </div>
+
   <div class="block hide" id="writeBlock">
     <p class="label">How to practise</p>
     <div class="opts" id="writeOpts">
@@ -843,7 +866,7 @@
     📖 <b>Studying, not scoring.</b> With the timer off this round earns no points
     and stays off the scoreboard. Turn the chase on to play for points.</p>
   <button type="button" class="start" id="startBtn">Start</button>
-  <p class="foot">v4.26</p>
+  <p class="foot" id="ver"></p>
 </div>
 
 <!-- ================= who is playing ================= -->
@@ -1767,7 +1790,8 @@
    'troubleBlock','troubleList','practiceBtn','clearMissBtn','trailBlock','trailText','trailClear',
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'modeBlock','unitsBlock','unitChips','unitNote','writeBlock','writeOpts','writeNote','extraOpts',
+   'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
+   'writeBlock','writeOpts','writeNote','extraOpts','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkDone',
@@ -2300,6 +2324,7 @@
       : 'King James, so the words are the ones he will hear read aloud. Flip the card to '
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
+    paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
     el.handNote.textContent = state.hand
       ? 'He writes each word on the line with the Pencil, and the page keeps the ink exactly '
@@ -2489,9 +2514,9 @@
     paintTrouble();
     // so are the word lists and the handwriting, for the same reason
     paintUnitChips();
-    loadSheet();
+    loadPages();
     if (hasSheet()) buildSheet();
-    paintHome();       // the week just changed underneath it
+    paintHome();       // the week and the pages just changed underneath it
     paintCheer();
     paintPurse();
   }
@@ -5127,6 +5152,7 @@
     state.roundIdx = 0;
     loadRound();
     breaking = false;
+    sheetPage = null;      // nothing written this round yet, so nothing to offer
     state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
     state.missed = []; state.caught = false; state.lastScore = null;
@@ -5547,31 +5573,70 @@
   var ink = { strokes: [], cur: null, w: 0, h: 0, g: null, penSeen: false, drawing: false,
                tool: 'pen', past: [], rubbing: false, rubAt: null };
   var RUB = 14;
-  var SHEET = 'seth-cards-sheet-v1';
-  var sheetInk = { unit: 0, words: {} };
+  var SHEET = 'seth-cards-sheet-v1';    // one page, the way it was until 4.29
+  var PAGES = 'seth-cards-pages-v1';
+  var PAGE_CAP = 24;
+  var pages = [];          // every page written, newest first
+  var sheetPage = null;    // the one currently rendered into el.sheet
 
-  /* Per CHILD, not per device. Two children on one iPad were about to write
-     over each other's page, which is exactly what the missed record did before
-     it was moved onto the player. The old single key is adopted once, and only
-     when the page it holds is one of this child's own weeks. */
-  function sheetKey(){
-    return SHEET + (me.name ? ':' + me.name.toLowerCase() : ':guest');
+  /* ⭐ EVERY PAGE IS KEPT, not just the last one. Until 4.29 there was one
+     page and writing a word from another week wiped it, so the only chance to
+     print was the button on the finish screen: going home instead lost the
+     lot. A page is now a WEEK ON A DAY, which is what a lesson is. Sitting
+     down twice on the Tuesday fills the same page in, and coming back on the
+     Thursday starts a new one.
+
+     Per CHILD, not per device, same rule as the missed record: two children on
+     one iPad were about to write over each other's page. */
+  function pagesKey(){
+    return PAGES + (me.name ? ':' + me.name.toLowerCase() : ':guest');
   }
-  function loadSheet(){
-    sheetInk = { unit: 0, words: {} };
+  function today(){
+    var d = new Date(), m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  }
+  function loadPages(){
+    pages = []; sheetPage = null;
     try {
-      var raw = localStorage.getItem(sheetKey());
-      if (raw == null){
-        var old = localStorage.getItem(SHEET), ov = null;
-        try { ov = JSON.parse(old); } catch(e2){}
-        if (ov && ov.words && unitById(ov.unit || 0)) raw = old;
-      }
-      var v = JSON.parse(raw);
-      if (v && v.words) sheetInk = { unit: v.unit || 0, words: v.words };
+      var v = JSON.parse(localStorage.getItem(pagesKey()));
+      if (v && v.pages && v.pages.length) pages = v.pages;
     } catch(e){}
+    if (!pages.length) adoptOldSheet();
   }
-  function saveSheet(){
-    try { localStorage.setItem(sheetKey(), JSON.stringify(sheetInk)); } catch(e){}
+  /* The single page a child could have before this existed. Taken once, and
+     only when the week it holds is one of THIS child's, or Bailey would
+     inherit Seth's handwriting the first time she signed in. */
+  function adoptOldSheet(){
+    [pagesKey().replace(PAGES, SHEET), SHEET].forEach(function(k){
+      if (pages.length) return;
+      try {
+        var v = JSON.parse(localStorage.getItem(k));
+        if (!v || !v.words || !Object.keys(v.words).length) return;
+        if (!unitById(v.unit || 0)) return;
+        pages = [{ id: (v.unit || 0) + ':' + today(), unit: v.unit || 0,
+                   day: today(), at: Date.now(), words: v.words }];
+        savePages();
+      } catch(e){}
+    });
+  }
+  function savePages(){
+    try { localStorage.setItem(pagesKey(), JSON.stringify({ pages: pages })); } catch(e){}
+  }
+  // the page being written now: this week, today, made the first time it is asked for
+  function currentPage(unit){
+    var id = unit + ':' + today(), i;
+    for (i = 0; i < pages.length; i++) if (pages[i].id === id) return pages[i];
+    var made = { id: id, unit: unit, day: today(), at: Date.now(), words: {} };
+    pages.unshift(made);
+    // a term of pages is a lot of ink in a 5MB drawer, so the oldest go
+    if (pages.length > PAGE_CAP) pages.length = PAGE_CAP;
+    return made;
+  }
+  function pageWritten(pg){ return pg && pg.words ? Object.keys(pg.words).length : 0; }
+  // this child's pages that actually have something on them, newest first
+  function myPages(){
+    return pages.filter(function(pg){ return !!unitById(pg.unit) && pageWritten(pg); })
+                .sort(function(a, b){ return (b.at || 0) - (a.at || 0); });
   }
   // which go it was, so writing a word twice keeps both hands and not the last one
   function inkKey(c){ return c.w + (c.n > 1 ? '#' + c.n : ''); }
@@ -5941,12 +6006,11 @@
   });
 
   function keepInk(c, missed){
-    var u = c.u || 0;
-    // a different week is a different page, so the old one goes
-    if (sheetInk.unit !== u){ sheetInk = { unit: u, words: {} }; }
-    sheetInk.words[inkKey(c)] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
-    saveSheet();
-    buildSheet();     // kept current, so Share > Print never catches it empty
+    var pg = currentPage(c.u || 0);
+    pg.words[inkKey(c)] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
+    pg.at = Date.now();
+    savePages();
+    buildSheet(pg);   // kept current, so Share > Print never catches it empty
   }
 
   /* When it says something to him. Praise on all twenty stops meaning anything
@@ -6022,9 +6086,6 @@
          + '<path d="' + d + '" fill="none" stroke="#111" stroke-width="3.2" '
          + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
-  function sheetUnit(){
-    return unitById(sheetInk.unit) || unitById(state.units[0]) || myUnits()[myUnits().length - 1];
-  }
   /* One row per word, in the order they are numbered on the sheet that came
      home, so the teacher can read it against her own list. A week written
      twice puts both goes on the one row rather than numbering to sixty. */
@@ -6033,19 +6094,30 @@
       .concat((u.vocab || []).map(function(r){ return r[0]; }))
       .map(function(w){ return { w: w, keys: u.twice ? [w, w + '#2'] : [w] }; });
   }
-  function hasSheet(){
-    var u = sheetUnit(); if (!u) return false;
-    return sheetRows(u).some(function(r){
-      return r.keys.some(function(k){ return !!sheetInk.words[k]; });
+  function pageSlots(pg){
+    var u = unitById(pg.unit); if (!u) return { done: 0, all: 0 };
+    var list = sheetRows(u), done = 0, all = 0;
+    list.forEach(function(row){
+      row.keys.forEach(function(k){ all++; if (pg.words[k]) done++; });
     });
+    return { done: done, all: all };
   }
-  function buildSheet(){
-    var u = sheetUnit(); if (!u) return false;
+  function hasSheet(){ return myPages().length > 0; }
+  /* ⚠️ It renders the page it is GIVEN. It used to read one global, which is
+     why a page could only ever be printed on the way out of the round that
+     wrote it. Nothing else about the printing changed: the block is still a
+     sibling of the screens and still kept built, so Share > Print and ⌘P work
+     from anywhere. */
+  function buildSheet(page){
+    var pg = page || sheetPage || myPages()[0];
+    if (!pg) return false;
+    var u = unitById(pg.unit); if (!u) return false;
+    sheetPage = pg;
     var list = sheetRows(u);
     var rows = list.map(function(row){
       var missed = false;
       var slots = row.keys.map(function(k){
-        var rec = sheetInk.words[k];
+        var rec = pg.words[k];
         if (rec && rec.missed) missed = true;
         return '<span class="slot">' + (rec ? inkSVG(rec) : '') + '</span>';
       }).join('');
@@ -6054,20 +6126,57 @@
     }).join('');
     // twenty lines fit a page at full height; thirty only fit squeezed up
     el.sheet.classList.toggle('tight', list.length > 22);
-    var when = new Date().toLocaleDateString(undefined,
-      { day: 'numeric', month: 'long', year: 'numeric' });
     el.sheet.innerHTML =
       '<div class="shead"><span class="swho">' + esc(me.name || 'Spelling') + '</span>'
-      + '<span class="swhat">Unit ' + u.unit + ' &middot; ' + esc(when) + '</span></div>'
+      + '<span class="swhat">Unit ' + u.unit + ' &middot; ' + esc(pageWhen(pg, true)) + '</span></div>'
       + '<ol>' + rows + '</ol>'
       + '<p class="foot">Written with the Apple Pencil. A dot marks a word that took '
       + 'more than one go.</p>';
     return true;
   }
-  el.printBtn.addEventListener('click', function(){
-    unlock();
-    if (!buildSheet()) return;
+  /* ⚠️ Read at noon, not midnight. A bare '2026-08-25' is parsed as UTC and
+     comes back as the day before once the clock is behind it. */
+  function pageWhen(pg, long){
+    var d = new Date((pg.day || today()) + 'T12:00:00');
+    return d.toLocaleDateString(undefined, long
+      ? { day: 'numeric', month: 'long', year: 'numeric' }
+      : { weekday: 'short', day: 'numeric', month: 'long' });
+  }
+  function printPage(pg){
+    if (!buildSheet(pg)) return;
+    // the sheet has to be in the document before the dialog reads it
     setTimeout(function(){ try { window.print(); } catch(e){} }, 60);
+  }
+  el.printBtn.addEventListener('click', function(){ unlock(); printPage(sheetPage); });
+
+  /* The list a grown-up prints from. Newest first, because the one wanted is
+     almost always the one just written. */
+  function paintPages(){
+    var mine = myPages();
+    var show = state.subject === 'spelling' && !groupKit() && mine.length > 0;
+    el.pagesBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    el.pagesList.innerHTML = '';
+    mine.forEach(function(pg){
+      var u = unitById(pg.unit), n = pageSlots(pg);
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pg' + (n.done < n.all ? ' part' : '');
+      b.setAttribute('data-id', pg.id);
+      b.innerHTML = '<span class="nm">Unit ' + u.unit + '</span>'
+                  + '<span class="dy">' + esc(pageWhen(pg)) + '</span>'
+                  + '<span class="ct">' + n.done + ' / ' + n.all + '</span>'
+                  + '<span class="pr">\uD83D\uDDA8</span>';
+      el.pagesList.appendChild(b);
+    });
+    el.pagesNote.textContent = 'Every page written, newest first. Tap one to print it. '
+      + 'A day of the same week is one page, and the last ' + PAGE_CAP + ' are kept.';
+  }
+  el.pagesList.addEventListener('click', function(ev){
+    var b = ev.target.closest('.pg'); if (!b) return;
+    unlock(); sfx.tap();
+    var id = b.getAttribute('data-id'), i;
+    for (i = 0; i < pages.length; i++) if (pages[i].id === id) return printPage(pages[i]);
   });
 
 
@@ -6244,7 +6353,7 @@
     document.body.classList.remove('write', 'listening', 'hand');
     // the sheet is his spelling handwriting, so it belongs to a spelling round
     // and nowhere else; it was turning up after scriptures on a shared phone
-    var canPrint = state.subject === 'spelling' && !groupKit() && hasSheet();
+    var canPrint = state.subject === 'spelling' && !groupKit() && pageWritten(sheetPage) > 0;
     el.printBtn.classList.toggle('hide', !canPrint);
     if (canPrint) buildSheet();
     // A dealt round is marked by the server, so none of the page's own
@@ -6382,8 +6491,8 @@
 
   loadArt();
   loadSettings();
-  loadSheet();
-  loadMe();
+  loadMe();          // before the pages: whose they are decides which are read
+  loadPages();
   loadRecord();
   buildChips();
   buildPairs();
@@ -6392,6 +6501,7 @@
   // built once on the way in, so a Share > Print straight after a reload
   // finds last night's page rather than a blank one
   if (hasSheet()) buildSheet();
+  el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '');
   applyMute();
   paintWho();
   // all best-effort; if the network is out the game just plays offline
