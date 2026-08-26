@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.31">
+<meta name="x-cards-version" content="4.32">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -369,6 +369,7 @@
   .inkrow .small{flex:none;border:2px solid var(--line);border-radius:20px;background:#fff;
     padding:14px 16px;font-size:16px;font-weight:600;color:var(--muted);box-shadow:0 4px 0 #ded8cc}
   .inkrow .small:active{transform:translateY(3px);box-shadow:0 1px 0 #ded8cc}
+  .inkrow .small.dim{opacity:.6}
   .inkrow .small[disabled]{opacity:.42;box-shadow:none;transform:none}
   .wgrade{display:none;gap:10px}
   .wgrade.on{display:flex}
@@ -1143,9 +1144,15 @@
       <button type="button" class="wgo" id="wCheck">Check it</button>
     </div>
     <div class="inkrow" id="inkRow">
+      <!-- The way out when the checker starts getting good words wrong. Right
+           on the pad, because that is where it goes wrong and quitting the
+           round to change it on the home screen loses the place. FIRST in the
+           row on purpose: Done is tapped on every word and sits last, so a
+           setting must not be its neighbour. -->
+      <button type="button" class="small" id="inkAi">🤖 Reading on</button>
       <button type="button" class="small" id="inkUndo">↩︎ Undo</button>
       <button type="button" class="small" id="inkClear">Clear</button>
-      <button type="button" class="small" id="inkRub">🧽 Rub out</button>
+      <button type="button" class="small" id="inkRub">🧽 Eraser</button>
       <button type="button" class="small" id="inkPeek">👀 Peek</button>
       <button type="button" class="wgo" id="inkDone">Done</button>
     </div>
@@ -1817,7 +1824,7 @@
    'writeBlock','writeOpts','writeNote','extraOpts','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
-   'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkDone',
+   'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
@@ -5441,6 +5448,25 @@
     clearTimeout(peekId);
     peekId = setTimeout(function(){ showWord(false, blanksFor(w)); }, ms);
   }
+  /* It reports the setting rather than an intention, so there is never a
+     moment where the pad claims one thing and the home screen another. Hidden
+     when signed out, because the checker never runs then anyway and a switch
+     that does nothing is worse than no switch. */
+  function paintAiBtn(){
+    el.inkAi.classList.toggle('hide', !me.token);
+    el.inkAi.classList.toggle('dim', !state.autoMark);
+    el.inkAi.textContent = state.autoMark ? '\uD83E\uDD16 Reading on' : '\uD83E\uDD16 Reading off';
+  }
+  el.inkAi.addEventListener('click', function(){
+    unlock(); sfx.tap();
+    state.autoMark = !state.autoMark;
+    saveSettings();
+    paintAiBtn();
+    paintHome();          // the home screen holds the same setting
+    toast(state.autoMark ? 'Back to the app reading it'
+                         : 'Reading off, you say if it is right');
+  });
+
   function setWHint(msg, cls){
     el.wHint.textContent = msg || '';
     el.wHint.className = 'whint' + (cls ? ' ' + cls : '');
@@ -5460,6 +5486,7 @@
     el.wInput.className = 'winput';
     el.wMark.innerHTML = '';
     el.wText.textContent = c.w;
+    paintAiBtn();
     var goes = unitTimes(unitById(c.u));
     el.inkHint.textContent = !c.n || c.n < 2 ? 'write it here'
       : goes === 2 ? 'and once more'
