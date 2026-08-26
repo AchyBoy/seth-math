@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.33">
+<meta name="x-cards-version" content="4.34">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -138,6 +138,16 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .srow .crown{flex:none;font-size:14px}
   .srow.empty{color:var(--muted);justify-content:center;font-size:14px}
+
+  /* what the teacher marked. Words wrap, so this is a flex row and not the
+     square grid the tables and the weeks use. */
+  .wchips{display:flex;flex-wrap:wrap;gap:8px}
+  .wchip{border:2px solid var(--line);background:#fff;color:var(--muted);
+    border-radius:12px;padding:8px 13px;font-size:16px;font-weight:600;
+    font-family:inherit;text-align:left;
+    transition:transform .12s ease,background .18s ease,border-color .18s ease,color .18s ease}
+  .wchip.on{border-color:#f3cdc9;background:var(--red-soft);color:#a8352e}
+  .wchip:active{transform:scale(.94)}
 
   /* trouble spots */
   .misses{display:flex;flex-wrap:wrap;gap:8px}
@@ -796,6 +806,16 @@
     <p class="label">Which week</p>
     <div class="chips" id="unitChips"></div>
     <p class="note" id="unitNote"></p>
+  </div>
+
+  <div class="block hide" id="redBlock">
+    <p class="label">What the teacher marked</p>
+    <div class="wchips" id="redChips"></div>
+    <p class="note" id="redNote"></p>
+    <div class="quick">
+      <button type="button" id="redPractice">Write just these</button>
+      <button type="button" class="warn hide" id="redClear">Clear</button>
+    </div>
   </div>
 
   <div class="block hide" id="timesBlock">
@@ -1840,6 +1860,7 @@
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
+   'redBlock','redChips','redNote','redPractice','redClear',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','ver',
@@ -2379,6 +2400,7 @@
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
     paintTimes();
+    paintRed();
     paintReads();
     paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
@@ -2574,6 +2596,7 @@
     paintUnitChips();
     loadPages();
     loadReads();
+    loadRed();
     if (hasSheet()) buildSheet();
     paintHome();       // the week and the pages just changed underneath it
     paintCheer();
@@ -5571,10 +5594,16 @@
   }
   function marked(got, want){
     var keep = lcsKeep(got.toLowerCase(), want.toLowerCase());
-    var out = '', hit = 0, i;
+    /* Same letters, wrong capital: the positions line up one to one, so the
+       letter at fault can be pointed at exactly. Without this the whole word
+       goes green and the one thing wrong with it is invisible. `hit` still
+       counts letters, or a capital would be reported as a missing letter. */
+    var sameLetters = got.toLowerCase() === want.toLowerCase();
+    var out = '', hit = 0, i, bad;
     for (i = 0; i < got.length; i++){
       if (keep[i]) hit++;
-      out += '<span class="' + (keep[i] ? 'ok' : 'no') + '">' + esc(got.charAt(i)) + '</span>';
+      bad = !keep[i] || (sameLetters && got.charAt(i) !== want.charAt(i));
+      out += '<span class="' + (bad ? 'no' : 'ok') + '">' + esc(got.charAt(i)) + '</span>';
     }
     var missing = want.length - hit;
     if (missing > 0){
@@ -5590,6 +5619,7 @@
     var want = c.w, got = tidy(el.wInput.value);
     if (!got){ focusWrite(); return; }
     if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got); return; }
+    if (got !== want){ missWrite(got, capNote(want)); return; }
 
     stopTimer(); chasePause(); hushVoice();
     el.track.classList.add('hidden');
@@ -5599,9 +5629,8 @@
     el.wMark.innerHTML = marked(got, want);
     showWord(true);
     sfx.right();
-    var caps = got !== want;          // right letters, wrong capital
     if (state.tries === 0){
-      setWHint(caps ? 'Right letters. It is written ' + want : 'Spot on', 'good');
+      setWHint('Spot on', 'good');
       bump(true);
     } else {
       setWHint('That is it: ' + want, 'good');   // the miss was already counted
@@ -5609,10 +5638,24 @@
     }
     if (state.caught) return;
     clearTimeout(advanceId);
-    advanceId = setTimeout(step, caps ? 1600 : 700);
+    advanceId = setTimeout(step, 700);
   }
 
-  function missWrite(got){
+  /* ⭐ A WRONG CAPITAL IS A MISS (Andrew's call, after his teacher bracketed
+     August, September and October on a test and wrote "capital" beside them).
+     It used to pass with a remark, which is the one marking this app did that
+     his teacher does not. A month is on the list BECAUSE of its capital, so
+     letting it through was letting through the very thing being tested. */
+  function capNote(want){
+    return /^[A-Z]/.test(want)
+      ? 'Right letters. ' + want + ' needs a capital ' + want.charAt(0)
+      : 'Right letters, but ' + want + ' takes no capital';
+  }
+
+  /* `why` is the capital case. It also opens the word up whatever the mode,
+     because a wrong capital is not something he can hear or work out, and
+     listen mode would otherwise read it to him again and tell him nothing. */
+  function missWrite(got, why){
     var c = card();
     if (!c || state.answered || state.caught) return;
     stopTimer();
@@ -5625,14 +5668,15 @@
     /* What he can see while he tries again is whatever the mode allows,
        except that a second miss always shows it: stuck with no way through
        is worse than being told. */
-    var open = state.write === 'copy' || state.write === 'peek' || state.tries >= 2;
+    var open = !!why || state.write === 'copy' || state.write === 'peek' || state.tries >= 2;
     if (open){
       showWord(true);
       if (state.write === 'peek' && state.tries < 2) hideWordSoon(c.w, PEEK_FLASH);
     } else {
       sayCard(c);
     }
-    setWHint(state.tries >= 2 ? 'Copy it carefully: ' + c.w : 'Not quite, write it again', 'bad');
+    setWHint(state.tries >= 2 ? 'Copy it carefully: ' + c.w
+           : why || 'Not quite, write it again', 'bad');
     el.wCheck.textContent = 'Try again';
     setTimeout(function(){
       if (state.answered || state.caught || !isWord(card())) return;
@@ -5746,6 +5790,78 @@
      Now the disagreements are a list a grown-up can read, which is the only
      way to tell a misread from a real misspelling, and the only evidence for
      changing the model. Per child. */
+  /* ---------- what the teacher marked ----------
+     The app only ever knew what he got wrong INSIDE it. The marks that
+     decide his score are made in red pen on a sheet at school and never
+     reached this screen at all, so a week of practice spread itself evenly
+     over twenty words when five of them were the whole problem. Tapping a
+     word here says the teacher marked that one.
+
+     Kept APART from the missed record on purpose. That record is what this
+     app watched happen; this is what somebody else marked on paper. Folded
+     together, "keeps missing these" would quietly mean two things at once
+     and neither of them could be cleared without losing the other. Per
+     CHILD, same rule as the pages and the reads: two children on one iPad
+     were about to inherit each other's mistakes. */
+  var REDPEN = 'seth-cards-redpen-v1';
+  var redpen = {};        // unit id -> the words the red pen marked
+  function redKey(){ return REDPEN + (me.name ? ':' + me.name.toLowerCase() : ':guest'); }
+  function loadRed(){
+    redpen = {};
+    try {
+      var v = JSON.parse(localStorage.getItem(redKey()));
+      if (v && typeof v === 'object') redpen = v;
+    } catch(e){}
+  }
+  function saveRed(){
+    try { localStorage.setItem(redKey(), JSON.stringify(redpen)); } catch(e){}
+  }
+  function redFor(u){ return (u && redpen[u.id]) || []; }
+  function redUnits(){ return state.units.map(unitById).filter(Boolean); }
+  // the list words then the vocabulary, in the order they sit on the sheet,
+  // so finding the one the teacher circled is a matter of reading down it
+  function unitWords(u){
+    return u.words.map(function(r){ return r[0]; })
+      .concat((u.vocab || []).map(function(r){ return r[0]; }));
+  }
+  // is this card one of the words the teacher marked on the test
+  function isRed(c){
+    return !!(c && c.w && (redpen[c.u] || []).indexOf(c.w) !== -1);
+  }
+  function redCount(){
+    var n = 0;
+    redUnits().forEach(function(u){ n += redFor(u).length; });
+    return n;
+  }
+  function paintRed(){
+    var picked = redUnits();
+    var show = state.subject === 'spelling' && !groupKit() && picked.length > 0;
+    el.redBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    el.redChips.innerHTML = '';
+    picked.forEach(function(u){
+      var marked = redFor(u);
+      unitWords(u).forEach(function(w){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'wchip' + (marked.indexOf(w) !== -1 ? ' on' : '');
+        b.setAttribute('data-unit', String(u.id));
+        b.setAttribute('data-word', w);
+        b.textContent = w;
+        el.redChips.appendChild(b);
+      });
+    });
+    var n = redCount();
+    el.redPractice.disabled = n === 0;
+    el.redPractice.textContent = n ? 'Write just these (' + n + ')' : 'Write just these';
+    el.redClear.classList.toggle('hide', n === 0);
+    el.redNote.textContent = n === 0
+      ? 'Tap the words the red pen marked on his test. Those are the ones worth '
+        + 'writing the night before a test, and the rest of the list he already has.'
+      : n + (n === 1 ? ' word' : ' words') + ' marked. Write just these deals only those, '
+        + 'whichever way is chosen below, and nothing is scored.';
+  }
+
   var READS = 'seth-cards-reads-v1';
   var READS_CAP = 60;
   var reads = [];
@@ -6079,7 +6195,21 @@
        twice turned up three times and read as a broken repeat count. Reading
        the first go still catches a real mistake early, and the goes after it
        are marked by the person holding the iPad, who can actually see it. */
-    if (c.n > 1){ inkReveal('Second go, so this one is yours to mark'); return; }
+    /* ⭐ EXCEPT ON THE WORDS THE TEACHER MARKED (Andrew's call). First go only
+       is a saving: it buys back half the readings on words that were never in
+       doubt. A word the red pen already caught IS the doubt, so every go at
+       one of those is read, however many times it comes round. */
+    if (c.n > 1 && !isRed(c)){ inkReveal('Second go, so this one is yours to mark'); return; }
+    /* ⭐ THE CHECKER DOES NOT GET A VOTE ON A CAPITAL. It compares without
+       case on purpose (server side), because a model transcribing cursive
+       cannot reliably tell august from August and a wrong no costs a whole
+       writing. So on the words where the capital IS what is being tested,
+       a yes from it would wave through the exact fault his teacher marked.
+       Those go to a person, with the capital named. */
+    if (/^[A-Z]/.test(c.w)){
+      inkReveal('Check every letter, and the capital ' + c.w.charAt(0) + '. Did you get it?');
+      return;
+    }
     // signed in is required: the endpoint spends real money, and the player is
     // how it is held to a sane number of words a day
     if (!me.token){ inkReveal('Not signed in, so he marks this one himself'); return; }
@@ -6368,6 +6498,36 @@
     var d = new Date((day || today()) + 'T12:00:00');
     return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   }
+  el.redChips.addEventListener('click', function(ev){
+    var b = ev.target.closest('.wchip'); if (!b) return;
+    var id = parseInt(b.getAttribute('data-unit'), 10), w = b.getAttribute('data-word');
+    var list = redpen[id] || (redpen[id] = []);
+    var i = list.indexOf(w);
+    if (i === -1) list.push(w); else list.splice(i, 1);
+    if (!list.length) delete redpen[id];
+    unlock(); sfx.tap(); saveRed(); paintRed();
+  });
+  el.redClear.addEventListener('click', function(){
+    redUnits().forEach(function(u){ delete redpen[u.id]; });
+    sfx.tap(); saveRed(); paintRed();
+  });
+  /* Only the marked words, in whichever way is already chosen, and no score.
+     A word the week asks for twice is still asked once here: this is the
+     night before the test, not the week's writing. */
+  el.redPractice.addEventListener('click', function(){
+    var cards = [];
+    redUnits().forEach(function(u){
+      redFor(u).forEach(function(w){
+        var c = spellByWord(w);
+        if (c) cards.push(c);
+      });
+    });
+    if (!cards.length) return;
+    shuffle(cards);
+    unlock();
+    startRun([{ label: 'The ones the teacher marked', table: 0, cards: cards }], true);
+  });
+
   el.clearReads.addEventListener('click', function(){
     reads = []; saveReads(); sfx.tap(); paintHome();
   });
@@ -6717,6 +6877,7 @@
   loadMe();          // before the pages: whose they are decides which are read
   loadPages();
   loadReads();
+  loadRed();
   loadRecord();
   buildChips();
   buildPairs();
