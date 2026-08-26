@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.35">
+<meta name="x-cards-version" content="4.36">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -446,6 +446,10 @@
   .sheet .slot svg{height:34px;width:auto;max-width:100%}
   /* written twice, so the row is halved and the second go is fenced off */
   .sheet .slot + .slot{border-left:1px dotted #bbb;padding-left:8px}
+  /* A meaning row carries the word it belongs to, or the teacher is reading
+     a definition with no way of telling which word was being defined. */
+  .sheet .defrow .dword{flex:none;font-size:12px;color:#444;font-style:italic;
+    min-width:74px;padding-right:6px;border-right:1px solid #ddd}
   /* thirty words will not fit a Letter page at forty pixels a line. A Letter
      page at the 14mm margin leaves about 950px, and the heading and the
      footnote take some of that, so the lines come down to 27 and the whole
@@ -878,6 +882,12 @@
       <button type="button" class="opt on" data-extra="1">Put them in</button>
       <button type="button" class="opt" data-extra="0">Just the words</button>
     </div>
+    <p class="label" style="margin-top:22px">The meanings</p>
+    <div class="opts" id="defOpts">
+      <button type="button" class="opt on" data-def="1">Write them too</button>
+      <button type="button" class="opt" data-def="0">Spelling only</button>
+    </div>
+    <p class="note" id="defNote"></p>
   </div>
 
   <div class="block" id="modeBlock">
@@ -1846,7 +1856,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], times: {}, redTimes: {}, write: 'copy', extras: true, tries: 0, hand: true, autoMark: true,
+    units: [], times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -1869,7 +1879,7 @@
    'redStep','redVal','redUp','redDown',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
-   'writeBlock','writeOpts','writeNote','extraOpts','ver',
+   'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
@@ -2152,6 +2162,7 @@
         if (s.redTimes && typeof s.redTimes === 'object') state.redTimes = s.redTimes;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
+        if (typeof s.defs === 'boolean') state.defs = s.defs;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
         if (typeof s.autoMark === 'boolean') state.autoMark = s.autoMark;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
@@ -2172,7 +2183,7 @@
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
         units: state.units, times: state.times, redTimes: state.redTimes,
-        write: state.write, extras: state.extras, hand: state.hand,
+        write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
@@ -2411,6 +2422,17 @@
     paintReads();
     paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
+    var vocab = 0;
+    state.units.map(unitById).filter(Boolean)
+      .forEach(function(u){ vocab += (u.vocab || []).length; });
+    el.defNote.textContent = !vocab
+      ? 'This week has no vocabulary words, so there are no meanings to write.'
+      : state.defs
+        ? 'He writes what each of the ' + vocab + ' vocabulary words means, as well as '
+          + 'spelling it. The meaning is marked for sense AND spelling, because his '
+          + 'teacher marks both: he lost the mark on proclaim for writing "to declam".'
+        : 'Just the spellings. He is still tested on writing the meanings.';
+    setOn(el.defOpts, 'data-def', state.defs ? '1' : '0');
     el.handNote.textContent = state.hand
       ? 'He writes each word on the line with the Pencil, and the page keeps the ink exactly '
         + 'as he drew it. Nothing here can read handwriting, so it shows him the spelling once '
@@ -2523,6 +2545,10 @@
   el.extraOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
     state.extras = b.getAttribute('data-extra') === '1'; sfx.tap(); paintHome(); saveSettings();
+  });
+  el.defOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.defs = b.getAttribute('data-def') === '1'; sfx.tap(); paintHome(); saveSettings();
   });
   el.modeOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -3892,6 +3918,13 @@
         (u.vocab || []).forEach(function(row){
           if (wordTimes(u, row[0]) >= n) out.push({ k: 'w', w: row[0], m: row[1] || '', u: u.id, n: n });
         });
+        // the meaning follows the same count as its word: a word the red pen
+        // marked is one he is shaky on, and the meaning came off the same line
+        if (state.defs){
+          (u.vocab || []).forEach(function(row){
+            if (wordTimes(u, row[0]) >= n) out.push({ k: 'd', w: row[0], m: row[1] || '', u: u.id, n: n });
+          });
+        }
       })(n);
     }
     return out;
@@ -3974,7 +4007,13 @@
      crucially NOT which one is right. The page cannot mark it, colour it, or
      let him try again, because the page genuinely does not know. */
   function isDealt(c){ return !!(c && c.k === 'sv'); }
-  function isWord(c){ return !!(c && c.k === 'w'); }
+  /* ⭐ A DEFINITION CARD IS A WRITING CARD WITH THE ROLES SWAPPED: the word is
+     the prompt and stays on screen, the meaning is what he writes. He is
+     tested on both and lost the mark on proclaim for writing "to declam", so
+     the spelling INSIDE the meaning counts too. `isWord` covers it, because
+     everything about the writing panel, the ink and the retry applies. */
+  function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd')); }
+  function isDef(c){ return !!(c && c.k === 'd'); }
   function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c')); }
   function spellingNow(){ return state.subject === 'spelling'; }
   /* A verse is drilled both ways round. Flipping shows the reference and asks
@@ -3992,12 +4031,14 @@
   }
   function cardAnswer(c){
     if (isDealt(c)) return '';       // not ours to know
+    if (isDef(c)) return c.m || '';
     if (isWord(c) || isTask(c)) return c.w;
     if (isVerse(c)) return picking() ? c.r : c.t;
     return isSound(c) ? c.pick : String(c[0] * c[1]);
   }
   function cardKey(c){
     if (isDealt(c)) return '';       // the misses record is the server's job here
+    if (isDef(c)) return 'd:' + c.w;      // missing the meaning is not missing the spelling
     if (isWord(c)) return 'w:' + c.w;
     if (isTask(c)) return '';          // the worksheet questions are not drilled
     if (isVerse(c)) return 'v:' + c.r;
@@ -5537,7 +5578,12 @@
   function tidy(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
 
   function paintWrite(c){
-    var mode = state.write;
+    var def = isDef(c);
+    /* The word is the PROMPT on a definition card, so it stays on screen
+       whatever the mode: there is nothing to peek at and nothing to hide, and
+       reading it aloud and then taking it away would be asking him to
+       remember a word rather than what it means. */
+    var mode = def ? 'copy' : state.write;
     state.tries = 0; sayAgain = 0;
     clearTimeout(peekId);
     el.wInput.value = '';
@@ -5545,17 +5591,25 @@
     el.wMark.innerHTML = '';
     el.wText.textContent = c.w;
     paintAiBtn();
-    var goes = unitTimes(unitById(c.u));
-    el.inkHint.textContent = !c.n || c.n < 2 ? 'write it here'
+    // ⚠️ per WORD, not per week. With one count for the whole list this read
+    // unitTimes and a marked word on its second go said "go 2 of 1".
+    var goes = wordTimes(unitById(c.u), c.w);
+    var writeIt = def ? 'what does it mean?' : 'write it here';
+    el.inkHint.textContent = !c.n || c.n < 2 ? writeIt
       : goes === 2 ? 'and once more'
       : 'go ' + c.n + ' of ' + goes;
+    el.wInput.placeholder = writeIt;
+    // a meaning is a phrase, and 32 characters cuts "flat land with few trees" short
+    el.wInput.maxLength = def ? 120 : 32;
+    document.body.classList.toggle('defining', def);
     el.wCheck.textContent = 'Check it';
     setWHint('');
     document.body.classList.toggle('listening', mode === 'listen');
     /* The sentence has the word inside it, so it can only be shown when the
        word is on screen anyway. A vocabulary meaning never gives it away, so
-       that one is the clue in all three modes. */
-    var clue = c.m ? c.m : (mode === 'copy' ? c.s : '');
+       that one is the clue in all three modes. On a definition card the
+       meaning IS the answer, so there is no clue at all. */
+    var clue = def ? '' : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
     el.wPeek.classList.toggle('hide', mode === 'copy');
@@ -5625,11 +5679,73 @@
     return out;
   }
 
+  /* ⭐ A MEANING CANNOT BE MARKED BY COMPARING IT. "weak" and "not strong" are
+     both right and neither matches the book word for word, so a typed
+     definition goes to the same judge on the server that marks a written one,
+     and for the same reason: it is the only thing here that can tell a
+     different wording from a wrong answer. Offline or signed out, he marks it
+     himself, exactly as the handwriting does. */
+  function checkDef(c, got){
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    if (!me.token || !state.autoMark){
+      defReveal(c, got, !me.token ? 'Not signed in, so mark this one yourself'
+                                  : 'You have it set to marking it yourself');
+      return;
+    }
+    checking = true;
+    setWHint('Reading it…', '');
+    el.wCheck.textContent = 'Reading…';
+    el.wCheck.disabled = true;
+    apiCall('/handwriting', { method: 'POST',
+      body: { token: me.token, word: c.w, meaning: c.m || '', text: got } }).then(function(res){
+      checking = false;
+      el.wCheck.textContent = 'Check it';
+      el.wCheck.disabled = false;
+      if (card() !== c || state.answered || state.caught) return;
+      var d = res && res.ok ? res.data : null;
+      if (!d || d.ok === null || d.ok === undefined){
+        defReveal(c, got, d && d.why === 'capped'
+          ? 'That is enough marking for today, mark it yourself'
+          : 'Could not mark that one. Did you get it?');
+        return;
+      }
+      if (d.ok){ defPass(c, got, d.note || ''); return; }
+      // same rule as the spelling checker: a no is an opinion, and the note
+      // says what was wrong without handing over the answer
+      missWrite(got, d.note || 'Not quite. Have another go');
+    });
+  }
+  function defPass(c, got, note){
+    state.answered = true;
+    el.wInput.classList.remove('bad');
+    el.wInput.classList.add('good');
+    el.wMark.textContent = got;
+    sfx.right();
+    if (state.tries === 0){ setWHint(note || 'That is it', 'good'); bump(true); }
+    else { setWHint(note || 'That is it', 'good'); clearCard(true); chaseNudge(true); }
+    if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, note ? 1400 : 700);
+  }
+  // nothing could mark it, so it goes to whoever is holding the iPad
+  function defReveal(c, got, why){
+    state.answered = true;
+    el.wMark.textContent = got;
+    el.wClue.textContent = c.m || '';
+    el.wClue.classList.remove('hide');
+    setWHint(why, '');
+    el.grade.classList.add('on');
+    el.inkGrade.classList.add('on');
+  }
+
   function checkWrite(){
     var c = card();
     if (!c || !isWord(c) || state.caught || state.answered) return;
+    if (checking) return;
     var want = c.w, got = tidy(el.wInput.value);
     if (!got){ focusWrite(); return; }
+    if (isDef(c)){ checkDef(c, got); return; }
     if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got); return; }
     if (got !== want){ missWrite(got, capNote(want)); return; }
 
@@ -5794,7 +5910,10 @@
                 .sort(function(a, b){ return (b.at || 0) - (a.at || 0); });
   }
   // which go it was, so writing a word twice keeps both hands and not the last one
-  function inkKey(c){ return c.w + (c.n > 1 ? '#' + c.n : ''); }
+  /* ⚠️ A definition is filed under its own key. Without the prefix it writes
+     to `frail`, which is where the SPELLING of frail is kept, and the meaning
+     would quietly overwrite the word on the printed page. */
+  function inkKey(c){ return (isDef(c) ? 'def:' : '') + c.w + (c.n > 1 ? '#' + c.n : ''); }
 
   /* ⭐ WHAT THE CHECKER READ, kept only when it DISAGREED. The verdict used
      to live on screen for a second and then be gone, so "it rejected a word
@@ -5896,16 +6015,20 @@
         + 'Those are the ones worth the extra goes, and the rest of the list he has.';
       return;
     }
-    // exactly what Start is about to deal, counted rather than described
-    var cards = 0;
+    /* Exactly what Start is about to deal, counted rather than described, and
+       it has to count the MEANINGS too or the note says 30 while the button
+       says 39. Anything that describes the deck reads the same helpers the
+       deck is built from. */
+    var cards = 0, rest = 0;
     picked.forEach(function(uu){
       unitWords(uu).forEach(function(w){ cards += wordTimes(uu, w); });
+      if (state.defs) (uu.vocab || []).forEach(function(r){ cards += wordTimes(uu, r[0]); });
+      rest += unitWords(uu).length - redFor(uu).length;
     });
-    var rest = 0;
-    picked.forEach(function(uu){ rest += unitWords(uu).length - redFor(uu).length; });
     el.redNote.textContent = n + (n === 1 ? ' word' : ' words') + ' marked, written '
-      + timesWord(t) + ' each, and the other ' + rest + ' once. Start deals all '
-      + cards + ' of them. Write just these deals only the marked ones, unscored.';
+      + timesWord(t) + ' each, and the other ' + rest + ' once'
+      + (state.defs ? ', with the meanings on top' : '') + '. Start deals ' + cards
+      + ' cards. Write just these deals only the marked ones, unscored.';
   }
 
   var READS = 'seth-cards-reads-v1';
@@ -6248,7 +6371,7 @@
        writing. So on the words where the capital IS what is being tested,
        a yes from it would wave through the exact fault his teacher marked.
        Those go to a person, with the capital named. */
-    if (/^[A-Z]/.test(c.w)){
+    if (!isDef(c) && /^[A-Z]/.test(c.w)){
       inkReveal('Check every letter, and the capital ' + c.w.charAt(0) + '. Did you get it?');
       return;
     }
@@ -6263,7 +6386,8 @@
     el.inkDone.textContent = 'Reading…';
     el.inkDone.disabled = true;
     apiCall('/handwriting', { method: 'POST',
-      body: { token: me.token, word: c.w, image: img } }).then(function(res){
+      body: { token: me.token, word: c.w, image: img,
+              meaning: isDef(c) ? (c.m || '') : '' } }).then(function(res){
       checking = false;
       el.inkDone.textContent = 'Done';
       el.inkDone.disabled = false;
@@ -6294,7 +6418,7 @@
          writing. It says what it read, the word is on screen beside it, and
          the person holding the iPad decides. A YES still passes on its own,
          which is the whole point of having it. */
-      if (d.ok){ inkMark(true, d.read || '', d.cheer || ''); return; }
+      if (d.ok){ inkMark(true, d.read || '', d.note || d.cheer || ''); return; }
       inkReveal(d.read
         ? 'That reads as \u201C' + d.read + '\u201D. Did you get it?'
         : 'It did not think so. Did you get it?');
@@ -6434,10 +6558,24 @@
     var per = pg && pg.slots && pg.slots[w];
     return Math.max(1, Math.min(TIMES_MAX, per || pageTimes(pg)));
   }
+  /* The meanings get their own numbered lines under the words, because that
+     is how the sheet that came home is laid out: the list, then "write the
+     vocabulary word and definition". They are only added when something was
+     actually written on one, so a spelling-only week prints exactly as it
+     always did rather than growing three empty rows. */
   function sheetRows(u, pg){
-    return unitWords(u).map(function(w){
+    var rows = unitWords(u).map(function(w){
       return { w: w, keys: wordKeys(w, pg ? pageWordTimes(pg, w) : unitTimes(u)) };
     });
+    var defs = (u.vocab || []).map(function(r){
+      var w = r[0];
+      return { w: w, def: true, m: r[1] || '',
+               keys: wordKeys(w, pg ? pageWordTimes(pg, w) : unitTimes(u))
+                       .map(function(k){ return 'def:' + k; }) };
+    }).filter(function(row){
+      return !pg || row.keys.some(function(k){ return pg.words && pg.words[k]; });
+    });
+    return rows.concat(defs);
   }
   function pageSlots(pg){
     var u = unitById(pg.unit); if (!u) return { done: 0, all: 0 };
@@ -6466,7 +6604,9 @@
         if (rec && rec.missed) missed = true;
         return '<span class="slot">' + (rec ? inkSVG(rec) : '') + '</span>';
       }).join('');
-      return '<li>' + slots
+      return '<li' + (row.def ? ' class="defrow"' : '') + '>'
+           + (row.def ? '<span class="dword">' + esc(row.w) + '</span>' : '')
+           + slots
            + '<span class="flag">' + (missed ? '•' : '') + '</span></li>';
     }).join('');
     // twenty lines fit a page at full height; thirty only fit squeezed up
