@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.37">
+<meta name="x-cards-version" content="4.38">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1873,7 +1873,7 @@
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
     units: [], times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
-    dealt: false, roundId: '', answers: [], marked: null,
+    dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -5304,8 +5304,14 @@
     else state.queue.push(state.queue.shift());
   }
 
-  function startRun(rounds, isPractice){
+  function startRun(rounds, isPractice, testing){
     unlock();
+    /* ⭐ A TEST RUN LOCKS THE MARKING ON (Andrew's call). The switch on the pad
+       exists so a grown-up can shut the checker up when it starts turning down
+       good words, but on a test it is sitting under the child's thumb and
+       turning it off means marking his own paper. Every other way in leaves
+       this false, so the lock cannot leak into ordinary practice. */
+    state.testing = !!testing;
     if (!groupKit()) state.dealt = false;
     primeCheer();
     state.rounds = rounds || buildRounds();
@@ -5569,11 +5575,14 @@
      when signed out, because the checker never runs then anyway and a switch
      that does nothing is worse than no switch. */
   function paintAiBtn(){
-    el.inkAi.classList.toggle('hide', !me.token);
+    // gone rather than dead: a locked button a child can keep tapping is worse
+    // than no button, and the way out is to stop the test and change it at home
+    el.inkAi.classList.toggle('hide', !me.token || state.testing);
     el.inkAi.classList.toggle('dim', !state.autoMark);
     el.inkAi.textContent = state.autoMark ? '\uD83E\uDD16 Reading on' : '\uD83E\uDD16 Reading off';
   }
   el.inkAi.addEventListener('click', function(){
+    if (state.testing) return;            // locked on for the whole test
     unlock(); sfx.tap();
     state.autoMark = !state.autoMark;
     saveSettings();
@@ -5705,7 +5714,7 @@
   function checkDef(c, got){
     stopTimer(); chasePause(); hushVoice();
     el.track.classList.add('hidden');
-    if (!me.token || !state.autoMark){
+    if (!me.token || (!state.autoMark && !state.testing)){
       defReveal(c, got, !me.token ? 'Not signed in, so mark this one yourself'
                                   : 'You have it set to marking it yourself');
       return;
@@ -6055,7 +6064,8 @@
       : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
         + (state.defs ? ', plus the meanings' : '') + '. ' + plan.cards + ' cards, read '
-        + 'aloud, written by hand, no timer. Nothing to set up.';
+        + 'aloud, written by hand, no timer. The app does the marking and he cannot '
+        + 'switch it off. Nothing to set up.';
   }
   /* ⚠️ The seed is written into the same store the chips read, on purpose. A
      second hidden list of "words the app thinks are hard" would be invisible,
@@ -6074,10 +6084,11 @@
     state.hand = true;                         // and by hand, like the real thing
     state.shuffle = true;
     state.mode = 'flip';                       // never the archer on a spelling night
+    state.autoMark = true;                     // and he cannot turn the marking off
     saveSettings();
     paintHome();
     unlock();
-    startRun(buildRounds());
+    startRun(buildRounds(), false, true);
   }
   function redCount(){
     var n = 0;
@@ -6457,7 +6468,9 @@
      whether it had been skipped, refused, or had failed - which cost a round
      of guessing at it. A silent fallback and a broken feature look identical. */
   function askTheChecker(c){
-    if (!state.autoMark){ inkReveal('You have it set to marking it yourself'); return; }
+    if (!state.autoMark && !state.testing){
+      inkReveal('You have it set to marking it yourself'); return;
+    }
     /* ⭐ EVERY GO IS READ (Andrew's call, 2026-08-26). It read the FIRST go only
        from v4.31, because back then a wrong no cost a miss on the record AND
        another writing, so half the readings were given up to halve that cost.
