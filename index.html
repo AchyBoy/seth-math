@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.38">
+<meta name="x-cards-version" content="4.39">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -738,6 +738,12 @@
     <span class="grow"><span id="shopWord">Shop</span><span class="dot hide" id="waitDot"></span></span>
     <span class="chev">›</span>
   </button>
+
+  <div class="block hide" id="resumeBlock">
+    <button type="button" class="night" id="resumeBtn">↩︎ Carry on where he left off</button>
+    <p class="note" id="resumeNote"></p>
+    <div class="quick"><button type="button" class="warn" id="resumeDrop">Start again instead</button></div>
+  </div>
 
   <div class="block hide" id="nightBlock">
     <button type="button" class="night" id="nightBtn">📝 Get me ready for the test</button>
@@ -1893,6 +1899,7 @@
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote',
+   'resumeBlock','resumeBtn','resumeNote','resumeDrop',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
@@ -2433,6 +2440,7 @@
       : 'King James, so the words are the ones he will hear read aloud. Flip the card to '
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
+    paintResume();
     paintTimes();
     paintNight();
     paintRed();
@@ -2647,6 +2655,7 @@
     loadPages();
     loadReads();
     loadRed();
+    loadSaved();
     if (hasSheet()) buildSheet();
     paintHome();       // the week and the pages just changed underneath it
     paintCheer();
@@ -5312,6 +5321,7 @@
        turning it off means marking his own paper. Every other way in leaves
        this false, so the lock cannot leak into ordinary practice. */
     state.testing = !!testing;
+    dropSaved();      // a new round is not the old one, whatever was pending
     if (!groupKit()) state.dealt = false;
     primeCheer();
     state.rounds = rounds || buildRounds();
@@ -6142,6 +6152,101 @@
       + ' cards. Write just these deals only the marked ones, unscored.';
   }
 
+  /* ---------- picking up where he left off ----------
+     Andrew's ask: "if he has to put the iPad down and the browser crashes it
+     picks up right where left off". The ink was already safe, it is written to
+     the page as each word is done; what was lost was the RUN, so a crash
+     twenty eight cards into a thirty nine card test meant starting it again.
+
+     🔴 NOT EVERY ROUND IS SAFE TO PICK UP.
+       - A DEALT round belongs to the server, which marks it from the deck it
+         handed out and the clock it started. Coming back to one an hour later
+         is exactly the 'stale' case it already refuses to score, so saving it
+         would only offer him something that cannot count.
+       - A CHASE is a race against a clock. There is no honest way to resume
+         one: either the animal waited, which is not a race, or it did not,
+         which is not a resume.
+     Both are simply not written, rather than written and refused later, so
+     there is never a saved run that turns out not to be resumable. */
+  var RUN = 'seth-cards-run-v1';
+  var RUN_GOOD_FOR = 24 * 60 * 60 * 1000;   // a day, then the test is over anyway
+  var saved = null;
+  function runKey(){ return RUN + (me.name ? ':' + me.name.toLowerCase() : ':guest'); }
+  function loadSaved(){
+    saved = null;
+    try {
+      var v = JSON.parse(localStorage.getItem(runKey()));
+      if (v && v.queue && v.queue.length && Date.now() - (v.at || 0) < RUN_GOOD_FOR) saved = v;
+      else if (v) localStorage.removeItem(runKey());
+    } catch(e){}
+  }
+  function dropSaved(){
+    saved = null;
+    try { localStorage.removeItem(runKey()); } catch(e){}
+  }
+  function canSaveRun(){
+    return !!(state.rounds && state.rounds.length && !state.dealt && !chaseOn()
+              && state.queue && state.queue.length);
+  }
+  function saveRun(){
+    if (!canSaveRun()) return;
+    try {
+      localStorage.setItem(runKey(), JSON.stringify({
+        at: Date.now(), subject: state.subject,
+        rounds: state.rounds, roundIdx: state.roundIdx,
+        queue: state.queue, total: state.total, cleared: state.cleared,
+        right: state.right, wrong: state.wrong,
+        streak: state.streak, bestStreak: state.bestStreak,
+        roundRight: state.roundRight, roundWrong: state.roundWrong,
+        roundMissed: state.roundMissed, missed: state.missed,
+        practice: state.practice, testing: state.testing,
+        write: state.write, hand: state.hand, autoMark: state.autoMark,
+        units: state.units, sessionId: state.sessionId
+      }));
+    } catch(e){}      // a full drawer must never take the round down with it
+  }
+  function resumeSaved(){
+    var v = saved;
+    if (!v) return;
+    dropSaved();
+    /* The settings the round was PLAYED with, not whatever the home screen
+       says now. Coming back to a test in copy mode because somebody touched a
+       setting in between would quietly turn it into a different exercise. */
+    state.subject = v.subject || state.subject;
+    if (v.units && v.units.length) state.units = v.units;
+    if (v.write) state.write = v.write;
+    if (typeof v.hand === 'boolean') state.hand = v.hand;
+    if (typeof v.autoMark === 'boolean') state.autoMark = v.autoMark;
+    state.sessionId = v.sessionId || state.sessionId;
+    startRun(v.rounds, v.practice, v.testing);
+    // ⚠️ AFTER startRun, which calls loadRound and would deal the round again
+    // from the top. The whole point is the queue as he left it.
+    state.queue = v.queue;
+    state.total = v.total; state.cleared = v.cleared;
+    state.right = v.right; state.wrong = v.wrong;
+    state.streak = v.streak; state.bestStreak = v.bestStreak;
+    state.roundRight = v.roundRight; state.roundWrong = v.roundWrong;
+    state.roundMissed = v.roundMissed || []; state.missed = v.missed || [];
+    state.tries = 0;         // the card he was halfway through starts clean
+    paintCard();
+  }
+  function paintResume(){
+    var show = !!saved && !groupKit();
+    el.resumeBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    var done = saved.cleared || 0, all = saved.total || 0;
+    el.resumeNote.textContent = 'He was ' + done + ' of ' + all + ' through '
+      + (saved.testing ? 'his test practice' : 'a round')
+      + ', ' + agoWords(saved.at) + '. Everything he wrote is still on the page.';
+  }
+  function agoWords(at){
+    var mins = Math.round((Date.now() - (at || 0)) / 60000);
+    if (mins < 2) return 'a moment ago';
+    if (mins < 60) return mins + ' minutes ago';
+    var hrs = Math.round(mins / 60);
+    return hrs === 1 ? 'an hour ago' : hrs + ' hours ago';
+  }
+
   var READS = 'seth-cards-reads-v1';
   var READS_CAP = 60;
   var reads = [];
@@ -6789,6 +6894,19 @@
     unlock(); sfx.tap(); paintHome(); saveSettings();
   }
   el.nightBtn.addEventListener('click', startTestNight);
+  el.resumeBtn.addEventListener('click', function(){ unlock(); sfx.tap(); resumeSaved(); });
+  el.resumeDrop.addEventListener('click', function(){ sfx.tap(); dropSaved(); paintHome(); });
+
+  /* Putting the iPad down IS the case this was built for, so the run is
+     written on the way out as well as after every card. Without this a crash
+     part way through a word loses that card, and the first card of a round
+     was never saved at all because nothing had stepped yet. */
+  window.addEventListener('pagehide', function(){
+    if (el.play.classList.contains('on')) saveRun();
+  });
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'hidden' && el.play.classList.contains('on')) saveRun();
+  });
   el.redUp.addEventListener('click', function(){ bumpRed(1); });
   el.redDown.addEventListener('click', function(){ bumpRed(-1); });
 
@@ -6939,6 +7057,9 @@
   function step(){
     clearTimeout(advanceId);
     if (state.caught || breaking) return;
+    // every card leaves through here, whatever marked it, so this is the one
+    // place a save belongs rather than six call sites that will drift apart
+    saveRun();
     if (state.queue.length){ paintCard(); return; }
     breaking = true;
     // round cleared
@@ -7052,6 +7173,7 @@
   }
 
   function finish(){
+    dropSaved();      // it is finished; there is nothing to pick up
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
     hushVoice(); clearTimeout(peekId);
     try { el.wInput.blur(); } catch(e){}
@@ -7200,6 +7322,7 @@
   loadPages();
   loadReads();
   loadRed();
+  loadSaved();
   loadRecord();
   buildChips();
   buildPairs();
