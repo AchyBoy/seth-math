@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.30">
+<meta name="x-cards-version" content="4.31">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2365,9 +2365,11 @@
     el.markBlock.classList.toggle('hide', !spell || !state.hand);
     el.markNote.textContent = state.autoMark
       ? (me.token
-          ? 'His writing is sent to be read and marked, so he is told there and then and '
-            + 'writes it again if it is wrong. If it cannot be read, or you are offline, he '
-            + 'marks himself instead. Costs a fraction of a penny a word.'
+          ? 'The FIRST go at a word is sent to be read and marked, so a real mistake is '
+            + 'caught there and then and the word is written again. Every go after that is '
+            + 'marked here, by whoever is watching, because a wrong verdict costs another '
+            + 'writing. If it cannot be read, or you are offline, it is marked here too. '
+            + 'Costs a fraction of a penny a word.'
           : '\u26A0\uFE0F He needs to be signed in for this, otherwise he marks himself. '
             + 'Tap the name at the top of this screen.')
       : 'The spelling comes up once he is done and he says whether he got it. Nothing '
@@ -5992,7 +5994,14 @@
      whether it had been skipped, refused, or had failed - which cost a round
      of guessing at it. A silent fallback and a broken feature look identical. */
   function askTheChecker(c){
-    if (!state.autoMark){ inkReveal('You have it set to him marking himself'); return; }
+    if (!state.autoMark){ inkReveal('You have it set to marking it yourself'); return; }
+    /* ⭐ THE FIRST GO ONLY (Andrew's call, after it rejected a word he had
+       written himself and thought was good). A wrong verdict does not just
+       misinform, it makes the word be written AGAIN, so a word asked for
+       twice turned up three times and read as a broken repeat count. Reading
+       the first go still catches a real mistake early, and the goes after it
+       are marked by the person holding the iPad, who can actually see it. */
+    if (c.n > 1){ inkReveal('Second go, so this one is yours to mark'); return; }
     // signed in is required: the endpoint spends real money, and the player is
     // how it is held to a sane number of words a day
     if (!me.token){ inkReveal('Not signed in, so he marks this one himself'); return; }
