@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.36">
+<meta name="x-cards-version" content="4.37">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -195,6 +195,12 @@
     padding:20px;font-size:21px;font-weight:600;width:100%;
     box-shadow:0 6px 0 var(--blue-dark);transition:transform .1s ease,box-shadow .1s ease}
   .start:active{transform:translateY(4px);box-shadow:0 2px 0 var(--blue-dark)}
+  /* The one tap way in. Green rather than blue so it does not read as a
+     second Start, and it sits above every setting it is about to make. */
+  .night{background:var(--green);color:#fff;border-radius:20px;padding:18px;
+    font-size:20px;font-weight:600;width:100%;box-shadow:0 6px 0 var(--green-dark);
+    transition:transform .1s ease,box-shadow .1s ease}
+  .night:active{transform:translateY(4px);box-shadow:0 2px 0 var(--green-dark)}
   .start[disabled]{background:#c9c6bd;box-shadow:0 6px 0 #b3b0a7;cursor:default}
 
   /* ---------- play ---------- */
@@ -732,6 +738,11 @@
     <span class="grow"><span id="shopWord">Shop</span><span class="dot hide" id="waitDot"></span></span>
     <span class="chev">›</span>
   </button>
+
+  <div class="block hide" id="nightBlock">
+    <button type="button" class="night" id="nightBtn">📝 Get me ready for the test</button>
+    <p class="note" id="nightNote"></p>
+  </div>
 
   <div class="block hide" id="standBlock">
     <p class="label">Where everyone stands</p>
@@ -1806,6 +1817,11 @@
         ['plain',    'flat land with few trees'],
         ['proclaim', 'to declare']
       ],
+      /* What the red pen marked on the test that came home, read off the
+         photo. Three of these five are the same mistake, the i dropped out of
+         ai: starway, plan, proclam, which is the rule at the top of his own
+         list. Tapping a chip on the home screen overrides this. */
+      marked: ['praise', 'stairway', 'frail', 'plain', 'proclaim'],
       compounds: [
         ['air','plane'], ['stair','way'], ['day','dream'], ['back','pack'],
         ['home','work'], ['book','shelf'], ['note','book'], ['lunch','box']
@@ -1876,7 +1892,7 @@
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
-   'redStep','redVal','redUp','redDown',
+   'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
@@ -2418,6 +2434,7 @@
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
     el.unitNote.textContent = unitSummary();
     paintTimes();
+    paintNight();
     paintRed();
     paintReads();
     paintPages();
@@ -5948,7 +5965,16 @@
   function saveRed(){
     try { localStorage.setItem(redKey(), JSON.stringify(redpen)); } catch(e){}
   }
-  function redFor(u){ return (u && redpen[u.id]) || []; }
+  /* ⚠️ ABSENT and EMPTY are different. A week arrives carrying the marks read
+     off the photo of the test; no entry in the store means nobody has touched
+     them, so those stand. An entry that is an empty list means somebody
+     cleared it on purpose, and that has to survive a reload rather than
+     helpfully filling itself back in. */
+  function redFor(u){
+    if (!u) return [];
+    var own = redpen[u.id];
+    return own ? own : (u.marked || []);
+  }
   function redUnits(){ return state.units.map(unitById).filter(Boolean); }
   // the list words then the vocabulary, in the order they sit on the sheet,
   // so finding the one the teacher circled is a matter of reading down it
@@ -5978,6 +6004,80 @@
     var out = {};
     if (u) unitWords(u).forEach(function(w){ out[w] = wordTimes(u, w); });
     return out;
+  }
+  /* ⭐ THE ONE TAP WAY IN (Andrew's ask, 2026-08-26): "he clicks that and it's
+     all set for him to go". Everything below is a setting he could reach
+     himself; the point is that on the night before a test nobody should have
+     to. It does NOT invent a third idea of what needs work: it seeds the same
+     list the chips draw from, so what it chose is on screen afterwards and any
+     of it can be untapped.
+
+     ⚠️ THE RED PEN IS THE ONLY SOURCE. It briefly also pulled in what he had
+     got wrong inside the app, and Andrew corrected it: the words that need the
+     extra goes are whatever his teacher marked on his paper, full stop. The
+     app's own miss record is a different thing, it is what he fumbled while
+     practising, and mixing the two would quietly put words on the list that no
+     teacher ever marked. */
+  function needsWork(u){
+    var have = redFor(u);
+    return unitWords(u).filter(function(w){ return have.indexOf(w) !== -1; });
+  }
+  /* What the button is about to do, said before it is tapped. It reads the
+     same helpers the deck is built from, or it drifts away from the truth the
+     moment anything else changes. */
+  function nightPlan(){
+    var picked = redUnits();
+    if (!picked.length) return null;
+    var work = [], all = 0, cards = 0;
+    picked.forEach(function(u){
+      work = work.concat(needsWork(u));
+      all += unitWords(u).length;
+    });
+    var t = redTimes(picked[picked.length - 1]);
+    picked.forEach(function(u){
+      var w2 = needsWork(u);
+      unitWords(u).forEach(function(w){ cards += w2.indexOf(w) !== -1 ? t : 1; });
+      if (state.defs) (u.vocab || []).forEach(function(r){
+        cards += w2.indexOf(r[0]) !== -1 ? t : 1;
+      });
+    });
+    return { work: work.length, all: all, rest: all - work.length, times: t, cards: cards };
+  }
+  function paintNight(){
+    var plan = nightPlan();
+    var show = state.subject === 'spelling' && !groupKit() && !!plan;
+    el.nightBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    el.nightNote.textContent = plan.work === 0
+      ? 'Tap what the red pen marked on his paper, just below, and this sets the rest up '
+        + 'and starts. Nothing tapped yet, so it would deal all ' + plan.all + ' words once, '
+        + 'read aloud, written by hand, no timer.'
+      : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
+        + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
+        + (state.defs ? ', plus the meanings' : '') + '. ' + plan.cards + ' cards, read '
+        + 'aloud, written by hand, no timer. Nothing to set up.';
+  }
+  /* ⚠️ The seed is written into the same store the chips read, on purpose. A
+     second hidden list of "words the app thinks are hard" would be invisible,
+     unarguable, and impossible to turn off. */
+  function startTestNight(){
+    var picked = redUnits();
+    if (!picked.length) return;
+    picked.forEach(function(u){
+      var work = needsWork(u);
+      if (work.length) redpen[u.id] = work; else delete redpen[u.id];
+      state.times[u.id] = 1;                   // the rest of the list, once
+    });
+    saveRed();
+    state.timer = 'off';                       // he asked for no timer, first
+    state.write = 'listen';                    // she reads it out, he writes it
+    state.hand = true;                         // and by hand, like the real thing
+    state.shuffle = true;
+    state.mode = 'flip';                       // never the archer on a spelling night
+    saveSettings();
+    paintHome();
+    unlock();
+    startRun(buildRounds());
   }
   function redCount(){
     var n = 0;
@@ -6012,7 +6112,7 @@
     el.redUp.disabled = t >= TIMES_MAX;
     if (n === 0){
       el.redNote.textContent = 'Tap the words the red pen marked on his trial test. '
-        + 'Those are the ones worth the extra goes, and the rest of the list he has.';
+        + 'Those are the ones he writes three times, and the rest of the list once.';
       return;
     }
     /* Exactly what Start is about to deal, counted rather than described, and
@@ -6675,6 +6775,7 @@
     picked.forEach(function(u){ state.redTimes[u.id] = next; });
     unlock(); sfx.tap(); paintHome(); saveSettings();
   }
+  el.nightBtn.addEventListener('click', startTestNight);
   el.redUp.addEventListener('click', function(){ bumpRed(1); });
   el.redDown.addEventListener('click', function(){ bumpRed(-1); });
 
@@ -6708,14 +6809,15 @@
   el.redChips.addEventListener('click', function(ev){
     var b = ev.target.closest('.wchip'); if (!b) return;
     var id = parseInt(b.getAttribute('data-unit'), 10), w = b.getAttribute('data-word');
-    var list = redpen[id] || (redpen[id] = []);
+    // seeded from the photo's marks the first time, or the first tap wipes them
+    var list = redpen[id] || (redpen[id] = redFor(unitById(id)).slice());
     var i = list.indexOf(w);
     if (i === -1) list.push(w); else list.splice(i, 1);
-    if (!list.length) delete redpen[id];
     unlock(); sfx.tap(); saveRed(); paintRed();
   });
   el.redClear.addEventListener('click', function(){
-    redUnits().forEach(function(u){ delete redpen[u.id]; });
+    // emptied, not forgotten, or the photo's marks come straight back
+    redUnits().forEach(function(u){ redpen[u.id] = []; });
     sfx.tap(); saveRed(); paintRed();
   });
   /* Only the marked words, in whichever way is already chosen, and no score.
