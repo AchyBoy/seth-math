@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.47">
+<meta name="x-cards-version" content="4.48">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -944,7 +944,7 @@
   <!-- Every page written, so one can be printed again long after the round
        that made it. Going home instead of pressing Print used to lose it. -->
   <div class="block hide" id="pagesBlock">
-    <p class="label">Lessons</p>
+    <p class="label">Pages to print</p>
     <div class="pages" id="pagesList"></div>
     <p class="note" id="pagesNote"></p>
   </div>
@@ -7682,10 +7682,18 @@
   });
 
   /* The list a grown-up prints from. Newest first, because the one wanted is
-     almost always the one just written. */
+     almost always the one just written.
+
+     🔴 IT IS NOT GATED ON THE SUBJECT ANY MORE. It used to only appear while
+     Spelling was the chosen subject, so the evening Seth finished his test and
+     the picker had since moved to Sentences, the pages were still there and
+     there was simply no way to reach them: Andrew looked for a way to print
+     and found none. The pages belong to the CHILD, not to whatever is picked
+     on the home screen, and printing one is a grown-up going to fetch
+     something rather than part of practising. */
   function paintPages(){
     var mine = myPages();
-    var show = state.subject === 'spelling' && !groupKit() && mine.length > 0;
+    var show = !groupKit() && mine.length > 0;
     el.pagesBlock.classList.toggle('hide', !show);
     if (!show) return;
     el.pagesList.innerHTML = '';
@@ -7701,8 +7709,10 @@
                   + '<span class="pr">\uD83D\uDDA8</span>';
       el.pagesList.appendChild(b);
     });
-    el.pagesNote.textContent = 'Every page written, newest first. Tap one to print it. '
-      + 'A day of the same week is one page, and the last ' + PAGE_CAP + ' are kept.';
+    el.pagesNote.textContent = 'Every page he has written, newest first. Tap one to '
+      + 'print it, then Save to Files in the print dialog if you want the PDF. A day of '
+      + 'the same week is one page, and the last ' + PAGE_CAP + ' are kept. ⚠️ These live '
+      + 'on this iPad only, so print anything you want to keep.';
   }
   el.pagesList.addEventListener('click', function(ev){
     var b = ev.target.closest('.pg'); if (!b) return;
