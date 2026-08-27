@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.51">
+<meta name="x-cards-version" content="4.52">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2989,6 +2989,7 @@
     loadPages();
     fetchPages();          // and whatever this child wrote on another device
     loadReads();
+    fetchReads();          // the checker's record follows the child too
     loadRed();
     loadSaved();
     if (hasSheet()) buildSheet();
@@ -6982,6 +6983,24 @@
   function saveReads(){
     try { localStorage.setItem(readsKey(), JSON.stringify(reads)); } catch(e){}
   }
+  /* Pulled from the server, so the phone shows what happened on the iPad. The
+     server keeps its own copy at the moment of the read, which is why this
+     REPLACES rather than merges: it is the fuller record, not a second one. */
+  function fetchReads(){
+    if (!me.token) return;
+    apiCall('/reads?token=' + encodeURIComponent(me.token)).then(function(res){
+      var list = res && res.ok && res.data ? res.data.reads : null;
+      if (!list || !list.length) return;
+      reads = list.map(function(r){
+        var d = new Date(r.created_at);
+        return { w: r.expected, r: r.got || '', day: isNaN(d) ? today()
+                   : d.toISOString().slice(0, 10),
+                 at: isNaN(d) ? Date.now() : d.getTime() };
+      });
+      saveReads();
+      paintHome();
+    });
+  }
   function noteRead(c, read, ok){
     if (ok) return;                       // agreement is not worth the room
     reads.unshift({ w: c.w, r: read || '', day: today(), at: Date.now() });
@@ -7324,10 +7343,15 @@
     setWHint('Reading it…', '');
     el.inkDone.textContent = 'Reading…';
     el.inkDone.disabled = true;
+    /* The grammar cards send what the answer can BE. A blind read of "Int."
+       came back "lnt" on a real round and marked him wrong for the right
+       answer, because a handwritten capital I and lowercase l are one stroke. */
+    var lu = isSent(c) ? lessonById(c.u) : null;
     apiCall('/handwriting', { method: 'POST',
       body: { token: me.token, word: c.w, image: img,
               meaning: isDef(c) ? (c.m || '') : '',
-              shape: c.k === 'sm' ? 'mark' : '' } }).then(function(res){
+              shape: c.k === 'sm' ? 'mark' : c.k === 'st' ? 'kind' : '',
+              choices: c.k === 'st' && lu ? lu.choices : [] } }).then(function(res){
       checking = false;
       el.inkDone.textContent = 'Done';
       el.inkDone.disabled = false;
