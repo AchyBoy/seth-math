@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.45">
+<meta name="x-cards-version" content="4.46">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2537,6 +2537,16 @@
     listen: 'He never sees the word. The phone reads it out, uses it in a sentence '
         + 'and reads it again, and he writes what he hears. This is the Thursday one.'
   };
+  /* The one place the sentences deck is counted. The button said 52 while the
+     note said 23 sentences, and both were describing the deck separately. */
+  function sentenceCards(){
+    var kinds = {}, n = 0;
+    state.lessons.map(lessonById).filter(Boolean).forEach(function(u){
+      n += u.lines.length * 2;
+      if (state.teach) u.choices.forEach(function(k){ kinds[k] = 1; });
+    });
+    return n + Object.keys(kinds).length;
+  }
   function sentenceSummary(){
     var picked = state.lessons.map(lessonById).filter(Boolean);
     if (!picked.length) return 'Pick a lesson.';
@@ -2548,9 +2558,15 @@
     var names = Object.keys(kinds).map(function(k){
       return k + ' ' + SENTENCE_KINDS[k].nick + ', it ' + SENTENCE_KINDS[k].d;
     });
-    return (state.teach ? 'It teaches him each kind first, then ' : '')
-      + n + ' sentences with two questions each: what kind it is, then what mark '
-      + 'goes on the end. ' + names.join('. ') + '.';
+    var kindCount = Object.keys(kinds).length;
+    var teachN = state.teach ? kindCount : 0;
+    /* Say where every card comes from. "23 sentences" over a button reading
+       "Start 52 cards" reads like a bug, and Andrew reported it as one. */
+    return n + ' sentences, and each one is asked twice, what kind it is and '
+      + 'what mark goes on the end, so ' + (n * 2) + ' questions'
+      + (teachN ? ' after ' + teachN + ' teaching cards' : '')
+      + '. ' + sentenceCards() + ' cards in all. '
+      + names.join('. ') + '.';
   }
   function unitSummary(){
     if (!myUnits().length){
@@ -2709,13 +2725,8 @@
     var chosen = sent ? state.lessons.length : spell ? state.units.length
       : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
     // two cards a sentence, which kind and which mark
-    // the teach cards are dealt too, so they are counted too
-    var count = sent
-      ? state.lessons.reduce(function(n, id){
-          var u = lessonById(id);
-          return n + (u ? u.lines.length * 2 + (state.teach ? u.choices.length : 0) : 0);
-        }, 0)
-      : spell
+    // ⚠️ counted exactly the way the deck is built, teach cards deduped and all
+    var count = sent ? sentenceCards() : spell
       ? state.units.reduce(function(n, no){
           var u = unitById(no); return n + (u ? unitCards(u).length : 0);
         }, 0)
@@ -4226,7 +4237,7 @@
      different, easier exercise. */
   function buildSentenceRounds(){
     var picked = state.lessons.slice().sort(function(a, b){ return a - b; });
-    var all = [];
+    var all = [], taught = {};
     picked.forEach(function(n){
       var u = lessonById(n); if (!u) return;
       /* ⭐ TEACH IT BEFORE TESTING IT. Andrew's bar: "it needs to teach him so
@@ -4235,8 +4246,14 @@
          only cards here that carry the SPOT line, which is the part that fixes
          his actual mistake: he was going by what a sentence is about instead
          of looking at what it does, and the first word usually gives it away. */
+      /* 🔴 ONCE EACH, ACROSS THE WHOLE ROUND. Both lessons are picked by
+         default and lesson 6 teaches Dec, Int and Exc while lesson 7 teaches
+         those three plus Imp., so he sat through the same three teaching
+         cards twice before getting to a single question. */
       if (state.teach){
         u.choices.forEach(function(k){
+          if (taught[k]) return;
+          taught[k] = 1;
           all.push({ k: 'sx', kind: k, u: u.id });
         });
       }
@@ -6118,8 +6135,26 @@
   }
   // nothing could mark it, so it goes to whoever is holding the iPad
   function defReveal(c, got, why){
-    state.answered = true;
     el.wMark.textContent = got;
+    // same rule: locked means he writes it again rather than passing himself
+    if (markLocked()){
+      state.tries++;
+      if (state.tries >= 3){
+        state.answered = true;
+        el.wClue.textContent = c.m || '';
+        el.wClue.classList.remove('hide');
+        setWHint('It means: ' + (c.m || '') + '. Have a good look, then carry on.', 'bad');
+        bump(false);
+        clearTimeout(advanceId);
+        advanceId = setTimeout(step, 2600);
+        return;
+      }
+      setWHint('Could not read that one. Have another go for me.', 'bad');
+      el.wInput.value = '';
+      focusWrite();
+      return;
+    }
+    state.answered = true;
     el.wClue.textContent = c.m || '';
     el.wClue.classList.remove('hide');
     setWHint(why, '');
@@ -7055,6 +7090,31 @@
     el.track.classList.add('hidden');
     showWord(true);
     el.wClue.classList.add('hide');
+    /* 🔴 NO FREE PASS WHILE THE MARKING IS LOCKED (Andrew's call, the night
+       before the test): "he can't be saying that he got it right just because
+       he don't feel like doing it anymore". When the checker cannot read it,
+       the way on is to write it again, not to award himself the mark. After
+       three goes it is shown to him, counted as a miss, and the card moves,
+       so he is never stuck either. */
+    if (markLocked()){
+      state.tries++;
+      if (state.tries >= 3){
+        setWHint('It is ' + c.w + '. Have a good look, then carry on.', 'bad');
+        if (state.tries === 3) bump(false);
+        else { clearCard(false); chaseNudge(false); }
+        state.answered = true;
+        clearTimeout(advanceId);
+        advanceId = setTimeout(step, 2600);
+        return;
+      }
+      setWHint('Could not read that one. Have another go for me.', 'bad');
+      el.inkGrade.classList.remove('on');
+      el.inkRow.classList.remove('hide');
+      inkReset();
+      el.inkDone.textContent = 'Done';
+      el.inkDone.disabled = false;
+      return;
+    }
     setWHint(why || 'Check every letter. Did you get it?', '');
     el.inkGrade.classList.add('on');
     el.inkRow.classList.add('hide');
@@ -7526,18 +7586,25 @@
     }, chaseOn() ? 1100 : 0);
   }
 
+  /* 🔴 A TEACH CARD HAS NOTHING TO REVEAL. Only the Got it button knew that,
+     and tapping the CARD itself still went through reveal(), which put "Did
+     you get it? I got it / Missed it" on screen. Andrew saw the self grade
+     turn up where there was no question to get right, which on the night
+     before a test is a button that says "I am done with this". */
+  function teachOn(){
+    if (!isTeach(card())) return false;
+    unlock(); sfx.tap(); clearCard(true); step();
+    return true;
+  }
   function cardTap(){
     unlock();
+    if (teachOn()) return;
     if (state.caught || picking()) return;
     if (!state.revealed){ reveal(); return; }
     if (state.answered) step();
   }
   el.card.addEventListener('click', cardTap);
-  el.nextBtn.addEventListener('click', function(ev){
-    // a teach card has nothing to reveal; Got it means next
-    if (isTeach(card())){ unlock(); sfx.tap(); clearCard(true); step(); return; }
-    cardTap(ev);
-  });
+  el.nextBtn.addEventListener('click', cardTap);
 
   /* Tapping a missed card opens it and shows the answer, so the thing you got
      wrong is right there to look at instead of having to go and find it. */
