@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.50">
+<meta name="x-cards-version" content="4.51">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6211,7 +6211,7 @@
        is printed at the top of his sheet and he may look at it. */
     var task = c.k === 'st' ? 'What kind is it? Write ' + kindList
       : c.k === 'sm' ? 'What goes on the end? Draw it:  .  ?  or  !'
-      : def ? 'Write what it means'
+      : def ? 'What does ' + c.w + ' mean? Write the meaning, not the word'
       : '';
     el.wTask.textContent = task;
     el.wTask.classList.toggle('hide', !task);
@@ -6307,6 +6307,14 @@
   function checkDef(c, got){
     stopTimer(); chasePause(); hushVoice();
     el.track.classList.add('hidden');
+    /* ⭐ The word copied out instead of its meaning. Caught here as well as on
+       the server so it costs nothing and works with no signal: it is an exact
+       comparison and there is nothing for a model to weigh up. */
+    if (got.replace(/[^A-Za-z']/g, '').toLowerCase() === c.w.toLowerCase()){
+      missWrite(got, 'That is the word itself. Write what it MEANS. If the word was '
+                   + 'cold, you would write chilly.');
+      return;
+    }
     if (!me.token || (!state.autoMark && !markLocked())){
       defReveal(c, got, !me.token ? 'Not signed in, so mark this one yourself'
                                   : 'You have it set to marking it yourself');
