@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.44">
+<meta name="x-cards-version" content="4.45">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -378,6 +378,24 @@
      the ink box and was simply not read: Andrew circled it on a screenshot and
      drew an arrow up to here. Red, because everything else on this screen is
      black on cream and nothing else is allowed to be red. */
+  /* The teaching page. Only on screen while a teach card is up, and it is the
+     one place the SPOT line lives, which is the whole reason it exists. */
+  .teach{display:none}
+  body.teaching .teach{display:block;max-width:720px;margin:18px auto 0;
+    background:#fff;border-radius:22px;padding:22px 24px;
+    box-shadow:0 6px 18px rgba(32,36,46,.06)}
+  body.teaching .card,body.teaching .grade{margin-bottom:6px}
+  .teach .tkind{font-size:24px;font-weight:700;color:var(--blue);margin:0 0 12px}
+  .teach .twhat{font-size:20px;font-weight:600;margin:0 0 14px;line-height:1.35}
+  .teach .tspot{font-size:17px;line-height:1.5;margin:0 0 12px;color:#3d3a33;
+    background:var(--green-soft);border-radius:14px;padding:12px 14px}
+  .teach .tmark{font-size:16px;color:var(--muted);margin:0}
+  /* Help me, on the question cards. Quiet, because it is a way out and not
+     the first thing to reach for. */
+  .helpbtn{display:block;margin:10px auto 0;border:2px solid var(--line);
+    background:#fff;border-radius:999px;padding:9px 20px;font-size:15px;
+    font-weight:600;color:var(--muted)}
+  .helpbtn.hide{display:none}
   .wtask{margin:14px 2px 10px;text-align:center;color:var(--red);
     font-size:22px;font-weight:700;line-height:1.3}
   body.hand .wtask{margin:10px 2px 8px}
@@ -763,7 +781,7 @@
     <p class="label">Where everyone stands</p>
     <div class="stands" id="standList"></div>
     <p class="note">Everyone's total across all the subjects. Only rounds played
-      with the chase on count towards it.</p>
+      with the chase on count toward it.</p>
   </div>
 
   <div class="block hide" id="scoreBlock">
@@ -842,6 +860,11 @@
   <div class="block hide" id="lessonBlock">
     <p class="label">Which lesson</p>
     <div class="chips" id="lessonChips"></div>
+    <p class="label" style="margin-top:22px">Before the questions</p>
+    <div class="opts" id="teachOpts">
+      <button type="button" class="opt on" data-teach="1">Teach it first</button>
+      <button type="button" class="opt" data-teach="0">Straight to the questions</button>
+    </div>
     <p class="note" id="lessonNote"></p>
   </div>
 
@@ -889,7 +912,7 @@
   </div>
 
   <div class="block hide" id="writeBlock">
-    <p class="label">How to practise</p>
+    <p class="label">How to practice</p>
     <div class="opts" id="writeOpts">
       <button type="button" class="opt on" data-write="copy">Copy it</button>
       <button type="button" class="opt" data-write="peek">Peek-a-boo</button>
@@ -1212,6 +1235,17 @@
        between cards so the keyboard stays put for the whole round, and it
        turns off every iOS helper, or the phone would quietly correct his
        spelling for him and the whole exercise would be pointless. -->
+  <!-- ⚠️ A SIBLING of the write panel, never inside it. It went in there first
+       and came up blank: .wpanel is display:none unless body.write, and a
+       teach card is not a writing card, so the panel was shut and everything
+       in it had no box. Same shape of bug as the print sheet, which must sit
+       outside the screens for exactly the same reason. -->
+    <div class="teach" id="teachBox">
+      <p class="tkind" id="teachKind"></p>
+      <p class="twhat" id="teachWhat"></p>
+      <p class="tspot" id="teachSpot"></p>
+      <p class="tmark" id="teachMark"></p>
+    </div>
   <div class="wpanel" id="writeBox">
     <div class="wtop">
       <p class="wclue hide" id="wClue"></p>
@@ -1219,6 +1253,7 @@
       <button type="button" class="wsay" id="wSay">🔊 Hear it again</button>
     </div>
     <p class="wtask hide" id="wTask"></p>
+    <button type="button" class="helpbtn hide" id="helpBtn">🤔 How do I work it out?</button>
     <div class="wmark" id="wMark"></div>
     <input class="winput" id="wInput" type="text" inputmode="text" name="spellword"
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
@@ -1833,7 +1868,7 @@
         ['spelling',  'We have a spelling test on Friday.'],
         ['August',    'School starts again in August.'],
         ['September', 'His birthday is the third of September.'],
-        ['October',   'The leaves turn colour in October.']
+        ['October',   'The leaves turn color in October.']
       ],
       vocab: [
         ['frail',    'weak'],
@@ -1921,11 +1956,42 @@
      different sentences: "a declarative sentence tells you something" reads
      right on its own and turns into nonsense after "because it is". */
   var SENTENCE_KINDS = {
-    'Dec.': { n: 'declarative',    d: 'tells you something' },
-    'Int.': { n: 'interrogative',  d: 'asks a question' },
-    'Exc.': { n: 'exclamatory',    d: 'shows strong feeling' },
-    'Imp.': { n: 'imperative',     d: 'gives a command' }
+    'Dec.': {
+      n: 'declarative', d: 'tells you something',
+      nick: 'a telling sentence',
+      kid: 'It TELLS you something.',
+      spot: 'You could just say it and nobody would have to answer.',
+      mark: 'a period', example: 'The library has books about bats.'
+    },
+    'Int.': {
+      n: 'interrogative', d: 'asks a question',
+      nick: 'an asking sentence',
+      kid: 'It ASKS you something.',
+      spot: 'Look at the first word. Asking sentences start with words like '
+          + 'why, what, who, where, when, how, do, are, can or don\u2019t.',
+      mark: 'a question mark', example: 'Are you afraid of bats?'
+    },
+    'Exc.': {
+      n: 'exclamatory', d: 'shows strong feeling',
+      nick: 'an excited sentence',
+      kid: 'It shows BIG feeling, like surprise or excitement.',
+      spot: 'You would say it loud. It often starts with wow, hey, or what a.',
+      mark: 'an exclamation point', example: 'Wow, there are so many bats!'
+    },
+    'Imp.': {
+      n: 'imperative', d: 'tells you to do something',
+      nick: 'a bossy sentence',
+      kid: 'It TELLS YOU TO DO something. That is a command.',
+      spot: 'Look at the first word. Bossy sentences start with a doing word, '
+          + 'like close, help, turn, read or find. The person it is talking to '
+          + 'is you, even though it never says your name.',
+      mark: 'a period', example: 'Close the door.'
+    }
   };
+  /* ⚠️ PERIOD and EXCLAMATION POINT, not full stop and exclamation mark. His
+     worksheet is American and so is his teacher, and he had never heard of a
+     full stop. Anything written for him uses the words on his sheet. */
+  var MARK_NAMES = { '.': 'a period', '?': 'a question mark', '!': 'an exclamation point' };
   function kindSays(k){
     var v = SENTENCE_KINDS[k]; if (!v) return '';
     return (/^[aeiou]/.test(v.n) ? 'an ' : 'a ') + v.n + ' sentence ' + v.d;
@@ -1976,7 +2042,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], lessons: [], times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    units: [], lessons: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -1998,11 +2064,12 @@
    'redBlock','redChips','redNote','redPractice','redClear',
    'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote',
    'resumeBlock','resumeBtn','resumeNote','resumeDrop',
-   'lessonBlock','lessonChips','lessonNote',
+   'lessonBlock','lessonChips','lessonNote','teachOpts',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wTask','wInput','wHint','wPeek','wCheck',
+   'teachBox','teachKind','teachWhat','teachSpot','teachMark','helpBtn',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
@@ -2281,6 +2348,7 @@
             || s.subject === 'spelling' || s.subject === 'sentence') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
+        if (typeof s.teach === 'boolean') state.teach = s.teach;
         if (s.times && typeof s.times === 'object') state.times = s.times;
         if (s.redTimes && typeof s.redTimes === 'object') state.redTimes = s.redTimes;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
@@ -2305,7 +2373,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
-        units: state.units, lessons: state.lessons, times: state.times, redTimes: state.redTimes,
+        units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
@@ -2477,9 +2545,12 @@
       n += u.lines.length;
       u.choices.forEach(function(k){ kinds[k] = 1; });
     });
-    var names = Object.keys(kinds).map(kindSays);
-    return n + ' sentences, two questions each, so ' + (n * 2) + ' cards: which kind of '
-      + 'sentence it is, then which mark it ends with. ' + names.join('; ') + '.';
+    var names = Object.keys(kinds).map(function(k){
+      return k + ' ' + SENTENCE_KINDS[k].nick + ', it ' + SENTENCE_KINDS[k].d;
+    });
+    return (state.teach ? 'It teaches him each kind first, then ' : '')
+      + n + ' sentences with two questions each: what kind it is, then what mark '
+      + 'goes on the end. ' + names.join('. ') + '.';
   }
   function unitSummary(){
     if (!myUnits().length){
@@ -2566,6 +2637,7 @@
     }
     setOn(el.subjectOpts, 'data-subject', state.subject);
     el.lessonBlock.classList.toggle('hide', !sent);
+    setOn(el.teachOpts, 'data-teach', state.teach ? '1' : '0');
     el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent);
     el.setsBlock.classList.toggle('hide', !blends);
     el.topicsBlock.classList.toggle('hide', !verses);
@@ -2637,9 +2709,11 @@
     var chosen = sent ? state.lessons.length : spell ? state.units.length
       : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
     // two cards a sentence, which kind and which mark
+    // the teach cards are dealt too, so they are counted too
     var count = sent
       ? state.lessons.reduce(function(n, id){
-          var u = lessonById(id); return n + (u ? u.lines.length * 2 : 0);
+          var u = lessonById(id);
+          return n + (u ? u.lines.length * 2 + (state.teach ? u.choices.length : 0) : 0);
         }, 0)
       : spell
       ? state.units.reduce(function(n, no){
@@ -2718,6 +2792,10 @@
   el.extraOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
     state.extras = b.getAttribute('data-extra') === '1'; sfx.tap(); paintHome(); saveSettings();
+  });
+  el.teachOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.opt'); if (!b) return;
+    state.teach = b.getAttribute('data-teach') === '1'; sfx.tap(); paintHome(); saveSettings();
   });
   el.defOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -4151,6 +4229,17 @@
     var all = [];
     picked.forEach(function(n){
       var u = lessonById(n); if (!u) return;
+      /* ⭐ TEACH IT BEFORE TESTING IT. Andrew's bar: "it needs to teach him so
+         he can make better grades". One card per kind this lesson uses, read
+         and tapped rather than answered, ahead of the questions. They are the
+         only cards here that carry the SPOT line, which is the part that fixes
+         his actual mistake: he was going by what a sentence is about instead
+         of looking at what it does, and the first word usually gives it away. */
+      if (state.teach){
+        u.choices.forEach(function(k){
+          all.push({ k: 'sx', kind: k, u: u.id });
+        });
+      }
       var pairs = u.lines.map(function(row){
         var t = row[0], kind = row[1], mark = row[2];
         /* 🔴 THE MARK ON ITS OWN. It first asked for the last word of the
@@ -4244,6 +4333,7 @@
      WRITES Dec. in the blank. Four buttons also quietly hand him the answer
      key, since Imp. only appears as an option on the lesson that has met it. */
   function isSent(c){ return !!(c && (c.k === 'st' || c.k === 'sm')); }
+  function isTeach(c){ return !!(c && c.k === 'sx'); }
   function sentenceNow(){ return state.subject === 'sentence'; }
   // the sentence put right: capital at the front, mark on the end
   function fixedUp(c){
@@ -4258,6 +4348,7 @@
   function cardFace(c){
     if (isDealt(c)) return c.text;
     if (isWord(c)) return c.w;
+    if (isTeach(c)) return SENTENCE_KINDS[c.kind].example;
     if (c && c.k === 'm') return 'Which one names a month?';
     if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
@@ -4271,6 +4362,7 @@
     return isSound(c) ? c.pick : String(c[0] * c[1]);
   }
   function cardKey(c){
+    if (isTeach(c)) return '';       // reading is not a thing you can get wrong
     if (isDealt(c)) return '';       // the misses record is the server's job here
     if (isDef(c)) return 'd:' + c.w;      // missing the meaning is not missing the spelling
     if (isWord(c)) return 'w:' + c.w;
@@ -4425,11 +4517,11 @@
                   'Keep it going!', "You're showing off now", 'Do not stop!'],
 
     funnyRunner: ['I skipped breakfast for this', 'Tell my family I ran fast', 'I regret every snack',
-                  'Is it lunchtime yet?', "You do maths, I'll run", "I've got a stitch",
+                  'Is it lunchtime yet?', "You do math, I'll run", "I've got a stitch",
                   'Why is home so far?', 'This is my cardio', "I'm built for napping",
                   'Do I get a medal?', 'Numbers are heavy', 'I need a lie down after this',
                   'My mum says I am fast', 'Running was not my idea'],
-    funnyChaser: ["I'm only here for the steps", 'You smell like maths', "Come back, let's chat",
+    funnyChaser: ["I'm only here for the steps", 'You smell like math', "Come back, let's chat",
                   "I've been training for this", 'This is my cardio too', "I'll allow a head start",
                   "I'm not even sprinting yet", 'I had a big breakfast', 'Nobody outruns me. Usually.',
                   'Wait, I dropped my snack', 'Is this a long table?', 'My coach is watching'],
@@ -5600,11 +5692,22 @@
 
     /* Spelling decides per card: the words are written, the two worksheet
        questions are tapped, and both can turn up in the same round. */
-    var writing = isWord(c), tapping = isTask(c);
+    var writing = isWord(c) && !isTeach(c), tapping = isTask(c);
     document.body.classList.toggle('write', writing);
+    document.body.classList.toggle('teaching', isTeach(c));
     if (spellingNow()) document.body.classList.toggle('choice', tapping);
 
-    if (writing){
+    if (isTeach(c)){
+      var t = SENTENCE_KINDS[c.kind];
+      el.teachKind.textContent = c.kind + '  \u2014  ' + t.nick;
+      el.teachWhat.textContent = t.kid;
+      el.teachSpot.textContent = t.spot;
+      el.teachMark.textContent = 'It ends with ' + t.mark + '.';
+      el.grade.classList.remove('on');
+      el.nextBtn.style.display = '';
+      el.nextBtn.textContent = 'Got it';
+      el.hint.textContent = '';
+    } else if (writing){
       paintWrite(c);
     } else if (state.mode === 'shoot' && !tapping){
       rangeSetup(c);
@@ -5875,19 +5978,25 @@
        and the job got lost in the middle of it. The red line says what to do
        and nothing else; the small line above the sentence is the rule, which
        is printed at the top of his sheet and he may look at it. */
-    var task = c.k === 'st' ? 'Write ' + kindList
-      : c.k === 'sm' ? 'Draw the mark that goes on the end:  .  ?  or  !'
+    var task = c.k === 'st' ? 'What kind is it? Write ' + kindList
+      : c.k === 'sm' ? 'What goes on the end? Draw it:  .  ?  or  !'
       : def ? 'Write what it means'
       : '';
     el.wTask.textContent = task;
     el.wTask.classList.toggle('hide', !task);
+    /* ⭐ A WAY TO WORK IT OUT, not a way to be told. It walks him through the
+       same question for each kind the LESSON knows, in the order that catches
+       his mistake first: does it boss you about, does it ask, is somebody
+       excited, otherwise it is just telling you. It never names this
+       sentence's answer. */
+    el.helpBtn.classList.toggle('hide', !sen);
+    el.helpBtn.textContent = '\uD83E\uDD14 How do I work it out?';
 
     var clue = def ? ''
       : c.k === 'st' ? kinds.map(function(k){
-            return k + ' ' + SENTENCE_KINDS[k].d + '.';
-          }).join(' ')
-      : c.k === 'sm' ? 'A telling sentence takes a full stop. A question takes a question '
-        + 'mark. Strong feeling takes an exclamation mark.'
+            return k + ' = it ' + SENTENCE_KINDS[k].d + '.';
+          }).join('   ')
+      : c.k === 'sm' ? 'Telling = period.   Asking = question mark.   Excited = exclamation point.'
       : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
@@ -6022,10 +6131,16 @@
      the same slip, going by what a sentence is ABOUT rather than what it DOES,
      and neither a red box nor a right answer on its own touches that. */
   function sentWhy(c){
-    var kind = SENTENCE_KINDS[c.k === 'st' ? c.w : (c.wKind || '')] || null;
-    if (c.k === 'st') return c.w + ' \u2014 ' + kindSays(c.w) + '. ' + fixedUp(c);
-    return 'It takes ' + c.mark + ' because it is ' + (kind ? kind.n : 'that kind')
-         + ', it ' + (kind ? kind.d : '') + '. ' + fixedUp(c);
+    var k = SENTENCE_KINDS[c.k === 'st' ? c.w : (c.wKind || '')] || null;
+    if (!k) return fixedUp(c);
+    /* Said the way you would say it to him: what THIS sentence does, then the
+       name for it. Not "an interrogative sentence asks a question", which
+       tells him what the word means and nothing about the sentence in front
+       of him. */
+    if (c.k === 'st') return 'This one ' + k.d + ', so it is ' + c.w + ', '
+      + k.nick + '. ' + fixedUp(c);
+    return 'This one ' + k.d + ', so it ends with ' + (MARK_NAMES[c.mark] || c.mark)
+      + '. ' + fixedUp(c);
   }
   // the pass half of checkWrite, pulled out so the grammar cards can reach it
   function passWrite(c, got, want){
@@ -7191,6 +7306,29 @@
     picked.forEach(function(u){ state.redTimes[u.id] = next; });
     unlock(); sfx.tap(); paintHome(); saveSettings();
   }
+  el.helpBtn.addEventListener('click', function(){
+    var c = card(); if (!isSent(c)) return;
+    unlock(); sfx.tap();
+    var lu = lessonById(c.u), kinds = lu ? lu.choices : [];
+    if (c.k === 'sm'){
+      setWHint('Read it out loud. If you asked a question, it needs a question mark. '
+             + 'If you shouted it, it needs an exclamation point. If you just said it, '
+             + 'it needs a period.', '');
+      return;
+    }
+    // bossy first: it is the one he misses, and it is the easiest to check
+    var order = ['Imp.', 'Int.', 'Exc.', 'Dec.'].filter(function(k){
+      return kinds.indexOf(k) !== -1;
+    });
+    var asks = order.map(function(k){
+      var v = SENTENCE_KINDS[k];
+      return k === 'Imp.' ? 'Is it telling you to DO something? Then Imp.'
+           : k === 'Int.' ? 'Is it asking you something? Then Int.'
+           : k === 'Exc.' ? 'Is somebody excited or surprised? Then Exc.'
+           : 'If it is just telling you something, it is Dec.';
+    });
+    setWHint('Read it out loud. ' + asks.join(' '), '');
+  });
   el.nightBtn.addEventListener('click', startTestNight);
   el.resumeBtn.addEventListener('click', function(){ unlock(); sfx.tap(); resumeSaved(); });
   el.resumeDrop.addEventListener('click', function(){ sfx.tap(); dropSaved(); paintHome(); });
@@ -7395,7 +7533,11 @@
     if (state.answered) step();
   }
   el.card.addEventListener('click', cardTap);
-  el.nextBtn.addEventListener('click', cardTap);
+  el.nextBtn.addEventListener('click', function(ev){
+    // a teach card has nothing to reveal; Got it means next
+    if (isTeach(card())){ unlock(); sfx.tap(); clearCard(true); step(); return; }
+    cardTap(ev);
+  });
 
   /* Tapping a missed card opens it and shows the answer, so the thing you got
      wrong is right there to look at instead of having to go and find it. */
