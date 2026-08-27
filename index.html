@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.49">
+<meta name="x-cards-version" content="4.50">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7687,7 +7687,11 @@
      word read back nearly right is the checker slipping, a word read back as
      something quite different is usually the writing. */
   function paintReads(){
-    var show = state.subject === 'spelling' && !groupKit() && !!me.token && reads.length > 0;
+    /* Not gated on the subject either, same reason as the pages: this is the
+       only record of what the checker actually read, it is how a complaint
+       about a wrong mark gets looked into, and it was invisible unless
+       Spelling happened to be selected. */
+    var show = !groupKit() && !!me.token && reads.length > 0;
     el.readsBlock.classList.toggle('hide', !show);
     if (!show) return;
     el.readsList.innerHTML = '';
