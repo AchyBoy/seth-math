@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.43">
+<meta name="x-cards-version" content="4.44">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4153,14 +4153,16 @@
       var u = lessonById(n); if (!u) return;
       var pairs = u.lines.map(function(row){
         var t = row[0], kind = row[1], mark = row[2];
-        /* The mark card asks for the LAST WORD with the mark on it. A bare full
-           stop in an ink box cannot be read, and it is not what the sheet asks
-           for either: there he puts a caret at the end of the printed line. */
-        var words = t.split(' ');
-        var last = words[words.length - 1].replace(/[.,!?]+$/, '');
+        /* 🔴 THE MARK ON ITS OWN. It first asked for the last word of the
+           sentence with the mark after it, so a blind transcriber had letters
+           to hold on to, and it made the card unreadable to a HUMAN: on "why
+           do you need it" the last word is "it", and "Write it and put its end
+           mark on" reads as a pronoun rather than a word to copy. Andrew could
+           not tell what it wanted, which settles it. The reader was made a
+           three way choice instead. */
         return [
           { k: 'st', t: t, mark: mark, w: kind, u: u.id },
-          { k: 'sm', t: t, mark: mark, w: last + mark, wKind: kind, last: last, u: u.id }
+          { k: 'sm', t: t, mark: mark, w: mark, wKind: kind, u: u.id }
         ];
       });
       if (state.shuffle) shuffle(pairs);
@@ -5874,7 +5876,7 @@
        and nothing else; the small line above the sentence is the rule, which
        is printed at the top of his sheet and he may look at it. */
     var task = c.k === 'st' ? 'Write ' + kindList
-      : c.k === 'sm' ? 'Write \u201C' + c.last + '\u201D and put its end mark on'
+      : c.k === 'sm' ? 'Draw the mark that goes on the end:  .  ?  or  !'
       : def ? 'Write what it means'
       : '';
     el.wTask.textContent = task;
@@ -5884,8 +5886,8 @@
       : c.k === 'st' ? kinds.map(function(k){
             return k + ' ' + SENTENCE_KINDS[k].d + '.';
           }).join(' ')
-      : c.k === 'sm' ? 'A telling sentence takes a full stop, a question takes a question '
-        + 'mark, strong feeling takes an exclamation mark.'
+      : c.k === 'sm' ? 'A telling sentence takes a full stop. A question takes a question '
+        + 'mark. Strong feeling takes an exclamation mark.'
       : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
@@ -6060,7 +6062,7 @@
       passWrite(c, got, want); return;
     }
     if (c.k === 'sm'){
-      if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got, sentWhy(c)); return; }
+      if (got !== want){ missWrite(got, sentWhy(c)); return; }
       passWrite(c, got, want); return;
     }
     if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got); return; }
@@ -6993,7 +6995,13 @@
       state.answered = true;
       written++;
       maybeCheer(cheer, state.tries > 0);
-      keepInk(c, state.tries > 0);
+      /* 🔴 SPELLING ONLY. The page is his spelling sheet, and a grammar card
+         went through here too: c.u is a LESSON id, so currentPage() minted a
+         page for a unit that does not exist. myPages() filtered them straight
+         back out so nothing showed, which is exactly why it would not have
+         been noticed, but they still counted against PAGE_CAP and would have
+         pushed his real spelling pages out of the drawer. */
+      if (!isSent(c)) keepInk(c, state.tries > 0);
       if (state.tries === 0) bump(true);
       else { clearCard(true); chaseNudge(true); }   // the miss was already counted
       setWHint('Kept for the sheet', 'good');
