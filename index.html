@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.46">
+<meta name="x-cards-version" content="4.47">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -378,6 +378,38 @@
      the ink box and was simply not read: Andrew circled it on a screenshot and
      drew an arrow up to here. Red, because everything else on this screen is
      black on cream and nothing else is allowed to be red. */
+  /* Proofreading. The sentence is a row of tappable words that still reads as
+     a sentence, so it is a flex row and not the square chip grid. */
+  .proof{display:none}
+  /* sits at the top, where the card was, rather than being pushed to the
+     bottom of a flex column by the space the hidden card left behind */
+  body.proofing .proof{display:block;max-width:860px;margin:8px auto auto}
+  body.proofing .screen.on{justify-content:flex-start}
+  .ptask{text-align:center;color:var(--red);font-size:22px;font-weight:700;
+    line-height:1.3;margin:6px 2px 22px}
+  /* the flip card has nothing to say on a proofreading card, and left up it
+     rendered the times-tables face: "undefined × undefined" */
+  /* ⚠️ Hiding the CARD is not enough. #stage is flex:1 and goes on claiming
+     every spare pixel with nothing in it, which pushed the whole exercise to
+     the bottom of the screen under 485px of nothing. */
+  body.proofing .stage,body.proofing .next,body.proofing .grade{display:none}
+  .pline{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 10px;margin:0}
+  .pw{border:none;background:none;font-family:inherit;font-size:30px;font-weight:600;
+    color:var(--ink);padding:6px 4px 14px;border-radius:8px;line-height:1.2;
+    position:relative}
+  .pw:active{transform:scale(.95)}
+  .pw.no{background:var(--red-soft)}
+  /* ≡ under the letter, which is the mark she writes for "make this a capital".
+     Three lines, on the FIRST LETTER only, not the whole word. */
+  .pw .l1{position:relative}
+  .pw.capped .l1::after{content:'';position:absolute;left:0;right:0;bottom:-9px;height:7px;
+    background:linear-gradient(var(--red) 0 1.5px, transparent 1.5px 100%) 0 0/100% 3px repeat-y}
+  .pw.capped .l1{color:var(--red)}
+  /* a ring round a word that is spelled wrong */
+  .pw.ringed{color:var(--red);box-shadow:0 0 0 3px var(--red) inset;border-radius:999px;
+    padding-left:12px;padding-right:12px}
+  .pnote{text-align:center;font-size:16px;color:var(--muted);margin:16px 2px 0;line-height:1.45}
+
   /* The teaching page. Only on screen while a teach card is up, and it is the
      one place the SPOT line lives, which is the whole reason it exists. */
   .teach{display:none}
@@ -819,6 +851,7 @@
       <button type="button" class="opt" data-subject="scripture">📖 Scriptures</button>
       <button type="button" class="opt" data-subject="spelling">✏️ Spelling</button>
       <button type="button" class="opt" data-subject="sentence">📝 Sentences</button>
+      <button type="button" class="opt" data-subject="proof">🔍 Proofreading</button>
     </div>
   </div>
 
@@ -855,6 +888,11 @@
     <p class="label">Which week</p>
     <div class="chips" id="unitChips"></div>
     <p class="note" id="unitNote"></p>
+  </div>
+
+  <div class="block hide" id="proofBlock">
+    <p class="label">Proofreading</p>
+    <p class="note" id="proofHomeNote"></p>
   </div>
 
   <div class="block hide" id="lessonBlock">
@@ -1240,6 +1278,15 @@
        teach card is not a writing card, so the panel was shut and everything
        in it had no box. Same shape of bug as the print sheet, which must sit
        outside the screens for exactly the same reason. -->
+    <!-- ⚠️ Its OWN instruction line. It borrowed the writing panel's red line
+         at first and it never appeared: .wpanel is display:none unless
+         body.write, and this is not a writing card. Third time tonight that
+         reaching into that panel from outside has come up blank. -->
+    <div class="proof" id="proofBox">
+      <p class="ptask" id="proofTask"></p>
+      <p class="pline" id="proofLine"></p>
+      <p class="pnote" id="proofNote"></p>
+    </div>
     <div class="teach" id="teachBox">
       <p class="tkind" id="teachKind"></p>
       <p class="twhat" id="teachWhat"></p>
@@ -2039,6 +2086,38 @@
     }
   ];
 
+  /* =========================================================
+     PROOFREADING. He finds what is wrong in a sentence and marks
+     it the way his teacher does: three lines under a letter that
+     should be a capital, a ring round a word that is misspelled.
+
+     Nothing is typed out by hand here. The capital sentences are
+     the Language 3 lessons he already has, which is why they are
+     printed with a lowercase first letter in the first place. The
+     misspellings are made from HIS OWN spelling list, using the
+     mistake he actually makes: he drops the i out of ai, which is
+     three of his five misses on the test that came home.
+
+     🔴 A WRONG SPELLING IS ON SCREEN, which is the whole exercise
+     and also a risk with a boy who is shaky on these words. So a
+     misspelling card is always followed by writing the word out
+     CORRECTLY: the last thing he does with it is the right one.
+     ========================================================= */
+  /* ⚠️ ONLY WORDS WITH A REALISTIC SLIP IN THEM. The first pass ran over the
+     whole list and produced "lunchbx" and "Augut", which nobody would ever
+     write: an error that obvious is spotted without reading and teaches
+     nothing. A word with no likely mistake in it simply does not get a card.
+     `ai` first, because that is the one he actually makes. */
+  function misspell(w){
+    var i = w.toLowerCase().indexOf('ai');
+    if (i !== -1) return w.slice(0, i + 1) + w.slice(i + 2);      // praise -> prase
+    i = w.toLowerCase().indexOf('ea');
+    if (i !== -1) return w.slice(0, i + 1) + w.slice(i + 2);      // daydream -> daydrem
+    if (/([bcdfglmnprst])\1/.test(w)) return w.replace(/([bcdfglmnprst])\1/, '$1');
+    if (/[bcdfgklmnprstv]e$/.test(w)) return w.slice(0, -1);      // a dropped silent e
+    return '';                                                    // no honest mistake to make
+  }
+
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
@@ -2070,6 +2149,7 @@
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
    'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wTask','wInput','wHint','wPeek','wCheck',
    'teachBox','teachKind','teachWhat','teachSpot','teachMark','helpBtn',
+   'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
@@ -2345,7 +2425,8 @@
       var s = JSON.parse(localStorage.getItem(STORE));
       if (s){
         if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture'
-            || s.subject === 'spelling' || s.subject === 'sentence') state.subject = s.subject;
+            || s.subject === 'spelling' || s.subject === 'sentence'
+            || s.subject === 'proof') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
         if (typeof s.teach === 'boolean') state.teach = s.teach;
@@ -2539,6 +2620,11 @@
   };
   /* The one place the sentences deck is counted. The button said 52 while the
      note said 23 sentences, and both were describing the deck separately. */
+  // a misspelling brings a writing with it, so it counts twice
+  function proofCards(){
+    var d = proofDeck();
+    return d.caps.length + d.spells.length * 2;
+  }
   function sentenceCards(){
     var kinds = {}, n = 0;
     state.lessons.map(lessonById).filter(Boolean).forEach(function(u){
@@ -2626,6 +2712,7 @@
     var verses = state.subject === 'scripture';
     var spell = state.subject === 'spelling';
     var sent = state.subject === 'sentence';
+    var proof = state.subject === 'proof';
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
@@ -2653,13 +2740,23 @@
     }
     setOn(el.subjectOpts, 'data-subject', state.subject);
     el.lessonBlock.classList.toggle('hide', !sent);
+    el.proofBlock.classList.toggle('hide', !proof);
+    if (proof){
+      var d = proofDeck();
+      el.proofHomeNote.textContent = 'He finds what is wrong and marks it, the way his '
+        + 'teacher does. ' + d.caps.length + ' sentences with a letter that should be a '
+        + 'capital, from his Language lessons, and ' + d.spells.length + ' with a word '
+        + 'spelled wrong, made from his own spelling list. After he finds a wrong spelling '
+        + 'he writes that word out properly, so the last thing he does with it is the '
+        + 'right one. ' + proofCards() + ' cards.';
+    }
     setOn(el.teachOpts, 'data-teach', state.teach ? '1' : '0');
-    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent);
+    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent || proof);
     el.setsBlock.classList.toggle('hide', !blends);
     el.topicsBlock.classList.toggle('hide', !verses);
     el.unitsBlock.classList.toggle('hide', !spell);
     el.writeBlock.classList.toggle('hide', !spell);
-    el.modeBlock.classList.toggle('hide', spell || sent);
+    el.modeBlock.classList.toggle('hide', spell || sent || proof);
     el.setsNote.textContent = setsSummary();
     el.topicNote.textContent = groupKit()
       ? 'One subject a round. Read the verse and pick where it is found. King James, '
@@ -2722,11 +2819,11 @@
     paintPairs();
     paintPace();
 
-    var chosen = sent ? state.lessons.length : spell ? state.units.length
+    var chosen = proof ? 1 : sent ? state.lessons.length : spell ? state.units.length
       : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
     // two cards a sentence, which kind and which mark
     // ⚠️ counted exactly the way the deck is built, teach cards deduped and all
-    var count = sent ? sentenceCards() : spell
+    var count = proof ? proofCards() : sent ? sentenceCards() : spell
       ? state.units.reduce(function(n, no){
           var u = unitById(no); return n + (u ? unitCards(u).length : 0);
         }, 0)
@@ -4277,6 +4374,63 @@
     return [{ label: '', table: 0, cards: all }];
   }
 
+  function isProof(c){ return !!(c && c.k === 'pf'); }
+  function proofNow(){ return state.subject === 'proof'; }
+  /* Built from what he already has: the capitals off his Language 3 lessons,
+     which are printed with a lowercase first letter because marking it is the
+     exercise, and the misspellings off his own spelling week. Nothing to keep
+     in step by hand, so a new week brings new proofreading with it. */
+  /* ⚠️ THE ONE PLACE THE PROOFREADING DECK IS BUILT, and the count reads it
+     rather than counting again alongside it. Counting separately said 45 over
+     a deck of 39: `u.vocab` rows are [word, MEANING], not [word, sentence], so
+     frail, plain and proclaim have no sentence to hide a misspelling in and
+     make no card. The second count did not know that. Third time this exact
+     bug has turned up tonight. */
+  function proofDeck(){
+    var caps = [], spells = [];
+    myLessons().forEach(function(u){
+      u.lines.forEach(function(row){
+        var words = row[0].split(' ');
+        caps.push({ k: 'pf', why: 'cap', t: row[0], words: words, bad: 0,
+                    fix: words[0].charAt(0).toUpperCase() + words[0].slice(1) });
+      });
+    });
+    myUnits().forEach(function(u){
+      // ⚠️ words only. A vocabulary row carries a meaning where a sentence goes.
+      u.words.forEach(function(row){
+        var w = row[0], sentence = row[1] || '';
+        var wrong = misspell(w);
+        if (!wrong || !sentence) return;
+        var words = sentence.split(' '), at = -1;
+        for (var i = 0; i < words.length; i++){
+          if (words[i].replace(/[^A-Za-z']/g, '').toLowerCase() === w.toLowerCase()){ at = i; break; }
+        }
+        if (at === -1) return;
+        var shown = words.slice();
+        shown[at] = words[at].replace(new RegExp(w, 'i'), wrong);
+        spells.push({ k: 'pf', why: 'spell', t: shown.join(' '), words: shown, bad: at,
+                      fix: words[at], word: w, u: u.id });
+      });
+    });
+    return { caps: caps, spells: spells };
+  }
+  function buildProofRounds(){
+    var deck = proofDeck();
+    var cards = deck.caps.concat(deck.spells);
+    shuffle(cards);
+    /* A misspelling card is followed by writing that word out properly, so the
+       last thing he does with a word he has just seen spelled wrong is spell
+       it right. It rides the ordinary spelling card, checker and all. */
+    var out = [];
+    cards.forEach(function(c){
+      out.push(c);
+      if (c.why === 'spell'){
+        out.push({ k: 'w', w: c.word, s: '', u: c.u, n: 1, after: true });
+      }
+    });
+    return [{ label: '', table: 0, cards: out }];
+  }
+
   function buildSpellRounds(){
     var picked = state.units.slice().sort(function(a, b){ return a - b; });
     if (state.shuffle && state.timer === 'chase') shuffle(picked);
@@ -4297,6 +4451,7 @@
   }
 
   function buildRounds(){
+    if (state.subject === 'proof') return buildProofRounds();
     if (state.subject === 'sentence') return buildSentenceRounds();
     if (state.subject === 'spelling') return buildSpellRounds();
     if (state.subject === 'scripture') return buildVerseRounds();
@@ -4365,6 +4520,7 @@
   function cardFace(c){
     if (isDealt(c)) return c.text;
     if (isWord(c)) return c.w;
+    if (isProof(c)) return '';       // the sentence is the tappable row, not a card face
     if (isTeach(c)) return SENTENCE_KINDS[c.kind].example;
     if (c && c.k === 'm') return 'Which one names a month?';
     if (c && c.k === 'c') return c.a + ' + ?';
@@ -4379,6 +4535,7 @@
     return isSound(c) ? c.pick : String(c[0] * c[1]);
   }
   function cardKey(c){
+    if (isProof(c)) return c.fix;
     if (isTeach(c)) return '';       // reading is not a thing you can get wrong
     if (isDealt(c)) return '';       // the misses record is the server's job here
     if (isDef(c)) return 'd:' + c.w;      // missing the meaning is not missing the spelling
@@ -5685,6 +5842,56 @@
       ? '<b>✓ ' + state.right + '</b><i>✗ ' + state.wrong + '</i>' : '';
   }
 
+  function paintProof(c){
+    el.proofLine.innerHTML = '';
+    c.words.forEach(function(w, i){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'pw';
+      b.setAttribute('data-i', String(i));
+      // the first letter gets its own span so three lines can go under IT and
+      // not under the whole word, which is what the mark actually means
+      b.innerHTML = '<span class="l1">' + esc(w.charAt(0)) + '</span>' + esc(w.slice(1));
+      el.proofLine.appendChild(b);
+    });
+    el.proofNote.textContent = '';
+    el.proofTask.textContent = c.why === 'cap'
+      ? 'One letter should be a CAPITAL. Tap the word it is in.'
+      : 'One word is spelled wrong. Tap it.';
+  }
+  el.proofLine.addEventListener('click', function(ev){
+    var b = ev.target.closest('.pw'); if (!b) return;
+    var c = card();
+    if (!isProof(c) || state.answered) return;
+    unlock();
+    var i = parseInt(b.getAttribute('data-i'), 10);
+    if (i !== c.bad){
+      // one miss a card, however many goes it takes, same rule as the writing
+      if (state.tries === 0) bump(false, true);
+      state.tries++;
+      sfx.wrong();
+      b.classList.add('no');
+      el.proofNote.textContent = state.tries >= 2
+        ? 'Read it again slowly, one word at a time.'
+        : 'Not that one. Have another look.';
+      return;
+    }
+    state.answered = true;
+    sfx.right();
+    b.classList.add(c.why === 'cap' ? 'capped' : 'ringed');
+    if (c.why === 'cap'){
+      b.innerHTML = '<span class="l1">' + esc(c.fix.charAt(0)) + '</span>' + esc(c.fix.slice(1));
+      el.proofNote.textContent = 'Three lines under a letter means "make this a capital". '
+        + 'Every sentence starts with one.';
+    } else {
+      el.proofNote.textContent = 'That one is spelled wrong. It should be ' + c.fix
+        + '. You write it next.';
+    }
+    if (state.tries === 0) bump(true); else { clearCard(true); chaseNudge(true); }
+    if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, 2600);
+  });
+
   function paintCard(){
     toTop();
     var c = card();
@@ -5709,12 +5916,18 @@
 
     /* Spelling decides per card: the words are written, the two worksheet
        questions are tapped, and both can turn up in the same round. */
-    var writing = isWord(c) && !isTeach(c), tapping = isTask(c);
+    var writing = isWord(c) && !isTeach(c) && !isProof(c), tapping = isTask(c);
     document.body.classList.toggle('write', writing);
     document.body.classList.toggle('teaching', isTeach(c));
     if (spellingNow()) document.body.classList.toggle('choice', tapping);
 
-    if (isTeach(c)){
+    document.body.classList.toggle('proofing', isProof(c));
+    if (isProof(c)){
+      paintProof(c);
+      el.grade.classList.remove('on');
+      el.nextBtn.style.display = 'none';
+      el.hint.textContent = '';
+    } else if (isTeach(c)){
       var t = SENTENCE_KINDS[c.kind];
       el.teachKind.textContent = c.kind + '  \u2014  ' + t.nick;
       el.teachWhat.textContent = t.kid;
