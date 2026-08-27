@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.48">
+<meta name="x-cards-version" content="4.49">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2987,6 +2987,7 @@
     // so are the word lists and the handwriting, for the same reason
     paintUnitChips();
     loadPages();
+    fetchPages();          // and whatever this child wrote on another device
     loadReads();
     loadRed();
     loadSaved();
@@ -6577,6 +6578,62 @@
   function savePages(){
     try { localStorage.setItem(pagesKey(), JSON.stringify({ pages: pages })); } catch(e){}
   }
+  /* ⭐ AND UP TO THE SERVER, so the page stops living on one iPad. Andrew
+     finished a test, went looking for it from somewhere else, and the honest
+     answer was that it could not be fetched at all.
+
+     ⚠️ Debounced hard. keepInk fires on every word, the ink is a few hundred
+     KB, and posting that twenty times in a round would be pointless traffic on
+     a phone. The local copy is written immediately either way, so a page is
+     never at risk while this waits. */
+  var pagePush = {};
+  function pushPage(pg){
+    if (!me.token || !pg) return;
+    clearTimeout(pagePush[pg.id]);
+    pagePush[pg.id] = setTimeout(function(){
+      apiCall('/page', { method: 'POST', body: {
+        token: me.token, id: pg.id, unit: pg.unit, day: pg.day,
+        times: pg.times || 1, slots: pg.slots || {}, words: pg.words || {}
+      }});
+    }, 4000);
+  }
+  /* Pulled on sign in, and merged rather than replacing: a page written on this
+     iPad while it was offline must not be thrown away by a list from the
+     server that has never heard of it. Newest copy of a given id wins. */
+  function fetchPages(){
+    if (!me.token) return;
+    apiCall('/pages?token=' + encodeURIComponent(me.token)).then(function(res){
+      var list = res && res.ok && res.data ? res.data.pages : null;
+      if (!list || !list.length) return;
+      var have = {};
+      pages.forEach(function(pg){ have[pg.id] = pg; });
+      var news = list.filter(function(row){ return !have[row.id]; });
+      if (!news.length) return;
+      /* The list carries no ink, so a page only on the server is a STUB until
+         somebody asks to print it. Marked so paintPages can say so rather than
+         drawing an empty sheet and looking broken. */
+      news.forEach(function(row){
+        pages.push({ id: row.id, unit: row.unit, day: row.day, times: row.times || 1,
+                     slots: row.slots || {}, words: {}, stub: true,
+                     at: new Date(row.updated_at).getTime() || Date.now(),
+                     written: row.written || 0 });
+      });
+      pages.sort(function(a, b){ return (b.at || 0) - (a.at || 0); });
+      if (pages.length > PAGE_CAP) pages.length = PAGE_CAP;
+      savePages();
+      paintHome();
+    });
+  }
+  // a stub has no ink yet; fetch it before trying to print it
+  function fillPage(pg, then){
+    if (!pg.stub || !me.token) { then(pg); return; }
+    apiCall('/page?token=' + encodeURIComponent(me.token) + '&id=' + encodeURIComponent(pg.id))
+      .then(function(res){
+        var got = res && res.ok && res.data ? res.data.page : null;
+        if (got){ pg.words = got.words || {}; pg.stub = false; savePages(); }
+        then(pg);
+      });
+  }
   // the page being written now: this week, today, made the first time it is asked for
   function currentPage(unit){
     var id = unit + ':' + today(), i;
@@ -6589,7 +6646,13 @@
     if (pages.length > PAGE_CAP) pages.length = PAGE_CAP;
     return made;
   }
-  function pageWritten(pg){ return pg && pg.words ? Object.keys(pg.words).length : 0; }
+  /* ⚠️ A page pulled from the server has NO ink until it is asked for, so
+     counting its `words` gives nought and it would be filtered out of the very
+     list that exists to fetch it. `written` is what the server reported. */
+  function pageWritten(pg){
+    if (pg && pg.stub) return pg.written || 0;
+    return pg && pg.words ? Object.keys(pg.words).length : 0;
+  }
   // this child's pages that actually have something on them, newest first
   function myPages(){
     return pages.filter(function(pg){ return !!unitById(pg.unit) && pageWritten(pg); })
@@ -7356,6 +7419,7 @@
     pg.slots[c.w] = Math.max(pg.slots[c.w] || 1, c.n || 1);
     pg.at = Date.now();
     savePages();
+    pushPage(pg);
     buildSheet(pg);   // kept current, so Share > Print never catches it empty
   }
 
@@ -7699,13 +7763,15 @@
     el.pagesList.innerHTML = '';
     mine.forEach(function(pg){
       var u = unitById(pg.unit), n = pageSlots(pg);
+      // a page pulled from the server carries no ink until it is asked for
+      var done = pg.stub ? (pg.written || 0) : n.done;
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'pg' + (n.done < n.all ? ' part' : '');
+      b.className = 'pg' + (done < n.all ? ' part' : '');
       b.setAttribute('data-id', pg.id);
       b.innerHTML = '<span class="nm">Unit ' + u.unit + '</span>'
                   + '<span class="dy">' + esc(pageWhen(pg)) + '</span>'
-                  + '<span class="ct">' + n.done + ' / ' + n.all + '</span>'
+                  + '<span class="ct">' + done + ' / ' + n.all + '</span>'
                   + '<span class="pr">\uD83D\uDDA8</span>';
       el.pagesList.appendChild(b);
     });
@@ -7718,7 +7784,11 @@
     var b = ev.target.closest('.pg'); if (!b) return;
     unlock(); sfx.tap();
     var id = b.getAttribute('data-id'), i;
-    for (i = 0; i < pages.length; i++) if (pages[i].id === id) return printPage(pages[i]);
+    for (i = 0; i < pages.length; i++){
+      if (pages[i].id !== id) continue;
+      // a page that lives on the server needs its ink before it can be printed
+      return fillPage(pages[i], function(pg){ printPage(pg); });
+    }
   });
 
 
