@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.40">
+<meta name="x-cards-version" content="4.41">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4141,9 +4141,14 @@
       var u = lessonById(n); if (!u) return;
       var pairs = u.lines.map(function(row){
         var t = row[0], kind = row[1], mark = row[2];
+        /* The mark card asks for the LAST WORD with the mark on it. A bare full
+           stop in an ink box cannot be read, and it is not what the sheet asks
+           for either: there he puts a caret at the end of the printed line. */
+        var words = t.split(' ');
+        var last = words[words.length - 1].replace(/[.,!?]+$/, '');
         return [
-          { k: 'st', t: t, mark: mark, w: kind, opts: u.choices.slice(), u: u.id },
-          { k: 'sm', t: t, mark: mark, w: mark, wKind: kind, opts: ['.', '?', '!'], u: u.id }
+          { k: 'st', t: t, mark: mark, w: kind, u: u.id },
+          { k: 'sm', t: t, mark: mark, w: last + mark, wKind: kind, last: last, u: u.id }
         ];
       });
       if (state.shuffle) shuffle(pairs);
@@ -4214,14 +4219,16 @@
      tested on both and lost the mark on proclaim for writing "to declam", so
      the spelling INSIDE the meaning counts too. `isWord` covers it, because
      everything about the writing panel, the ink and the retry applies. */
-  function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd')); }
+  function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd' || isSent(c))); }
   function isDef(c){ return !!(c && c.k === 'd'); }
   /* 'st' asks which kind of sentence it is, 'sm' which mark it ends with.
      Both are tapped, so they ride the same choice machinery as the worksheet
      questions rather than growing a second one. */
-  function isTask(c){
-    return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'st' || c.k === 'sm'));
-  }
+  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c')); }
+  /* ⭐ WRITTEN, NOT TAPPED (Andrew's call). They shipped as four buttons, which
+     marked itself honestly enough, but it is not the exercise: on the sheet he
+     WRITES Dec. in the blank. Four buttons also quietly hand him the answer
+     key, since Imp. only appears as an option on the lesson that has met it. */
   function isSent(c){ return !!(c && (c.k === 'st' || c.k === 'sm')); }
   function sentenceNow(){ return state.subject === 'sentence'; }
   // the sentence put right: capital at the front, mark on the end
@@ -4237,7 +4244,6 @@
   function cardFace(c){
     if (isDealt(c)) return c.text;
     if (isWord(c)) return c.w;
-    if (isSent(c)) return c.t;
     if (c && c.k === 'm') return 'Which one names a month?';
     if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
@@ -5571,8 +5577,7 @@
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
     document.body.classList.toggle('wordy', isSound(c) || isTask(c));
-    // a whole sentence at times-tables size runs off the screen
-    document.body.classList.toggle('versey', isVerse(c) || isDealt(c) || isSent(c));
+    document.body.classList.toggle('versey', isVerse(c) || isDealt(c));
     /* ⚠️ A dealt card is a verse too. This keyed off the old card's own shape
        (r and t), and a server dealt one carries text and opts instead, so a
        whole verse rendered at times-tables size - eighty four pixels, over the
@@ -5710,26 +5715,11 @@
     }
     if (state.mode === 'shoot') rangeSettle(picked, answer);
     if (picked !== null) correct ? sfx.right() : sfx.wrong();
-    /* ⭐ A SENTENCE CARD SAYS WHY. His two mistakes on the worksheet were both
-       the same reasoning slip, going by what a sentence is ABOUT rather than
-       what it DOES: Yellowstone and wolves felt exciting so he put Exc., and
-       "if you want to know more, find books" reads like a question so he put
-       Int. A red button teaches him nothing about that, the reason does. */
-    if (isSent(card())){
-      var c = card();
-      var kind = SENTENCE_KINDS[c.k === 'st' ? c.w : (c.wKind || '')] || null;
-      el.hint.textContent = correct
-        ? fixedUp(c)
-        : (c.k === 'st'
-            ? c.w + ' \u2014 ' + kindSays(c.w) + '. ' + fixedUp(c)
-            : 'It takes ' + c.w + ' because it is ' + (kind ? kind.n : 'that kind')
-              + ', it ' + (kind ? kind.d : '') + '. ' + fixedUp(c));
-    }
     bump(correct);
     if (state.caught) return;
 
     clearTimeout(advanceId);
-    advanceId = setTimeout(step, correct ? 900 : isSent(card()) ? 3200 : 1500);
+    advanceId = setTimeout(step, correct ? 700 : 1500);
   }
 
   el.choices.addEventListener('click', function(ev){
@@ -5818,30 +5808,34 @@
   function tidy(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
 
   function paintWrite(c){
-    var def = isDef(c);
-    /* The word is the PROMPT on a definition card, so it stays on screen
-       whatever the mode: there is nothing to peek at and nothing to hide, and
-       reading it aloud and then taking it away would be asking him to
-       remember a word rather than what it means. */
-    var mode = def ? 'copy' : state.write;
+    var def = isDef(c), sen = isSent(c);
+    /* The word is the PROMPT on a definition card, and the whole sentence is
+       the prompt on a grammar one, so both stay on screen whatever the mode:
+       there is nothing to peek at and nothing to hide, and reading it aloud
+       and taking it away would be a memory test rather than the exercise. */
+    var mode = (def || sen) ? 'copy' : state.write;
     state.tries = 0; sayAgain = 0;
     clearTimeout(peekId);
     el.wInput.value = '';
     el.wInput.className = 'winput';
     el.wMark.innerHTML = '';
-    el.wText.textContent = c.w;
+    // on a grammar card the sentence is shown and the ANSWER is what he writes
+    el.wText.textContent = sen ? c.t : c.w;
     paintAiBtn();
     // ⚠️ per WORD, not per week. With one count for the whole list this read
     // unitTimes and a marked word on its second go said "go 2 of 1".
     var goes = wordTimes(unitById(c.u), c.w);
-    var writeIt = def ? 'what does it mean?' : 'write it here';
+    var writeIt = def ? 'what does it mean?'
+      : c.k === 'st' ? 'Dec. Int. Exc. or Imp.?'
+      : c.k === 'sm' ? 'write \u201C' + c.last + '\u201D with its end mark'
+      : 'write it here';
     el.inkHint.textContent = !c.n || c.n < 2 ? writeIt
       : goes === 2 ? 'and once more'
       : 'go ' + c.n + ' of ' + goes;
     el.wInput.placeholder = writeIt;
     // a meaning is a phrase, and 32 characters cuts "flat land with few trees" short
     el.wInput.maxLength = def ? 120 : 32;
-    document.body.classList.toggle('defining', def);
+    document.body.classList.toggle('defining', def || sen);
     el.wCheck.textContent = 'Check it';
     setWHint('');
     document.body.classList.toggle('listening', mode === 'listen');
@@ -5849,7 +5843,16 @@
        word is on screen anyway. A vocabulary meaning never gives it away, so
        that one is the clue in all three modes. On a definition card the
        meaning IS the answer, so there is no clue at all. */
-    var clue = def ? '' : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
+    /* The rule, not the answer. Which kinds exist is printed at the top of his
+       sheet and he is allowed to look at it; which one THIS sentence is, is
+       the question. */
+    var clue = def ? ''
+      : c.k === 'st' ? 'Dec. tells you something. Int. asks. Exc. shows strong feeling.'
+        + (lessonById(c.u) && lessonById(c.u).choices.indexOf('Imp.') !== -1
+            ? ' Imp. gives a command.' : '')
+      : c.k === 'sm' ? 'A telling sentence takes a full stop, a question takes a question '
+        + 'mark, and strong feeling takes an exclamation mark.'
+      : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
     el.wPeek.classList.toggle('hide', mode === 'copy');
@@ -5979,6 +5982,33 @@
     el.inkGrade.classList.add('on');
   }
 
+  /* The reason, not just a red mark. Both his mistakes on the worksheet were
+     the same slip, going by what a sentence is ABOUT rather than what it DOES,
+     and neither a red box nor a right answer on its own touches that. */
+  function sentWhy(c){
+    var kind = SENTENCE_KINDS[c.k === 'st' ? c.w : (c.wKind || '')] || null;
+    if (c.k === 'st') return c.w + ' \u2014 ' + kindSays(c.w) + '. ' + fixedUp(c);
+    return 'It takes ' + c.mark + ' because it is ' + (kind ? kind.n : 'that kind')
+         + ', it ' + (kind ? kind.d : '') + '. ' + fixedUp(c);
+  }
+  // the pass half of checkWrite, pulled out so the grammar cards can reach it
+  function passWrite(c, got, want){
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    state.answered = true;
+    el.wInput.classList.remove('bad');
+    el.wInput.classList.add('good');
+    el.wMark.textContent = got;
+    showWord(true);
+    sfx.right();
+    var why = isSent(c) ? fixedUp(c) : '';
+    if (state.tries === 0){ setWHint(why || 'Spot on', 'good'); bump(true); }
+    else { setWHint(why || ('That is it: ' + want), 'good'); clearCard(true); chaseNudge(true); }
+    if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, isSent(c) ? 1800 : 700);
+  }
+
   function checkWrite(){
     var c = card();
     if (!c || !isWord(c) || state.caught || state.answered) return;
@@ -5986,6 +6016,19 @@
     var want = c.w, got = tidy(el.wInput.value);
     if (!got){ focusWrite(); return; }
     if (isDef(c)){ checkDef(c, got); return; }
+    /* ⚠️ The abbreviation's own full stop is not the thing being tested, so
+       Dec and Dec. both pass. On the END MARK card the mark IS the answer, so
+       nothing is trimmed off it. */
+    if (c.k === 'st'){
+      if (got.replace(/\.$/, '').toLowerCase() !== want.replace(/\.$/, '').toLowerCase()){
+        missWrite(got, sentWhy(c)); return;
+      }
+      passWrite(c, got, want); return;
+    }
+    if (c.k === 'sm'){
+      if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got, sentWhy(c)); return; }
+      passWrite(c, got, want); return;
+    }
     if (got.toLowerCase() !== want.toLowerCase()){ missWrite(got); return; }
     if (got !== want){ missWrite(got, capNote(want)); return; }
 
@@ -6043,7 +6086,11 @@
     } else {
       sayCard(c);
     }
-    setWHint(state.tries >= 2 ? 'Copy it carefully: ' + c.w
+    /* On a grammar card the reason already contains the answer ("Imp. — an
+       imperative sentence gives a command"), so it stands in for Copy it
+       carefully and teaches the thing he actually got wrong. */
+    setWHint(isSent(c) ? (why || sentWhy(c))
+           : state.tries >= 2 ? 'Copy it carefully: ' + c.w
            : why || 'Not quite, write it again', 'bad');
     el.wCheck.textContent = 'Try again';
     setTimeout(function(){
@@ -6793,7 +6840,7 @@
        writing. So on the words where the capital IS what is being tested,
        a yes from it would wave through the exact fault his teacher marked.
        Those go to a person, with the capital named. */
-    if (!isDef(c) && /^[A-Z]/.test(c.w)){
+    if (!isDef(c) && !isSent(c) && /^[A-Z]/.test(c.w)){
       inkReveal('Check every letter, and the capital ' + c.w.charAt(0) + '. Did you get it?');
       return;
     }
@@ -6809,7 +6856,8 @@
     el.inkDone.disabled = true;
     apiCall('/handwriting', { method: 'POST',
       body: { token: me.token, word: c.w, image: img,
-              meaning: isDef(c) ? (c.m || '') : '' } }).then(function(res){
+              meaning: isDef(c) ? (c.m || '') : '',
+              shape: c.k === 'sm' ? 'mark' : '' } }).then(function(res){
       checking = false;
       el.inkDone.textContent = 'Done';
       el.inkDone.disabled = false;
@@ -6928,7 +6976,11 @@
     el.inkDone.disabled = false;
     inkReset();
     showWord(true);
-    setWHint(read ? 'That reads as \u201C' + read + '\u201D. Have another go'
+    var cm = card();
+    /* On a grammar card the second miss gives the reason, same rule as spelling
+       showing the word: stuck with no way through is worse than being told. */
+    setWHint(isSent(cm) && state.tries >= 2 ? sentWhy(cm)
+           : read ? 'That reads as \u201C' + read + '\u201D. Have another go'
                   : 'Have another go, the word is up there', 'bad');
     chaseResume();
   }
