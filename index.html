@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.42">
+<meta name="x-cards-version" content="4.43">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -372,6 +372,15 @@
      either side. Writing mode widens to the screen. Phones are already under
      the cap, so nothing changes there. */
   body.write .screen.on{max-width:min(96vw,1040px)}
+  /* ⭐ THE INSTRUCTION, between the sentence and the box he writes in, because
+     that is the order he reads them and it is the last thing he sees before
+     the pen goes down. It lived as the faint grey placeholder in the middle of
+     the ink box and was simply not read: Andrew circled it on a screenshot and
+     drew an arrow up to here. Red, because everything else on this screen is
+     black on cream and nothing else is allowed to be red. */
+  .wtask{margin:14px 2px 10px;text-align:center;color:var(--red);
+    font-size:22px;font-weight:700;line-height:1.3}
+  body.hand .wtask{margin:10px 2px 8px}
   .ink canvas{display:block;width:100%;height:100%;touch-action:none}
   .inkhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:#c9c4b8;font-size:19px;pointer-events:none}
@@ -1209,6 +1218,7 @@
       <div class="wword" id="wWord"><span class="word" id="wText"></span><span class="blank" id="wBlank"></span></div>
       <button type="button" class="wsay" id="wSay">🔊 Hear it again</button>
     </div>
+    <p class="wtask hide" id="wTask"></p>
     <div class="wmark" id="wMark"></div>
     <input class="winput" id="wInput" type="text" inputmode="text" name="spellword"
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
@@ -1992,7 +2002,7 @@
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
-   'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wInput','wHint','wPeek','wCheck',
+   'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wTask','wInput','wHint','wPeek','wCheck',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
@@ -5840,10 +5850,8 @@
     var lu = sen ? lessonById(c.u) : null;
     var kinds = lu ? lu.choices : ['Dec.', 'Int.', 'Exc.', 'Imp.'];
     var kindList = kinds.slice(0, -1).join(' ') + ' or ' + kinds[kinds.length - 1];
-    var writeIt = def ? 'what does it mean?'
-      : c.k === 'st' ? 'write ' + kindList
-      : c.k === 'sm' ? 'write \u201C' + c.last + '\u201D and put its end mark on'
-      : 'write it here';
+    // the box just says where; the red line above says what
+    var writeIt = 'write it here';
     el.inkHint.textContent = !c.n || c.n < 2 ? writeIt
       : goes === 2 ? 'and once more'
       : 'go ' + c.n + ' of ' + goes;
@@ -5861,14 +5869,23 @@
     /* The rule, not the answer. Which kinds exist is printed at the top of his
        sheet and he is allowed to look at it; which one THIS sentence is, is
        the question. */
+    /* ⭐ THE JOB AND THE RULE ARE TWO DIFFERENT LINES. They were one paragraph
+       and the job got lost in the middle of it. The red line says what to do
+       and nothing else; the small line above the sentence is the rule, which
+       is printed at the top of his sheet and he may look at it. */
+    var task = c.k === 'st' ? 'Write ' + kindList
+      : c.k === 'sm' ? 'Write \u201C' + c.last + '\u201D and put its end mark on'
+      : def ? 'Write what it means'
+      : '';
+    el.wTask.textContent = task;
+    el.wTask.classList.toggle('hide', !task);
+
     var clue = def ? ''
-      : c.k === 'st' ? 'What kind of sentence is this? Write ' + kindList + ' below. '
-        + kinds.map(function(k){
+      : c.k === 'st' ? kinds.map(function(k){
             return k + ' ' + SENTENCE_KINDS[k].d + '.';
           }).join(' ')
-      : c.k === 'sm' ? 'What mark does it end with? Write the last word below and put '
-        + 'the mark on the end. A telling sentence takes a full stop, a question takes '
-        + 'a question mark, strong feeling takes an exclamation mark.'
+      : c.k === 'sm' ? 'A telling sentence takes a full stop, a question takes a question '
+        + 'mark, strong feeling takes an exclamation mark.'
       : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
