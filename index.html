@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.52">
+<meta name="x-cards-version" content="4.53">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1883,6 +1883,11 @@
        vocab      the meaning is the clue and she writes the word
        compounds  the two halves, for the matching questions
        rule       the Catch This! line at the top of the sheet
+       off        this week is put away. The data stays exactly where it is,
+                  along with its marks and its pages, but it is off the chips
+                  and out of every deck, so a finished week does not sit there
+                  waiting to be picked by mistake. Take the flag off and the
+                  week is back, unchanged
        times      how many times the teacher wants each word written, when
                   it is more than once. It is the STARTING value only: the
                   How many times stepper on the home screen overrides it per
@@ -1893,10 +1898,20 @@
      ========================================================= */
   var MONTHS = ['January','February','March','April','May','June','July',
                 'August','September','October','November','December'];
+  /* The days work exactly as the months do, and they are on unit 2's sheet
+     for the same reason the months were on unit 1's: the capital. One shape
+     serves both, so a list teaching either gets its worksheet question
+     without anything being written by hand. */
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday',
+              'Saturday'];
+  var NAMED = [{ kind: 'month', list: MONTHS }, { kind: 'day', list: DAYS }];
 
   var SPELLING = [
     {
-      id: 1, who: 'Seth', unit: 1,
+      /* Put away 2026-08-27, when unit 2 came home. Kept whole, marks and all:
+         the test he sat on it is the only record of what the red pen caught,
+         and the pages he wrote are still printable. */
+      id: 1, who: 'Seth', unit: 1, off: true,
       rule: 'ai is usually used in the MIDDLE of a word. ay is usually used at the END of a word.',
       words: [
         ['praise',    'His teacher had nothing but praise for the work he did.'],
@@ -1970,6 +1985,34 @@
         ['millennium',     'a period of one thousand years'],
         ['punctual',       'on time, prompt'],
         ['simultaneously', 'at the same time']
+      ]
+    },
+    {
+      id: 3, who: 'Seth', unit: 2,
+      rule: 'oi is usually used in the MIDDLE of a word. oy is usually used at the END of a word.',
+      words: [
+        ['choice',    'He made the right choice and told the truth.'],
+        ['voice',     'She sang the hymn in a clear voice.'],
+        ['rejoice',   'We rejoice every time good news comes.'],
+        ['boiling',   'The water was boiling on the stove.'],
+        ['toiled',    'The men toiled all day in the hot sun.'],
+        ['spoil',     'Milk will spoil if you leave it out.'],
+        ['moisture',  'There was moisture on the window in the morning.'],
+        ['soy',       'He poured soy sauce over his rice.'],
+        ['annoy',     'Do not annoy your sister while she is reading.'],
+        ['decoy',     'The hunter set a wooden duck out as a decoy.'],
+        ['Sunday',    'We go to church on Sunday.'],
+        ['Monday',    'School starts again on Monday.'],
+        ['Tuesday',   'His piano lesson is every Tuesday.'],
+        ['Wednesday', 'We have gym class on Wednesday.'],
+        ['Thursday',  'The trash goes out on Thursday night.'],
+        ['Friday',    'Friday is the last day of the school week.'],
+        ['Saturday',  'On Saturday he helps his dad in the yard.']
+      ],
+      vocab: [
+        ['voyage', 'a long trip across water'],
+        ['loyal',  'faithful and true'],
+        ['employ', 'to hire for a job']
       ]
     }
   ];
@@ -2478,7 +2521,7 @@
     fixLessons();
   }
   function paintUnitChips(){
-    var mine = myUnits(), owners = {};
+    var mine = liveUnits(), owners = {};
     mine.forEach(function(u){ if (u.who) owners[u.who] = 1; });
     var many = Object.keys(owners).length > 1;   // signed out, so say whose is whose
     el.unitChips.innerHTML = '';
@@ -2655,7 +2698,7 @@
       + names.join('. ') + '.';
   }
   function unitSummary(){
-    if (!myUnits().length){
+    if (!liveUnits().length){
       return me.name
         ? 'No word list for ' + me.name + ' yet. Andrew photographs the sheet and it goes in.'
         : 'Pick the week off the sheet that came home.';
@@ -4230,6 +4273,16 @@
     if (!me.name) return SPELLING.slice();
     return SPELLING.filter(function(u){ return sameWho(u.who, me.name); });
   }
+  /* ⭐ WHAT HE PRACTISES vs WHAT HE OWNS, and they are not the same list.
+     A week that is put away (`off`) comes off the chips and out of every
+     deck, but it is still HIS, so `myUnits` keeps it and `unitById` still
+     finds it. That is deliberate: the pages he wrote on it are printed by
+     looking the unit up, and hiding a finished week from the practice chips
+     must never take a grown-up's record of it away with it. Same lesson as
+     the print list that was gated on the subject picker. */
+  function liveUnits(){
+    return myUnits().filter(function(u){ return !u.off; });
+  }
   /* How many times each word gets written this week. The list can arrive
      carrying one (Bailey's sheet asks for two), but the stepper on the home
      screen is what decides, and it is remembered PER WEEK: the count belongs
@@ -4254,7 +4307,7 @@
      behind by the last child to hold the iPad hands them somebody else's list.
      Same trap as the missed record, which was device wide once. */
   function fixUnits(){
-    var mine = myUnits();
+    var mine = liveUnits();
     state.units = state.units.filter(function(id){
       return mine.some(function(u){ return u.id === id; });
     });
@@ -4295,11 +4348,19 @@
   function taskCards(u){
     var out = [];
     var plain = u.words.map(function(r){ return r[0]; });
-    var notMonths = plain.filter(function(w){ return MONTHS.indexOf(w) === -1; });
-    plain.filter(function(w){ return MONTHS.indexOf(w) !== -1; }).forEach(function(m){
-      var pool = notMonths.slice(); shuffle(pool);
-      var opts = pool.slice(0, 3).concat([m]); shuffle(opts);
-      out.push({ k: 'm', w: m, opts: opts, u: u.id });
+    /* The distractors are the words on the sheet that are NOT one of these,
+       so a list of days offers spoil and decoy against Wednesday. A list
+       carrying fewer than three of those makes no question at all rather
+       than a choice with a gap in it. */
+    NAMED.forEach(function(g){
+      var named = function(w){ return g.list.indexOf(w) !== -1; };
+      var rest = plain.filter(function(w){ return !named(w); });
+      if (rest.length < 3) return;
+      plain.filter(named).forEach(function(m){
+        var pool = rest.slice(); shuffle(pool);
+        var opts = pool.slice(0, 3).concat([m]); shuffle(opts);
+        out.push({ k: 'm', w: m, kind: g.kind, opts: opts, u: u.id });
+      });
     });
     var halves = uniq((u.compounds || []).map(function(pr){ return pr[1]; }));
     (u.compounds || []).forEach(function(pr){
@@ -4397,7 +4458,7 @@
                     fix: words[0].charAt(0).toUpperCase() + words[0].slice(1) });
       });
     });
-    myUnits().forEach(function(u){
+    liveUnits().forEach(function(u){
       // ⚠️ words only. A vocabulary row carries a meaning where a sentence goes.
       u.words.forEach(function(row){
         var w = row[0], sentence = row[1] || '';
@@ -4524,7 +4585,9 @@
     if (isWord(c)) return c.w;
     if (isProof(c)) return '';       // the sentence is the tappable row, not a card face
     if (isTeach(c)) return SENTENCE_KINDS[c.kind].example;
-    if (c && c.k === 'm') return 'Which one names a month?';
+    if (c && c.k === 'm') return c.kind === 'day'
+      ? 'Which one names a day of the week?'
+      : 'Which one names a month?';
     if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
