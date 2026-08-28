@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.58">
+<meta name="x-cards-version" content="4.59">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6736,6 +6736,10 @@
   var pagePush = {};
   function pushPage(pg){
     if (!me.token || !pg) return;
+    /* 🔴 A STUB IS NEVER PUSHED. See keepInk: pushing one holds nothing but
+       what has been written since it was pulled, and the server upserts on
+       (player, id), so it REPLACES the real page with a nearly empty one. */
+    if (pg.stub) return;
     clearTimeout(pagePush[pg.id]);
     pagePush[pg.id] = setTimeout(function(){
       apiCall('/page', { method: 'POST', body: {
@@ -6777,7 +6781,18 @@
     apiCall('/page?token=' + encodeURIComponent(me.token) + '&id=' + encodeURIComponent(pg.id))
       .then(function(res){
         var got = res && res.ok && res.data ? res.data.page : null;
-        if (got){ pg.words = got.words || {}; pg.stub = false; savePages(); }
+        if (got){
+          /* ⚠️ MERGED, and what is already HERE wins. This used to assign the
+             server's words straight over the top, which was safe only while a
+             stub was filled purely to print it. It is now also filled on the
+             way to writing, and anything he has just written on this device is
+             newer than the list we pulled. */
+          var merged = got.words || {}, mine = pg.words || {};
+          Object.keys(mine).forEach(function(k){ merged[k] = mine[k]; });
+          pg.words = merged;
+          pg.stub = false;
+          savePages();
+        }
         then(pg);
       });
   }
@@ -7706,7 +7721,22 @@
     pg.slots[c.w] = Math.max(pg.slots[c.w] || 1, c.n || 1);
     pg.at = Date.now();
     savePages();
-    pushPage(pg);
+    /* 🔴 FETCH THE INK BEFORE PUSHING ANY OF HIS OVER IT. Found 2026-08-27,
+       when Seth's whole twenty word page came back off the server holding ONE
+       word. A page pulled from the server is a STUB: the list deliberately
+       carries no ink, because the ink is hundreds of KB. currentPage returned
+       that stub as today's page, this line wrote one word into its empty
+       `words`, and the push REPLACED twenty words of his handwriting.
+
+       It takes a second device, or one device with its storage cleared, so it
+       stayed hidden until he opened the page somewhere new. The copy on the
+       iPad that wrote it was never touched, which is the only reason nothing
+       was actually lost.
+
+       fillPage is a no-op on a page that already has its ink, so this costs
+       nothing in the ordinary case, and it retries on every save while a fill
+       is failing rather than giving up on the page. */
+    fillPage(pg, function(){ pushPage(pg); });
     buildSheet(pg);   // kept current, so Share > Print never catches it empty
   }
 
