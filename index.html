@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.59">
+<meta name="x-cards-version" content="4.60">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -473,6 +473,21 @@
      A record a grown-up reads, so it is plainer than the child's side: what
      week it was, what day, and how much of it got done. */
   .reads{display:flex;flex-direction:column;gap:6px}
+  .checks{display:flex;flex-direction:column;gap:14px}
+  .ck{border:2px solid var(--line);border-radius:18px;background:#fff;padding:12px 14px}
+  .ck .ckhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .ck .ckword{font-size:20px;font-weight:800}
+  .ck .ckgot{font-size:15px;color:var(--muted)}
+  /* His writing, cropped to the ink and drawn at the printer's resolution,
+     which is the whole point: the grown-up is being asked to read it. */
+  .ck .ckink{background:#fff;border:1px dashed #ddd;border-radius:12px;padding:6px;
+    min-height:70px;display:flex;align-items:center;justify-content:center}
+  .ck .ckink svg{width:100%;height:auto;max-height:130px}
+  .ck .ckrow{display:flex;gap:10px;margin-top:10px}
+  .ck .ckrow button{flex:1;border-radius:16px;padding:12px;font-size:15px;font-weight:700;
+    border:2px solid var(--line);background:#fff;box-shadow:0 4px 0 #ded8cc}
+  .ck .ckrow .yes{border-color:#2f8f4e;color:#2f8f4e}
+  .ck .ckrow .no{border-color:var(--red);color:var(--red)}
   .rd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
     border:2px solid var(--line);background:#fff;border-radius:14px;padding:9px 12px}
   .rd .want{font-size:15px;font-weight:600}
@@ -929,6 +944,16 @@
       <button type="button" class="step" id="timesUp">+</button>
     </div>
     <p class="note" id="timesNote"></p>
+  </div>
+
+  <!-- ⭐ The words the checker turned down, waiting on a grown-up to look at
+       the ink and say. Not gated on the subject picker, same rule as the pages
+       and the reads: a grown-up's job must never be hidden behind the child's
+       choice of what to study. -->
+  <div class="block hide" id="checkBlock">
+    <p class="label">Check these with a grown-up</p>
+    <div class="checks" id="checkList"></div>
+    <p class="note" id="checkNote"></p>
   </div>
 
   <!-- Only the disagreements, so an empty list means it has been agreeing. -->
@@ -2211,7 +2236,7 @@
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
-   'timerBlock',
+   'timerBlock','checkBlock','checkList','checkNote',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
@@ -2829,6 +2854,7 @@
     paintNight();
     paintRed();
     paintReads();
+    paintChecks();
     paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
     var vocab = 0;
@@ -3054,6 +3080,12 @@
     fetchPages();          // and whatever this child wrote on another device
     loadReads();
     fetchReads();          // the checker's record follows the child too
+    /* ⚠️ Server only, no local copy on purpose. This is the one list that has
+       to be the SAME list on both devices: it is read on a phone while he is
+       still writing on the iPad, and two drawers drifting apart would show a
+       word as still needing a look after somebody had already settled it. */
+    checks = [];
+    fetchChecks();
     loadRed();
     loadSaved();
     if (hasSheet()) buildSheet();
@@ -7175,6 +7207,124 @@
     saveReads();
   }
 
+  /* ================= words waiting on a grown-up =================
+     ⭐ Andrew's design, 2026-08-28, after five ways of sharpening the checker
+     all failed: "or at the end have adult verify? just the letters ai is not
+     sure about, the s and d and h thing". A word the checker turned down is
+     not marked wrong on nobody's authority; it waits here until somebody looks
+     at the INK and says.
+
+     ⚠️ ON THE SERVER, because of how it is really used: "sometimes we don't
+     have time right at the moment to score it ourselves so it would have to
+     survive browser closing, or I can check it on my phone while he's on my
+     iPad". Nothing about this may live only in this browser's drawer.
+
+     It holds no ink itself, only which page and which key, and the ink comes
+     back through the same fetch that printing uses. */
+  var checks = [];
+  function queueCheck(c, got){
+    if (!me.token || !isWord(c)) return;
+    var pg = currentPage(c.u || 0), key = inkKey(c);
+    var id = pg.id + '|' + key;
+    for (var i = 0; i < checks.length; i++) if (checks[i].id === id){ checks[i].got = got; break; }
+    if (i === checks.length){
+      checks.unshift({ id: id, page_id: pg.id, ink_key: key, word: c.w, got: got });
+    }
+    apiCall('/check', { method: 'POST', body: { token: me.token, id: id, pageId: pg.id,
+                                                inkKey: key, word: c.w, got: got } });
+    paintChecks();
+  }
+  function fetchChecks(){
+    if (!me.token) return;
+    apiCall('/checks?token=' + encodeURIComponent(me.token)).then(function(res){
+      var list = res && res.ok && res.data ? res.data.checks : null;
+      if (!list) return;
+      checks = list;
+      paintChecks();
+    });
+  }
+  /* ⭐ THE VERDICT UNDOES THE MISS. "He had it right" means the checker was
+     wrong, so the miss comes off the record he practises from, and off the
+     page so it does not print as a fault either. The record already travels
+     through /misses, which is how a verdict given on the phone reaches the
+     iPad he is writing on. */
+  function resolveCheck(id, right){
+    var row = null, i;
+    for (i = 0; i < checks.length; i++) if (checks[i].id === id) row = checks[i];
+    if (!row) return;
+    checks = checks.filter(function(r){ return r.id !== id; });
+    if (me.token){
+      apiCall('/check/resolve', { method:'POST',
+        body:{ token: me.token, id: id, verdict: right ? 'right' : 'wrong' } });
+    }
+    if (right){
+      var key = 'w:' + row.word;
+      if (record[key] && record[key].m > 0){
+        record[key].m--;
+        if (!record[key].m && !record[key].h) delete record[key];
+        saveRecord();   // this already pushes /misses, which is how a
+      }               // verdict given on the phone reaches the iPad
+      // and off the printed page, where a missed word is marked as one
+      var pg = null;
+      for (i = 0; i < pages.length; i++) if (pages[i].id === row.page_id) pg = pages[i];
+      if (pg && pg.words && pg.words[row.ink_key] && pg.words[row.ink_key].missed){
+        pg.words[row.ink_key].missed = false;
+        savePages();
+        pushPage(pg);
+      }
+    }
+    sfx.tap();
+    paintChecks();
+    paintHome();
+  }
+  /* ⚠️ The ink is fetched, not assumed. On the phone this list is the FIRST
+     thing that wants a page, and the pages it points at are stubs there, so a
+     row would draw an empty box unless it goes and gets the writing. */
+  function checkInk(row, then){
+    var pg = null;
+    for (var i = 0; i < pages.length; i++) if (pages[i].id === row.page_id) pg = pages[i];
+    if (pg && pg.words && pg.words[row.ink_key]) return then(pg.words[row.ink_key]);
+    if (!me.token) return then(null);
+    apiCall('/page?token=' + encodeURIComponent(me.token) + '&id=' + encodeURIComponent(row.page_id))
+      .then(function(res){
+        var got = res && res.ok && res.data ? res.data.page : null;
+        if (!got) return then(null);
+        if (pg){ pg.words = got.words || {}; pg.stub = false; savePages(); }
+        then((got.words || {})[row.ink_key] || null);
+      });
+  }
+  function paintChecks(){
+    var show = !groupKit() && !!me.token && checks.length > 0;
+    el.checkBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    el.checkNote.textContent = 'The checker turned these down and it is wrong about his '
+      + 'handwriting about a third of the time, so nothing is marked against him until you '
+      + 'have looked. His writing is below each one, exactly as he drew it.';
+    el.checkList.innerHTML = '';
+    checks.slice(0, 12).forEach(function(row){
+      var box = document.createElement('div');
+      box.className = 'ck';
+      box.innerHTML =
+        '<div class="ckhead"><span class="ckword">' + esc(row.word) + '</span>'
+        + '<span class="ckgot">the checker read it as \u201C' + esc(row.got || '?') + '\u201D</span></div>'
+        + '<div class="ckink">looking for his writing\u2026</div>'
+        + '<div class="ckrow">'
+        + '<button type="button" class="yes" data-ok="1">He had it right</button>'
+        + '<button type="button" class="no" data-ok="0">He got it wrong</button></div>';
+      box.querySelectorAll('.ckrow button').forEach(function(b){
+        b.addEventListener('click', function(){
+          unlock(); resolveCheck(row.id, b.getAttribute('data-ok') === '1');
+        });
+      });
+      el.checkList.appendChild(box);
+      checkInk(row, function(rec){
+        var slot = box.querySelector('.ckink');
+        if (!slot) return;
+        slot.innerHTML = rec ? inkSVG(rec) : '<span class="ckgot">no writing kept for this one</span>';
+      });
+    });
+  }
+
   function inkSetup(){
     var box = el.inkBox.getBoundingClientRect();
     var dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -7637,6 +7787,10 @@
          ⚠️ The grown-up override did NOT go with it: the 🤖 Reading switch is
          still on the pad in ordinary practice, so when the checker starts
          turning down good words it can be shut up from the iPad. */
+      /* ⭐ Queued for a grown-up BEFORE he writes it again. He still rewrites,
+         which is good for the letter shapes either way, but the miss it just
+         cost him is now provisional until somebody has looked at the ink. */
+      queueCheck(c, d.read || '');
       inkReveal(d.read
         ? 'That reads as \u201C' + d.read + '\u201D. Have a good look and write it again.'
         : 'It did not think so. Write it again for me.', true);
