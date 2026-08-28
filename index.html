@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.53">
+<meta name="x-cards-version" content="4.54">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1882,6 +1882,14 @@
                   homophone (plain, plane) is answerable out loud
        vocab      the meaning is the clue and she writes the word
        compounds  the two halves, for the matching questions
+       exceptions the Catch This! box asks him to find the words that BREAK
+                  the pattern, so they are named here: `ask` is the question,
+                  `words` are the rule breakers and `why` is what is wrong
+                  with them, and `letters` is what the wrong answers are
+                  drawn from, the words on the sheet carrying the same
+                  letters that DO follow the rule. Spelled out for the reason
+                  the compound halves are: which word breaks a rule is not a
+                  thing to work out from the spelling
        rule       the Catch This! line at the top of the sheet
        off        this week is put away. The data stays exactly where it is,
                   along with its marks and its pages, but it is off the chips
@@ -2013,7 +2021,15 @@
         ['voyage', 'a long trip across water'],
         ['loyal',  'faithful and true'],
         ['employ', 'to hire for a job']
-      ]
+      ],
+      /* Both of these carry oy in the middle, where the rule says oi belongs.
+         employ is NOT one: its oy is on the end, exactly as the rule says. */
+      exceptions: {
+        ask: 'Which word breaks the oi and oy rule?',
+        letters: ['oi', 'oy'],
+        words: ['voyage', 'loyal'],
+        why: 'Its oy is in the MIDDLE, and the rule says oy goes on the END.'
+      }
     }
   ];
 
@@ -4362,6 +4378,28 @@
         out.push({ k: 'm', w: m, kind: g.kind, opts: opts, u: u.id });
       });
     });
+    /* 🔴 THE OTHER RULE BREAKER MUST NEVER BE OFFERED. Two words break the
+       same rule, so a card putting voyage and loyal side by side would have
+       two right answers and mark one of them wrong. Same trap as a blends
+       card offering block as a wrong answer under ck.
+       The wrong answers are the words that carry the SAME letters and obey
+       the rule, so it is voyage against spoil and decoy rather than against
+       Wednesday, which would give it away without him reading anything. */
+    var ex = u.exceptions;
+    if (ex && ex.words && ex.words.length){
+      var obeys = plain.filter(function(w){
+        var lw = w.toLowerCase();
+        if (ex.words.indexOf(w) !== -1) return false;
+        return (ex.letters || []).some(function(pair){ return lw.indexOf(pair) !== -1; });
+      });
+      if (obeys.length >= 3){
+        ex.words.forEach(function(w){
+          var pool = obeys.slice(); shuffle(pool);
+          var opts = pool.slice(0, 3).concat([w]); shuffle(opts);
+          out.push({ k: 'x', w: w, ask: ex.ask, why: ex.why || '', opts: opts, u: u.id });
+        });
+      }
+    }
     var halves = uniq((u.compounds || []).map(function(pr){ return pr[1]; }));
     (u.compounds || []).forEach(function(pr){
       var pool = halves.filter(function(h){ return h !== pr[1]; }); shuffle(pool);
@@ -4562,7 +4600,7 @@
   /* 'st' asks which kind of sentence it is, 'sm' which mark it ends with.
      Both are tapped, so they ride the same choice machinery as the worksheet
      questions rather than growing a second one. */
-  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c')); }
+  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'x')); }
   /* ⭐ WRITTEN, NOT TAPPED (Andrew's call). They shipped as four buttons, which
      marked itself honestly enough, but it is not the exercise: on the sheet he
      WRITES Dec. in the blank. Four buttons also quietly hand him the answer
@@ -4588,6 +4626,7 @@
     if (c && c.k === 'm') return c.kind === 'day'
       ? 'Which one names a day of the week?'
       : 'Which one names a month?';
+    if (c && c.k === 'x') return c.ask || 'Which word breaks the rule?';
     if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
@@ -6127,6 +6166,15 @@
     }
     if (state.mode === 'shoot') rangeSettle(picked, answer);
     if (picked !== null) correct ? sfx.right() : sfx.wrong();
+    /* ⚠️ The green button says WHICH word breaks the rule, and on every other
+       tapped question that is the whole lesson. Not here: knowing that voyage
+       is the odd one out teaches nothing unless he can see what is odd about
+       it. The toast is the only surface free, since body.choice hides the hint
+       line, and it cannot collide with the streak toast because a streak toast
+       only ever follows a RIGHT answer. It runs 1500ms, which is exactly how
+       long a wrong answer is held on screen. */
+    var rb = card();
+    if (!correct && rb && rb.k === 'x' && rb.why) toast(rb.why);
     bump(correct);
     if (state.caught) return;
 
@@ -6844,6 +6892,11 @@
       if (state.defs) (u.vocab || []).forEach(function(r){
         cards += w2.indexOf(r[0]) !== -1 ? t : 1;
       });
+      /* ⚠️ The worksheet questions are dealt on a test night too, this note
+         just never counted them, so it read two or three cards short of the
+         deck it was about to start. Same rule as the meanings: anything that
+         describes the deck reads the helper the deck is built from. */
+      if (state.extras) cards += taskCards(u).length;
     });
     return { work: work.length, all: all, rest: all - work.length, times: t, cards: cards };
   }
@@ -6929,6 +6982,7 @@
     picked.forEach(function(uu){
       unitWords(uu).forEach(function(w){ cards += wordTimes(uu, w); });
       if (state.defs) (uu.vocab || []).forEach(function(r){ cards += wordTimes(uu, r[0]); });
+      if (state.extras) cards += taskCards(uu).length;
       rest += unitWords(uu).length - redFor(uu).length;
     });
     el.redNote.textContent = n + (n === 1 ? ' word' : ' words') + ' marked, written '
@@ -7816,12 +7870,18 @@
     var list = redpen[id] || (redpen[id] = redFor(unitById(id)).slice());
     var i = list.indexOf(w);
     if (i === -1) list.push(w); else list.splice(i, 1);
-    unlock(); sfx.tap(); saveRed(); paintRed();
+    /* ⚠️ paintNight TOO, and it was missing. Tapping a word the red pen caught
+       repainted its own block and nothing else, so the sentence over Get me
+       ready for the test still read "Nothing tapped yet" with words plainly
+       tapped right underneath it, and the two notes contradicted each other on
+       one screen. The button was doing the right thing all along; it is the
+       sentence he reads before pressing it that was out of date. */
+    unlock(); sfx.tap(); saveRed(); paintRed(); paintNight();
   });
   el.redClear.addEventListener('click', function(){
     // emptied, not forgotten, or the photo's marks come straight back
     redUnits().forEach(function(u){ redpen[u.id] = []; });
-    sfx.tap(); saveRed(); paintRed();
+    sfx.tap(); saveRed(); paintRed(); paintNight();
   });
   /* Only the marked words, in whichever way is already chosen, and no score.
      A word the week asks for twice is still asked once here: this is the
