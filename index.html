@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.54">
+<meta name="x-cards-version" content="4.55">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2836,10 +2836,12 @@
     el.defNote.textContent = !vocab
       ? 'This week has no vocabulary words, so there are no meanings to write.'
       : state.defs
-        ? 'He writes what each of the ' + vocab + ' vocabulary words means, as well as '
-          + 'spelling it. The meaning is marked for sense AND spelling, because his '
-          + 'teacher marks both: he lost the mark on proclaim for writing "to declam".'
-        : 'Just the spellings. He is still tested on writing the meanings.';
+        ? 'Each of the ' + vocab + ' vocabulary words is one card: he writes the word and '
+          + 'then what it means, on the one line, the way it goes on the sheet. It is '
+          + 'marked for sense AND spelling, because his teacher marks both: he lost the '
+          + 'mark on proclaim for writing "to declam".'
+        : 'The vocabulary words are dealt as ordinary spellings, with no meanings. He is '
+          + 'still tested on writing what they mean.';
     setOn(el.defOpts, 'data-def', state.defs ? '1' : '0');
     el.handNote.textContent = state.hand
       ? 'He writes each word on the line with the Pencil, and the page keeps the ink exactly '
@@ -4346,16 +4348,18 @@
         u.words.forEach(function(row){
           if (wordTimes(u, row[0]) >= n) out.push({ k: 'w', w: row[0], s: row[1] || '', u: u.id, n: n });
         });
+        /* ⭐ A VOCABULARY WORD IS ONE CARD, NOT TWO (Andrew, 2026-08-27). It
+           dealt a spelling card and then a separate meaning card, so the word
+           came round twice. His sheet asks for one thing: write the word and
+           what it means, on the one line. So the meaning card IS the card, and
+           the spelling is marked inside the answer rather than on its own.
+           With the meanings switched off it goes back to being an ordinary
+           spelling word. The count is the same either way: a word the red pen
+           marked is one he is shaky on, and the meaning came off the same line. */
         (u.vocab || []).forEach(function(row){
-          if (wordTimes(u, row[0]) >= n) out.push({ k: 'w', w: row[0], m: row[1] || '', u: u.id, n: n });
+          if (wordTimes(u, row[0]) < n) return;
+          out.push({ k: state.defs ? 'd' : 'w', w: row[0], m: row[1] || '', u: u.id, n: n });
         });
-        // the meaning follows the same count as its word: a word the red pen
-        // marked is one he is shaky on, and the meaning came off the same line
-        if (state.defs){
-          (u.vocab || []).forEach(function(row){
-            if (wordTimes(u, row[0]) >= n) out.push({ k: 'd', w: row[0], m: row[1] || '', u: u.id, n: n });
-          });
-        }
       })(n);
     }
     return out;
@@ -4597,6 +4601,13 @@
      everything about the writing panel, the ink and the retry applies. */
   function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd' || isSent(c))); }
   function isDef(c){ return !!(c && c.k === 'd'); }
+  /* ⭐ THE WORD AND THEN WHAT IT MEANS, both in his own hand. The word stays
+     on screen as the prompt, so this is not a memory test; what it stops being
+     is a copying exercise on one line and a meaning on another. Everything
+     that has to name the whole answer reads this. */
+  function defWanted(c){
+    return c.w + (c.m ? ' \u2014 ' + c.m : '');
+  }
   /* 'st' asks which kind of sentence it is, 'sm' which mark it ends with.
      Both are tapped, so they ride the same choice machinery as the worksheet
      questions rather than growing a second one. */
@@ -4633,7 +4644,7 @@
   }
   function cardAnswer(c){
     if (isDealt(c)) return '';       // not ours to know
-    if (isDef(c)) return c.m || '';
+    if (isDef(c)) return defWanted(c);
     if (isWord(c) || isTask(c)) return c.w;
     if (isVerse(c)) return picking() ? c.r : c.t;
     return isSound(c) ? c.pick : String(c[0] * c[1]);
@@ -6323,7 +6334,7 @@
        is printed at the top of his sheet and he may look at it. */
     var task = c.k === 'st' ? 'What kind is it? Write ' + kindList
       : c.k === 'sm' ? 'What goes on the end? Draw it:  .  ?  or  !'
-      : def ? 'What does ' + c.w + ' mean? Write the meaning, not the word'
+      : def ? 'Write ' + c.w + ', then what it means'
       : '';
     el.wTask.textContent = task;
     el.wTask.classList.toggle('hide', !task);
@@ -6423,8 +6434,8 @@
        the server so it costs nothing and works with no signal: it is an exact
        comparison and there is nothing for a model to weigh up. */
     if (got.replace(/[^A-Za-z']/g, '').toLowerCase() === c.w.toLowerCase()){
-      missWrite(got, 'That is the word itself. Write what it MEANS. If the word was '
-                   + 'cold, you would write chilly.');
+      missWrite(got, 'That is the word, and it is spelled right. Now write what it MEANS '
+                   + 'after it. If the word was cold, you would write cold, chilly.');
       return;
     }
     if (!me.token || (!state.autoMark && !markLocked())){
@@ -6595,7 +6606,14 @@
     state.tries++;
     sfx.wrong();
     el.wInput.classList.add('bad');
-    el.wMark.innerHTML = got ? marked(got, c.w) : '<span class="short">the time ran out</span>';
+    /* ⚠️ A MEANING IS NOT MARKED LETTER BY LETTER against the book's wording.
+       He is allowed his own words, "weak" for "not strong", which is why a
+       definition goes to a judge rather than to lcsKeep, and painting it red
+       against the book would call a right answer wrong on screen while the
+       judge was passing it. So it is shown back to him exactly as written. */
+    if (!got) el.wMark.innerHTML = '<span class="short">the time ran out</span>';
+    else if (isDef(c)) el.wMark.textContent = got;
+    else el.wMark.innerHTML = marked(got, c.w);
     /* What he can see while he tries again is whatever the mode allows,
        except that a second miss always shows it: stuck with no way through
        is worse than being told. */
@@ -6610,7 +6628,7 @@
        imperative sentence gives a command"), so it stands in for Copy it
        carefully and teaches the thing he actually got wrong. */
     setWHint(isSent(c) ? (why || sentWhy(c))
-           : state.tries >= 2 ? 'Copy it carefully: ' + c.w
+           : state.tries >= 2 ? 'Copy it carefully: ' + (isDef(c) ? defWanted(c) : c.w)
            : why || 'Not quite, write it again', 'bad');
     el.wCheck.textContent = 'Try again';
     setTimeout(function(){
@@ -6758,8 +6776,14 @@
   function currentPage(unit){
     var id = unit + ':' + today(), i;
     for (i = 0; i < pages.length; i++) if (pages[i].id === id) return pages[i];
+    /* ⚠️ `defs` is stamped for the same reason `slots` is: the page has to
+       print as the day it was written, not as the settings are now. A
+       vocabulary word is ONE row when the meanings are on, the word and what
+       it means together, and an ordinary spelling row when they are off. A
+       page from before this carries no `defs` at all and prints exactly as it
+       always did, both rows. */
     var made = { id: id, unit: unit, day: today(), at: Date.now(),
-                 times: unitTimes(unitById(unit)),
+                 times: unitTimes(unitById(unit)), defs: !!state.defs,
                  slots: planFor(unitById(unit)), words: {} };
     pages.unshift(made);
     // a term of pages is a lot of ink in a 5MB drawer, so the oldest go
@@ -6888,10 +6912,11 @@
     var t = redTimes(picked[picked.length - 1]);
     picked.forEach(function(u){
       var w2 = needsWork(u);
+      /* ⚠️ NO SEPARATE COUNT FOR THE MEANINGS ANY MORE. unitWords already has
+         the vocabulary in it, and a vocabulary word is now ONE card whether it
+         carries its meaning or not, so adding them again counted every one of
+         them twice. */
       unitWords(u).forEach(function(w){ cards += w2.indexOf(w) !== -1 ? t : 1; });
-      if (state.defs) (u.vocab || []).forEach(function(r){
-        cards += w2.indexOf(r[0]) !== -1 ? t : 1;
-      });
       /* ⚠️ The worksheet questions are dealt on a test night too, this note
          just never counted them, so it read two or three cards short of the
          deck it was about to start. Same rule as the meanings: anything that
@@ -6911,7 +6936,8 @@
         + 'read aloud, written by hand, no timer.'
       : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
-        + (state.defs ? ', plus the meanings' : '') + '. ' + plan.cards + ' cards, read '
+        + (state.defs ? ', the vocabulary words with their meanings' : '')
+        + '. ' + plan.cards + ' cards, read '
         + 'aloud, written by hand, no timer. The app does the marking and he cannot '
         + 'switch it off. Nothing to set up.';
   }
@@ -6981,13 +7007,13 @@
     var cards = 0, rest = 0;
     picked.forEach(function(uu){
       unitWords(uu).forEach(function(w){ cards += wordTimes(uu, w); });
-      if (state.defs) (uu.vocab || []).forEach(function(r){ cards += wordTimes(uu, r[0]); });
       if (state.extras) cards += taskCards(uu).length;
       rest += unitWords(uu).length - redFor(uu).length;
     });
     el.redNote.textContent = n + (n === 1 ? ' word' : ' words') + ' marked, written '
       + timesWord(t) + ' each, and the other ' + rest + ' once'
-      + (state.defs ? ', with the meanings on top' : '') + '. Start deals ' + cards
+      + (state.defs ? ', and each vocabulary word carries its meaning' : '')
+      + '. Start deals ' + cards
       + ' cards. Write just these deals only the marked ones, unscored.';
   }
 
@@ -7681,7 +7707,21 @@
      actually written on one, so a spelling-only week prints exactly as it
      always did rather than growing three empty rows. */
   function sheetRows(u, pg){
-    var rows = unitWords(u).map(function(w){
+    /* Which shape this page was written in. Stamped on the page, so turning
+       the meanings on or off next week cannot rewrite a page already printed.
+       Undefined on every page written before the two became one card, and
+       that case has to keep both rows or last week's page loses its lines. */
+    var oneCard = pg ? pg.defs === true : !!state.defs;
+    var both = pg ? pg.defs === undefined : false;
+    var vocab = (u.vocab || []).map(function(r){ return r[0]; });
+    var rows = unitWords(u).filter(function(w){
+      // a vocabulary word has no spelling row of its own once it carries its
+      // meaning, unless the page predates that and actually has ink on one
+      if (vocab.indexOf(w) === -1 || both || !oneCard) return true;
+      return !!(pg && pg.words && wordKeys(w, pageWordTimes(pg, w)).some(function(k){
+        return pg.words[k];
+      }));
+    }).map(function(w){
       return { w: w, keys: wordKeys(w, pg ? pageWordTimes(pg, w) : unitTimes(u)) };
     });
     var defs = (u.vocab || []).map(function(r){
@@ -7690,7 +7730,14 @@
                keys: wordKeys(w, pg ? pageWordTimes(pg, w) : unitTimes(u))
                        .map(function(k){ return 'def:' + k; }) };
     }).filter(function(row){
-      return !pg || row.keys.some(function(k){ return pg.words && pg.words[k]; });
+      /* ⭐ A PLANNED ROW PRINTS EMPTY, a row that was never set does not. Once
+         the meaning IS the card, its row is part of the plan, so it shows
+         whether or not he got to it, the same way a third go he never reached
+         still prints as an empty slot. On an older page it only shows where
+         there is ink, exactly as before. */
+      if (!pg) return true;
+      if (oneCard) return true;
+      return row.keys.some(function(k){ return pg.words && pg.words[k]; });
     });
     return rows.concat(defs);
   }
