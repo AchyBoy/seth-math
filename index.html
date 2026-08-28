@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.56">
+<meta name="x-cards-version" content="4.57">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1324,6 +1324,9 @@
       <button type="button" class="small" id="inkUndo">↩︎ Undo</button>
       <button type="button" class="small" id="inkClear">Clear</button>
       <button type="button" class="small" id="inkRub">🧽 Eraser</button>
+      <!-- Beside the eraser because both are modes you turn on and leave on,
+           and nowhere near Done, which is tapped for every single word. -->
+      <button type="button" class="small" id="inkTrace">✍️ Trace it</button>
       <button type="button" class="small" id="inkPeek">👀 Peek</button>
       <button type="button" class="wgo" id="inkDone">Done</button>
     </div>
@@ -2180,7 +2183,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], lessons: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    units: [], lessons: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, trace: false, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -2211,6 +2214,7 @@
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
+   'inkTrace',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
@@ -2494,6 +2498,7 @@
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.defs === 'boolean') state.defs = s.defs;
+        if (typeof s.trace === 'boolean') state.trace = s.trace;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
         if (typeof s.autoMark === 'boolean') state.autoMark = s.autoMark;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
@@ -2514,7 +2519,8 @@
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
         units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
-        write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
+        write: state.write, extras: state.extras, defs: state.defs, trace: state.trace,
+        hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
@@ -6317,6 +6323,7 @@
     el.wInput.placeholder = writeIt;
     // a meaning is a phrase, and 32 characters cuts "flat land with few trees" short
     el.wInput.maxLength = def ? 120 : 32;
+    paintTraceBtn();
     document.body.classList.toggle('defining', def || sen);
     el.wCheck.textContent = 'Check it';
     setWHint('');
@@ -7185,6 +7192,8 @@
     g.setLineDash([5, 7]);
     g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
     g.setLineDash([]);
+    // under his ink, over the rules, so a stroke he lays down always reads on top
+    if (traceable(card())) drawTrace(g, card().w, top, base, mid);
     g.strokeStyle = '#1b2330'; g.lineWidth = 3.4; g.lineCap = 'round'; g.lineJoin = 'round';
     ink.strokes.forEach(function(st){
       if (st.length === 1){
@@ -7202,7 +7211,8 @@
       g.beginPath(); g.arc(ink.rubAt[0], ink.rubAt[1], RUB, 0, 6.284); g.stroke();
       g.setLineDash([]);
     }
-    el.inkHint.classList.toggle('hide', ink.strokes.length > 0);
+    // the traced word IS the "write it here", and the two sat on top of each other
+    el.inkHint.classList.toggle('hide', ink.strokes.length > 0 || traceable(card()));
     el.inkUndo.disabled = !ink.past.length;
     el.inkClear.disabled = !ink.strokes.length;
   }
@@ -7225,6 +7235,62 @@
   function inkTool(t){
     ink.tool = t;
     el.inkRub.classList.toggle('on', t === 'rub');
+  }
+  /* ⭐ THE WORD TO TRACE (Andrew's ask): "can it show the word on the input
+     field so he can trace it, it would have to be in cursive". Drawn on the
+     canvas UNDER his ink, in the system script face, sitting on the same
+     baseline as the ruled lines so the letters land where the guide is.
+
+     ⚠️ IT CAN NEVER REACH THE CHECKER OR THE PRINTED PAGE, and that is not a
+     rule to remember but a fact of how both are built: inkPNG makes a FRESH
+     canvas from ink.strokes, and inkSVG prints the strokes as paths. Neither
+     ever looks at what is painted on the live canvas. So the guide is on
+     screen only, and the sheet his teacher gets is his handwriting alone.
+
+     ⚠️ Copy mode only, the same rule the sentence clue follows: peek and
+     listen exist to take the word AWAY, and a traced outline of it would
+     answer the question the mode is asking. */
+  function traceable(c){
+    return !!(c && c.k === 'w' && state.trace && state.write === 'copy');
+  }
+  function traceFont(px){
+    return '400 ' + px + 'px "Snell Roundhand","Apple Chancery","Segoe Script",cursive';
+  }
+  function drawTrace(g, word, top, base, mid){
+    if (!word) return;
+    /* ⭐ SIZED BY MEASURING THE FONT, not by guessing at it. The first go set
+       the size from the ruled band and the letters came out half again too
+       tall: an o sat straight through the dotted line instead of touching it.
+       A script face has a small x-height and long extenders, and the ratio is
+       different in every font, so ask THIS font how tall its x is at a known
+       size and scale from that. Then the dotted line means what it says. */
+    var want = Math.max(10, (base - mid));
+    g.font = traceFont(100);
+    var m = g.measureText('x');
+    var xh = (m && m.actualBoundingBoxAscent) || 44;
+    var px = Math.max(26, Math.round(100 * want / xh));
+    // shrunk to fit rather than clipped: Wednesday is half again wider than choice
+    var room = ink.w - 48;
+    g.font = traceFont(px);
+    var wide = g.measureText(word).width;
+    if (wide > room){
+      px = Math.max(22, Math.floor(px * room / wide));
+      g.font = traceFont(px);
+      wide = g.measureText(word).width;
+    }
+    g.save();
+    /* ⚠️ Light enough to write over, dark enough to SEE. The first go at this
+       was #e2dcd0 and it painted 36,000 pixels that could not be made out on a
+       screenshot at all: a guide nobody can see is not a guide. */
+    g.fillStyle = '#bdb6a6';
+    g.textBaseline = 'alphabetic';
+    g.textAlign = 'left';
+    /* ⚠️ SEATED BY ITS OWN OVERSHOOT. With an alphabetic baseline a round
+       letter hangs a little below it, so drawing at `base` leaves the whole
+       word floating clear of the line it is supposed to sit on. */
+    var seat = g.measureText('o');
+    g.fillText(word, 24, base - ((seat && seat.actualBoundingBoxDescent) || 0));
+    g.restore();
   }
   function inkReset(){
     ink.strokes = []; ink.cur = null; ink.drawing = false;
@@ -7398,6 +7464,28 @@
     unlock(); sfx.tap();
     inkTool(ink.tool === 'rub' ? 'pen' : 'rub');
   });
+  /* A mode you turn on and leave on, like the rubber, so it wears the same lit
+     blue and it is remembered between rounds. Unlike the rubber it survives a
+     new card: he is learning the shapes, not fixing one word. */
+  el.inkTrace.addEventListener('click', function(){
+    unlock(); sfx.tap();
+    state.trace = !state.trace;
+    saveSettings();
+    paintTraceBtn();
+    inkPaint();
+    toast(state.trace ? 'The word is on the line, write over it'
+                      : 'Tracing off, the line is yours');
+  });
+  /* ⚠️ Hidden rather than dead on peek and listen. Those modes exist to take
+     the word away, so an outline of it would answer the question being asked,
+     and a button that is there but refuses to work reads as broken. */
+  function paintTraceBtn(){
+    var c = card();
+    var offer = !!(c && c.k === 'w' && state.write === 'copy' && state.hand);
+    el.inkTrace.classList.toggle('hide', !offer);
+    el.inkTrace.classList.toggle('on', !!state.trace);
+    el.inkTrace.textContent = state.trace ? '\u270D\uFE0F Tracing on' : '\u270D\uFE0F Trace it';
+  }
   el.inkPeek.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
@@ -7466,16 +7554,19 @@
        read beside the real word for a person to confirm. With the downside
        gone the saving is not worth having, and the second and third goes at a
        word are exactly where a tired hand slips. */
-    /* ⭐ THE CHECKER DOES NOT GET A VOTE ON A CAPITAL. It compares without
-       case on purpose (server side), because a model transcribing cursive
-       cannot reliably tell august from August and a wrong no costs a whole
-       writing. So on the words where the capital IS what is being tested,
-       a yes from it would wave through the exact fault his teacher marked.
-       Those go to a person, with the capital named. */
-    if (!isDef(c) && !isSent(c) && /^[A-Z]/.test(c.w)){
-      inkReveal('Check every letter, and the capital ' + c.w.charAt(0) + '. Did you get it?');
-      return;
-    }
+    /* ⭐ A CAPITALISED WORD IS READ LIKE ANY OTHER NOW (Andrew, 2026-08-27:
+       "that's one thing he misses a lot"). It used to return right here and go
+       straight to the self-grade, on the grounds that the checker gets no vote
+       on a capital. The reasoning held; the consequence did not. Seven of unit
+       2's twenty words start with a capital, so seven were marked by nobody,
+       and skipping the read to protect the capital threw away the SPELLING
+       check with it: "maonday" went onto his printed page unmarked and passed.
+
+       The server still folds case for the spelling compare, exactly as before.
+       The capital is asked there as its own narrow question about one letter's
+       shape, only when the spelling already matched, and only a definite no
+       turns the word round. Measured on his own hand: 6 of 7, every error
+       lenient. See the note beside it in routes/mathCards.ts. */
     // signed in is required: the endpoint spends real money, and the player is
     // how it is held to a sane number of words a day
     if (!me.token){ inkReveal('Not signed in, so he marks this one himself'); return; }
