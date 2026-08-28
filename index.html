@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.57">
+<meta name="x-cards-version" content="4.58">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1001,7 +1001,7 @@
     </div>
   </div>
 
-  <div class="block">
+  <div class="block" id="timerBlock">
     <p class="label">Timer</p>
     <div class="opts" id="timerOpts">
       <button type="button" class="opt on" data-timer="off">Off</button>
@@ -1324,9 +1324,6 @@
       <button type="button" class="small" id="inkUndo">↩︎ Undo</button>
       <button type="button" class="small" id="inkClear">Clear</button>
       <button type="button" class="small" id="inkRub">🧽 Eraser</button>
-      <!-- Beside the eraser because both are modes you turn on and leave on,
-           and nowhere near Done, which is tapped for every single word. -->
-      <button type="button" class="small" id="inkTrace">✍️ Trace it</button>
       <button type="button" class="small" id="inkPeek">👀 Peek</button>
       <button type="button" class="wgo" id="inkDone">Done</button>
     </div>
@@ -2183,7 +2180,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], lessons: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, trace: false, tries: 0, hand: true, autoMark: true,
+    units: [], lessons: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -2214,7 +2211,7 @@
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
-   'inkTrace',
+   'timerBlock',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
    'whoBtn','whoLabel','whoScreen','pickBlock','newPlayerBtn','pinBlock','pinLabel',
    'newName','pinField','codeJoin','authErr','authHint','authGo','authBack','skipAuth','signOutBtn','signOutNote',
@@ -2498,7 +2495,6 @@
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.defs === 'boolean') state.defs = s.defs;
-        if (typeof s.trace === 'boolean') state.trace = s.trace;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
         if (typeof s.autoMark === 'boolean') state.autoMark = s.autoMark;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
@@ -2519,8 +2515,7 @@
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
         units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
-        write: state.write, extras: state.extras, defs: state.defs, trace: state.trace,
-        hand: state.hand,
+        write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
@@ -2880,8 +2875,10 @@
     setOn(el.timerOpts, 'data-timer', state.timer);
     setOn(el.secsOpts, 'data-secs', state.secs);
 
-    el.secsBlock.classList.toggle('hide', state.timer !== 'card');
-    el.chaseBlock.classList.toggle('hide', state.timer !== 'chase');
+    var noClock = spellingNow();
+    el.timerBlock.classList.toggle('hide', noClock);
+    el.secsBlock.classList.toggle('hide', noClock || state.timer !== 'card');
+    el.chaseBlock.classList.toggle('hide', noClock || state.timer !== 'chase');
     el.pace.value = String(state.pace);
     paintPairs();
     paintPace();
@@ -4253,7 +4250,7 @@
       if (state.shuffle) shuffle(cards);
       rounds.push({ label: 'Set ' + n, table: n, cards: cards });
     });
-    if (state.timer !== 'chase'){
+    if (timerKind() !== 'chase'){
       var all = [];
       rounds.forEach(function(r){ all = all.concat(r.cards); });
       if (state.shuffle) shuffle(all);
@@ -4273,7 +4270,7 @@
       if (state.shuffle) shuffle(cards);
       rounds.push({ label: cat.c, table: i + 1, cards: cards });
     });
-    if (state.timer !== 'chase'){
+    if (timerKind() !== 'chase'){
       var all = [];
       rounds.forEach(function(r){ all = all.concat(r.cards); });
       if (state.shuffle) shuffle(all);
@@ -4552,7 +4549,7 @@
       if (state.shuffle) shuffle(cards);
       rounds.push({ label: 'Unit ' + u.unit, table: u.unit, cards: cards });
     });
-    if (state.timer !== 'chase'){
+    if (timerKind() !== 'chase'){
       var all = [];
       rounds.forEach(function(r){ all = all.concat(r.cards); });
       if (state.shuffle) shuffle(all);
@@ -4768,7 +4765,7 @@
 
   function startTimer(){
     stopTimer();
-    if (state.timer !== 'card'){ el.track.classList.add('hidden'); return; }
+    if (timerKind() !== 'card'){ el.track.classList.add('hidden'); return; }
     el.track.classList.remove('hidden');
     el.fill.classList.remove('warn');
     deadline = Date.now() + state.secs * 1000;
@@ -4879,7 +4876,13 @@
   var sayId = null;
   function hush(){ clearTimeout(sayId); el.bubble.classList.remove('show'); }
 
-  function chaseOn(){ return state.timer === 'chase'; }
+  /* 🔴 NO CLOCK ON SPELLING (Andrew, 2026-08-27). Writing a word by hand is
+     not a thing to be timed: a chase rewards finishing, and the whole point of
+     the pad is that he takes the trouble to form the letters. It is answered
+     HERE rather than by writing state.timer off, so his times tables keep the
+     chase they had and nothing is quietly changed under him. */
+  function timerKind(){ return spellingNow() ? 'off' : state.timer; }
+  function chaseOn(){ return timerKind() === 'chase'; }
   function budget(){ return state.pace * state.total; }
   // where each of them is along the track, 0 at the start line and 100 at the hole
   function mouseU(){ return HEAD + (100 - HEAD) * (state.cleared / state.total); }
@@ -6323,7 +6326,6 @@
     el.wInput.placeholder = writeIt;
     // a meaning is a phrase, and 32 characters cuts "flat land with few trees" short
     el.wInput.maxLength = def ? 120 : 32;
-    paintTraceBtn();
     document.body.classList.toggle('defining', def || sen);
     el.wCheck.textContent = 'Check it';
     setWHint('');
@@ -7247,11 +7249,24 @@
      ever looks at what is painted on the live canvas. So the guide is on
      screen only, and the sheet his teacher gets is his handwriting alone.
 
-     ⚠️ Copy mode only, the same rule the sentence clue follows: peek and
-     listen exist to take the word AWAY, and a traced outline of it would
-     answer the question the mode is asking. */
+     ⭐ IT IS THE THIRD GO, NOT A SETTING (Andrew, 2026-08-27): "it's not
+     another option, it's the auto third option, so he fails twice, third time
+     onward he has to trace". So there is no button for it. Two goes on his
+     own, and if the word still is not right the letters appear under his pen
+     and he writes over them.
+
+     Same shape as the rule that already opens the word up after a second
+     miss: by then being stuck is the bigger problem, and the word is on
+     screen anyway whatever the mode, so this gives away nothing that was not
+     already given. That is why it is not held to copy mode.
+
+     ⚠️ THE MARKING DOES NOT STOP. He is scored on the traced go exactly as on
+     the others: the point is that the right letters end up on the page he
+     hands in. */
+  var TRACE_AFTER = 2;      // failed goes before the letters appear
+  var GIVE_UP_AT = 5;       // and the ceiling, so a bad reading can never loop
   function traceable(c){
-    return !!(c && c.k === 'w' && state.trace && state.write === 'copy');
+    return !!(c && c.k === 'w' && state.hand && state.tries >= TRACE_AFTER);
   }
   function traceFont(px){
     return '400 ' + px + 'px "Snell Roundhand","Apple Chancery","Segoe Script",cursive';
@@ -7467,25 +7482,6 @@
   /* A mode you turn on and leave on, like the rubber, so it wears the same lit
      blue and it is remembered between rounds. Unlike the rubber it survives a
      new card: he is learning the shapes, not fixing one word. */
-  el.inkTrace.addEventListener('click', function(){
-    unlock(); sfx.tap();
-    state.trace = !state.trace;
-    saveSettings();
-    paintTraceBtn();
-    inkPaint();
-    toast(state.trace ? 'The word is on the line, write over it'
-                      : 'Tracing off, the line is yours');
-  });
-  /* ⚠️ Hidden rather than dead on peek and listen. Those modes exist to take
-     the word away, so an outline of it would answer the question being asked,
-     and a button that is there but refuses to work reads as broken. */
-  function paintTraceBtn(){
-    var c = card();
-    var offer = !!(c && c.k === 'w' && state.write === 'copy' && state.hand);
-    el.inkTrace.classList.toggle('hide', !offer);
-    el.inkTrace.classList.toggle('on', !!state.trace);
-    el.inkTrace.textContent = state.trace ? '\u270D\uFE0F Tracing on' : '\u270D\uFE0F Trace it';
-  }
   el.inkPeek.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
@@ -7655,7 +7651,10 @@
        so he is never stuck either. */
     if (markLocked() || noPass){
       state.tries++;
-      if (state.tries >= 3){
+      /* ⚠️ The ceiling moved out from three to five when tracing became the
+         third go. At three it gave up on the very go the letters appeared on,
+         so he never got to write over them once. */
+      if (state.tries >= GIVE_UP_AT){
         setWHint('It is ' + c.w + '. Have a good look, then carry on.', 'bad');
         if (state.tries === 3) bump(false);
         else { clearCard(false); chaseNudge(false); }
@@ -7668,7 +7667,10 @@
          "Could not read that one" even when the checker had read it perfectly
          well and turned it down, which is a different thing and the wrong
          thing to tell him. */
-      setWHint(why || 'Could not read that one. Have another go for me.', 'bad');
+      /* And say what the letters under the pen are FOR the moment they turn
+         up, or they read as the app having given him the answer. */
+      setWHint((why || 'Could not read that one. Have another go for me.')
+             + (traceable(c) ? ' The word is on the line now, write over it.' : ''), 'bad');
       el.inkGrade.classList.remove('on');
       el.inkRow.classList.remove('hide');
       inkReset();
