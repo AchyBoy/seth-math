@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.55">
+<meta name="x-cards-version" content="4.56">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7526,15 +7526,30 @@
          the person holding the iPad decides. A YES still passes on its own,
          which is the whole point of having it. */
       if (d.ok){ inkMark(true, d.read || '', d.note || d.cheer || ''); return; }
+      /* 🔴 A NO IS NOT A CHANCE TO PASS HIMSELF (Andrew, 2026-08-27): "he keeps
+         failing the first one, then he just clicks got it on the second try".
+         It still says what it read, with the word on screen beside it, because
+         that is how a wrong no gets seen. What it no longer does is put the
+         way past it under his thumb. Three goes and the word is shown, the miss
+         is counted and the card moves, so he is never stuck.
+         ⚠️ The grown-up override did NOT go with it: the 🤖 Reading switch is
+         still on the pad in ordinary practice, so when the checker starts
+         turning down good words it can be shut up from the iPad. */
       inkReveal(d.read
-        ? 'That reads as \u201C' + d.read + '\u201D. Did you get it?'
-        : 'It did not think so. Did you get it?');
+        ? 'That reads as \u201C' + d.read + '\u201D. Have a good look and write it again.'
+        : 'It did not think so. Write it again for me.', true);
     });
   }
   var checking = false;
 
-  // the spelling comes up and he checks his own writing against it
-  function inkReveal(why){
+  /* The spelling comes up and he checks his own writing against it.
+     ⭐ `noPass` takes the Did you get it? buttons away and makes him write it
+     again instead. Those buttons are for the cases where NOTHING could mark
+     the word: not signed in, no picture, offline, or a capital the checker
+     gets no vote on. A definite no from a checker that DID read it is not one
+     of those, and offering them there let him wave through every word it
+     turned down. */
+  function inkReveal(why, noPass){
     var c = card();
     if (!c || !isWord(c) || state.answered) return;
     stopTimer(); chasePause(); hushVoice();
@@ -7547,7 +7562,7 @@
        the way on is to write it again, not to award himself the mark. After
        three goes it is shown to him, counted as a miss, and the card moves,
        so he is never stuck either. */
-    if (markLocked()){
+    if (markLocked() || noPass){
       state.tries++;
       if (state.tries >= 3){
         setWHint('It is ' + c.w + '. Have a good look, then carry on.', 'bad');
@@ -7558,7 +7573,11 @@
         advanceId = setTimeout(step, 2600);
         return;
       }
-      setWHint('Could not read that one. Have another go for me.', 'bad');
+      /* ⚠️ Say what actually happened. This threw `why` away and told him
+         "Could not read that one" even when the checker had read it perfectly
+         well and turned it down, which is a different thing and the wrong
+         thing to tell him. */
+      setWHint(why || 'Could not read that one. Have another go for me.', 'bad');
       el.inkGrade.classList.remove('on');
       el.inkRow.classList.remove('hide');
       inkReset();
