@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.61">
+<meta name="x-cards-version" content="4.62">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2148,11 +2148,23 @@
      answer is read off the photographs of his own book, the same
      rule the scriptures were fetched under: getting a study
      guide wrong teaches him the wrong thing and he will write it
-     confidently on the day. Where the book's own wording is on a
-     page nobody has photographed, the question is NOT here. See
-     WAITING below, which says exactly which pages would finish
-     it, and says so on the home screen too, so a gap can never
-     read as a chapter that is fully covered.
+     confidently on the day.
+
+     Where the book's own wording sat on a page nobody had
+     photographed, the question was left OUT and a `waiting` block
+     named it and named the pages, on the home screen as well, so
+     a gap could never read as a chapter fully covered. Both
+     history chapters were shipped that way for a few hours and
+     both are now complete off pages 38 to 43 and 48 to 53, so no
+     entry carries `waiting` today. **The machinery stays** and is
+     how the next chapter should be added when only half of it has
+     been photographed: `studyGaps` reads it and `paintHome` puts
+     it on screen in red.
+
+     ⚠️ Chapter 4 has TWO Comprehension Checks, one part way
+     through on page 40 and one at the end on page 45. The first
+     was missed entirely until the middle pages arrived, which is
+     worth knowing before assuming a chapter has one.
 
      `unit` is the chapter number printed on the book, `id` is
      unique across the array and never reused, same rule as
@@ -2164,8 +2176,9 @@
       id: 101, who: 'Seth', subject: 'history', unit: 4,
       book: 'Our American Heritage', title: 'Miles Standish',
       when: 'c. 1584 to 1656', pages: 'pages 36 to 45',
-      /* Important WORDS and Important NAMES, page 37, word for word.
-         The name is what he writes, the meaning is the clue. */
+      /* Important WORDS and Important NAMES, page 37, word for word, plus the
+         Important PLACES box on page 39. The name is what he writes, the
+         meaning is the clue. */
       terms: [
         ['Indigenous people', 'the original inhabitants of a land'],
         ['Separatists',       'Englishmen who wanted to separate from the Church of England'],
@@ -2175,16 +2188,71 @@
         ['Mayflower',         "the Pilgrims' ship"],
         ['Miles Standish',    'military leader of the Plymouth colony'],
         ['Samoset',           'the first Native American to help the Pilgrims'],
-        ['Plymouth',          'the colony Captain Standish kept his watchful eye on']
+        ['Holland',           'the country the Separatists left, where their children were learning Dutch'],
+        ['Leyden',            'the town in Holland where Miles Standish met the Separatists'],
+        ['Cape Cod',          'the place the Pilgrims first saw land, with no fresh water and no good harbor'],
+        ['Plymouth',          'the place the Pilgrims settled in 1620'],
+        ['Rose Standish',     "Captain Standish's wife, who died that first winter"]
       ],
-      /* The Comprehension Check on page 45, and the details on the
-         pages either side of it that the questions are built from. */
+      /* BOTH Comprehension Checks. ⚠️ There are two in this chapter, one part
+         way through on page 40 and one at the end on page 45, and the first was
+         missed until the middle pages were photographed. */
       asks: [
+        ['The Separatists came to America for what?',
+         'Freedom to worship God as they chose',
+         ['Adventure', 'Gold and great wealth', 'Land to farm']],
+        ['The Strangers came to America for what?',
+         'Adventure', ['Freedom of religion', 'To escape the king',
+          'To trade with the Native Americans']],
+        ['What one name do we call both the Separatists and the Strangers?',
+         'Pilgrims', ['Puritans', 'Colonists', 'Settlers']],
+        ['What was the name of their ship?',
+         'The Mayflower', ['The Susan Constant', 'The Godspeed', 'The Discovery']],
+        ['Why did the Separatists want to leave Holland?',
+         'Their children were forgetting their English ways and beginning to speak Dutch',
+         ['They were not allowed to worship God there',
+          'The king of Holland sent them away',
+          'There was no work for them there']],
         ['Whom did the Pilgrims choose to be their military leader?',
          'Miles Standish', ['John Smith', 'John Carver', 'Samoset']],
+        ['Was Miles Standish a Separatist?',
+         'No, but he would do his best to protect them',
+         ['Yes, he led their church', 'Yes, he was one of their leaders in Leyden',
+          'No, and he refused to sail with them']],
+        ['How long were the Pilgrims at sea?',
+         'Sixty-six days', ['Five weeks', 'Ninety days', 'Half a year']],
+        ['Where did the Pilgrims first see land?',
+         'Cape Cod', ['Plymouth', 'Jamestown', 'Holland']],
+        ['Why could the Pilgrims not settle at Cape Cod?',
+         'It had no fresh drinking water and no good harbor',
+         ['Unfriendly tribes lived there', 'The king would not let them',
+          'It was too far from England']],
         ['What was the first form of self-government in the New World?',
-         'the Mayflower Compact', ['the Declaration of Independence',
+         'The Mayflower Compact', ['the Declaration of Independence',
           'the peace treaty', 'the Plymouth charter']],
+        ['Who signed the Mayflower Compact?',
+         'All forty-one of the adult men', ['Miles Standish alone',
+          'The Separatists only', 'The king of England']],
+        ['In what month and year did the Pilgrims find their harbor and name it Plymouth?',
+         'December of 1620', ['November of 1620', 'February of 1621',
+          'December of 1607']],
+        ['What did the fort at Plymouth soon become?',
+         'A hospital', ['A church', 'A schoolhouse', 'A storehouse for food']],
+        ['Who was Rose Standish?',
+         "Captain Standish's wife, who died that first winter",
+         ['The first Pilgrim child born in America',
+          "Chief Massasoit's daughter", 'The woman who nursed the sick']],
+        ['What did Miles Standish, the soldier, do for his sick friends?',
+         'He became their cook and nurse and even washed their clothes',
+         ['He sailed back to England for help', 'He hunted deer for them',
+          'He built each of them a house']],
+        ['In what month was Miles Standish named captain of the new Plymouth colony?',
+         'February', ['December', 'March', 'November']],
+        ['By the time spring came, how many of the Pilgrims had died?',
+         'Half of them', ['A few of them', 'Almost all of them', 'None of them']],
+        ['How many Pilgrims wanted to return on the Mayflower when it sailed back to England?',
+         'Not one of them', ['Half of them', 'All the Strangers',
+          'The women and children']],
         ['Which one is a way Captain Standish helped the Pilgrims?',
          'He led the army at Plymouth for over thirty years',
          ['He taught them to plant corn', 'He translated for Chief Massasoit',
@@ -2216,20 +2284,18 @@
          'Dark, cold and damp, with no windows',
          ['Warm and bright, with small windows', 'Full of rooms with soft beds',
           'Open to the sky so they could see the stars']],
+        ['About how far did the Mayflower sail in a day?',
+         'About 80 miles', ['About 200 miles', 'About 20 miles',
+          'About 500 miles']],
+        ['What did the captain of the Mayflower use to tell him his direction?',
+         'A compass', ['GPS', 'The whip-staff', 'A map of America']],
         ['In what year did Miles Standish die?',
          '1656', ['1584', '1620', '1607']]
       ],
       /* The Timeline of Important Events, printed at the foot of
          the chapter opener. It is the same timeline in chapter 5,
-         so it is written once here and shared. */
-      timeline: true,
-      /* 🔴 The pages nobody has photographed, named so a gap in
-         the guide is visible instead of silent. */
-      waiting: {
-        pages: 'pages 38 to 43',
-        asks: ['Why did the Separatists want to leave Holland?',
-               'Why did the Pilgrims come to Plymouth?']
-      }
+         so it is written once in TIMELINE and shared. */
+      timeline: true
     },
     {
       id: 102, who: 'Seth', subject: 'history', unit: 5,
@@ -2242,10 +2308,13 @@
         ['Chief Massasoit',  'the Native American chief who made a peace treaty with the Pilgrims'],
         ['Samoset',          "a Native American from Chief Massasoit's tribe who was helpful to the Pilgrims"],
         ['John Carver',      'the first governor of Plymouth'],
+        ['William Bradford', 'the second governor of Plymouth, who called Squanto a special instrument sent of God'],
         ['Thomas Hunt',      'the captain who kidnapped Squanto and sold his people as slaves'],
-        ['Thomas Dermer',    'the sea captain who became Squanto’s friend in England'],
+        ['Thomas Dermer',    'the sea captain who became Squanto’s friend and sailed him home'],
         ['Spain',            'where Captain Hunt took Squanto to sell him'],
-        ['England',          'where Squanto learned the English language']
+        ['England',          'where Squanto learned the English language'],
+        ['succotash',        'corn and beans cooked together with meat'],
+        ['venison',          'deer meat']
       ],
       asks: [
         ['What did Squanto learn in England?',
@@ -2254,6 +2323,87 @@
         ['What agreement did Chief Massasoit and Governor Carver make?',
          'A peace treaty', ['The Mayflower Compact', 'A trade for food',
           'A promise to share the land']],
+        ['Which one was a promise of the peace treaty?',
+         'They would not harm each other or steal from one another',
+         ['They would share one village', 'They would trade every spring',
+          'They would worship together']],
+        ['Which one was also a promise of the peace treaty?',
+         'They would not bring guns or bows and arrows when they came to visit',
+         ['They would hunt only in the forest', 'They would each keep to their own river',
+          'They would send their children to the same school']],
+        ['What else did they promise in the peace treaty?',
+         'To help each other if another tribe attacked',
+         ['To give the Pilgrims all their corn', 'To teach the Pilgrims their language',
+          'To sail back to England together']],
+        ['How long was the peace treaty kept without being broken?',
+         'Over fifty years', ['Three years', 'One winter', 'Over a hundred years']],
+        ['Why did Squanto stay with the Pilgrims?',
+         'He wanted to teach the Englishmen how to live in their new land',
+         ['Chief Massasoit sent him to watch them',
+          'He had nowhere else to go', 'The Pilgrims paid him to stay']],
+        ['Why did the Pilgrims have to depend on Squanto and on themselves?',
+         'There were no shops or markets in America',
+         ['They had spent all their money', 'The king would not send them supplies',
+          'Their tools were lost at sea']],
+        ['How did Squanto teach the Pilgrims to catch fish?',
+         'He taught them to make nets from the tall grass',
+         ['He gave them his own hooks', 'He taught them to catch fish by hand',
+          'He traded them nets for corn']],
+        ['What did Squanto and his friends show the Pilgrims how to make from the maple trees?',
+         'Maple syrup and maple sugar', ['Wooden buckets', 'Grass nets',
+          'Medicine for the sick']],
+        ['How did Squanto know it was time to plant corn?',
+         'The oak leaves were as big as a mouse’s ear',
+         ['The stream ran full of fish', 'The last snow had melted',
+          'The geese came back']],
+        ['What did Squanto put in each hole before the corn and beans?',
+         'Three small fish', ['A handful of ashes', 'A little maple sugar',
+          'A pumpkin seed']],
+        ['Why did Squanto put fish in with the seeds?',
+         'The fish help the plants to grow strong and healthy',
+         ['To keep the birds away', 'To hold water in the hill',
+          'To feed the children later']],
+        ['What else did Squanto teach the Pilgrim men to plant?',
+         'Squash and pumpkin seeds', ['Wheat and barley', 'Apples and pears',
+          'Tobacco']],
+        ['Why did the animals run away when the Pilgrims went hunting?',
+         'The Pilgrims made so much noise',
+         ['The Pilgrims hunted in the wrong season', 'Their guns frightened them',
+          'They hunted in the middle of the day']],
+        ['What did the Native American men tell the Pilgrims about the deer?',
+         'The deer had a favorite place to drink water',
+         ['The deer only came out at night', 'The deer would not cross the stream',
+          'The deer were too fast to catch']],
+        ['What is venison?',
+         'Deer meat', ['A kind of nut', 'Corn and beans cooked together',
+          'A grass net']],
+        ['What is succotash?',
+         'Corn and beans cooked together with meat',
+         ['Maple syrup poured over corn', 'A stew of fish and pumpkin',
+          'Bread made from ground nuts']],
+        ['Which one is a way that Squanto helped the Pilgrims?',
+         'He taught them to make nets and catch fish',
+         ['He led their army', 'He wrote the Mayflower Compact',
+          'He sailed them home to England']],
+        ['Which one is also a way that Squanto helped the Pilgrims?',
+         'He taught them where to find wild berries and nuts',
+         ['He built their fort', 'He was their second governor',
+          'He signed the peace treaty for them']],
+        ['The Pilgrims held a feast of what, to celebrate God’s goodness?',
+         'Thanksgiving', ['Harvest', 'Freedom', 'Friendship']],
+        ['Who came to the Pilgrims’ feast, and how many men did he bring?',
+         'Chief Massasoit and ninety of his men',
+         ['Samoset and twelve of his men', 'Squanto and his whole tribe',
+          'Captain Dermer and his crew']],
+        ['What did Chief Massasoit and his men bring to the feast?',
+         'Five deer to share', ['Corn and pumpkins', 'Maple sugar',
+          'Nothing, they came empty-handed']],
+        ['How long did the first feast of Thanksgiving last?',
+         'Three days', ['One day', 'A whole week', 'Two days']],
+        ['What did William Bradford call Squanto?',
+         'A special instrument sent of God',
+         ['The bravest of the Pilgrims', 'The chief of Plymouth',
+          'A faithful servant of the king']],
         ['Who kidnapped Squanto?',
          'Captain Thomas Hunt', ['Captain John Smith', 'Thomas Dermer',
           'Miles Standish']],
@@ -2263,29 +2413,24 @@
           'To take them to England as guests']],
         ['What year was it when Captain Hunt was watching John Smith’s ship?',
          '1614', ['1492', '1620', '1656']],
-        ['What was Captain John Smith doing at that time?',
-         'Exploring the coastline of the New World',
-         ['Sailing home to England', 'Building the colony at Plymouth',
-          'Trading with Chief Massasoit']],
-        ['Who helped Squanto escape once the ship reached Spain?',
-         'Some kind men', ['Captain Hunt', 'The Pilgrims', 'Thomas Dermer']],
-        ['Who was Thomas Dermer?',
-         'A sea captain who became Squanto’s friend',
-         ['The first governor of Plymouth', 'The chief of a nearby tribe',
-          'The man who kidnapped Squanto']],
+        ['In what year did Captain Dermer sail Squanto home to the New World?',
+         '1619', ['1614', '1620', '1622']],
+        ['What did Squanto find when he raced to his village?',
+         'It was covered with grass and weeds, and his people had all died',
+         ['His family waiting for him', 'The Pilgrims already living there',
+          'Chief Massasoit’s tribe camped there']],
+        ['What had happened to Squanto’s tribe while he was away?',
+         'There was a great sickness and no one from his tribe lived',
+         ['They moved north for the winter', 'They were taken to Spain too',
+          'They joined the Pilgrims at Plymouth']],
+        ['Who told Squanto he could live with his tribe?',
+         'Chief Massasoit', ['Samoset', 'Governor Carver', 'Thomas Dermer']],
         ['Whose story in the Bible does the book compare Squanto to?',
          'Joseph', ['Daniel', 'Moses', 'Paul']],
         ['What did Joseph say his brothers meant for evil, God meant for?',
          'Good', ['Nothing', 'A lesson', 'A while']]
       ],
-      timeline: true,
-      waiting: {
-        pages: 'pages 48 to 53',
-        asks: ['List two promises of the peace treaty.',
-               'Why did Squanto stay with the Pilgrims?',
-               'List two ways that Squanto helped the Pilgrims.',
-               'The Pilgrims held a feast of ______ to celebrate God’s goodness.']
-      }
+      timeline: true
     },
     {
       /* ⭐ LAST WEEK'S SCIENCE, kept on purpose. This is not the
@@ -5086,7 +5231,13 @@
 
   /* A term is written by hand, a question is tapped. The reasoning is in the
      comment over STUDY and it is the whole point of the subject. */
-  function studyCards(u){
+  /* ⚠️ `withTimeline` is passed in rather than read off the chapter, because
+     the timeline is printed at the foot of EVERY chapter opener in the history
+     book and both chapters carry the flag. Built per chapter it asked the same
+     six dates twice in a round with both picked, which is not extra practice,
+     it is the same card again with the same four options. The first picked
+     chapter that has one carries it for the round. */
+  function studyCards(u, withTimeline){
     var out = [], terms = (u.terms || []).slice(), asks = (u.asks || []).slice();
     var want = state.study;
     if (want !== 'asks'){
@@ -5113,12 +5264,17 @@
          history book, so it is asked with the chapter rather than kept as a
          set of its own. Dates are tapped, never written: the checker reads
          handwriting, and four digits in his hand is not a word. */
-      if (u.timeline){
+      if (u.timeline && withTimeline){
         TIMELINE.forEach(function(row, i){
           var wrong = TIMELINE.filter(function(r, j){ return j !== i; })
                               .map(function(r){ return r[0]; });
           shuffle(wrong);
-          ask.push({ k: 'qa', q: 'In what year was ' + row[1] + '?',
+          /* ⚠️ The event is printed as a clause on the timeline, "Columbus
+             discovers the New World", so it cannot be dropped inside "in what
+             year was ___?" and come out as English. It reads as its own
+             sentence instead. */
+          ask.push({ k: 'qa', q: row[1].charAt(0).toUpperCase() + row[1].slice(1)
+                        + '. In what year?',
                      w: row[0], o: wrong.slice(0, 3), u: u.id });
         });
       }
@@ -5129,10 +5285,12 @@
   }
   function buildStudyRounds(){
     var picked = state.chapters.slice();
-    var mine = myChapters(), rounds = [], all = [];
+    var mine = myChapters(), rounds = [], all = [], usedTimeline = false;
     mine.forEach(function(u){
       if (picked.indexOf(u.id) === -1) return;
-      var cards = studyCards(u);
+      var mineTimeline = !!u.timeline && !usedTimeline;
+      if (mineTimeline) usedTimeline = true;
+      var cards = studyCards(u, mineTimeline);
       if (!cards.length) return;
       rounds.push({ label: u.title, table: u.unit, cards: cards });
       all = all.concat(cards);
@@ -5146,10 +5304,14 @@
     if (timerKind() !== 'chase') return [{ label: '', table: 0, cards: all }];
     return rounds;
   }
+  // ⚠️ counted exactly the way the deck is built, timeline dedupe and all
   function studyCount(){
-    var n = 0;
+    var n = 0, usedTimeline = false;
     myChapters().forEach(function(u){
-      if (state.chapters.indexOf(u.id) !== -1) n += studyCards(u).length;
+      if (state.chapters.indexOf(u.id) === -1) return;
+      var mineTimeline = !!u.timeline && !usedTimeline;
+      if (mineTimeline) usedTimeline = true;
+      n += studyCards(u, mineTimeline).length;
     });
     return n;
   }
@@ -5170,11 +5332,13 @@
       return state.chapters.indexOf(u.id) !== -1;
     });
     if (!picked.length) return 'Pick a chapter.';
-    var terms = 0, asks = 0;
+    var terms = 0, asks = 0, anyTimeline = false;
     picked.forEach(function(u){
       terms += (u.terms || []).length;
-      asks += (u.asks || []).length + (u.timeline ? TIMELINE.length : 0);
+      asks += (u.asks || []).length;
+      if (u.timeline) anyTimeline = true;
     });
+    if (anyTimeline) asks += TIMELINE.length;      // once a round, not once a chapter
     var book = picked[0].book, pages = picked.map(function(u){ return u.pages; }).join(' and ');
     return book + ', ' + pages + '. ' + terms + ' words he writes out by hand, marked '
       + 'letter for letter with the capital counting, and ' + asks + ' questions he taps. '
