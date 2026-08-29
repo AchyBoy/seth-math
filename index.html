@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.62">
+<meta name="x-cards-version" content="4.63">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -549,10 +549,15 @@
      comes out at the printer's own resolution rather than at the size of a
      phone canvas. */
   .sheet{display:none}
+  /* ⚠️ A GAP AND A WRAP. Both halves sat flush against each other and read as
+     one word, "SethWriting with Purpose 3", the moment the right hand side got
+     longer than a spelling sheet's "Unit 2". A spelling title is four
+     characters and a handwriting one is a book, a lesson and a page. */
   .sheet .shead{display:flex;justify-content:space-between;align-items:baseline;
+    gap:16px;flex-wrap:wrap;
     border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:10px}
-  .sheet .swho{font-size:18px;font-weight:700}
-  .sheet .swhat{font-size:13px}
+  .sheet .swho{font-size:18px;font-weight:700;flex:none}
+  .sheet .swhat{font-size:13px;text-align:right;flex:1;min-width:0}
   .sheet ol{list-style:none;counter-reset:sw}
   .sheet li{counter-increment:sw;display:flex;align-items:center;gap:8px;
     border-bottom:1px solid #bbb;height:40px;page-break-inside:avoid}
@@ -906,6 +911,7 @@
       <button type="button" class="opt" data-subject="history">🇺🇸 History</button>
       <button type="button" class="opt" data-subject="science">🔬 Science</button>
       <button type="button" class="opt" data-subject="trace">✍️ Handwriting</button>
+      <button type="button" class="opt" data-subject="redpen">🔴 What he missed</button>
     </div>
   </div>
 
@@ -916,6 +922,14 @@
   <!-- The one subject marked entirely on the iPad. Nothing here is sent to
        the checker, because what is being measured is the shape of the writing
        rather than the word it spells. -->
+  <!-- Nothing to pick. The deck is every mistake his teacher marked, and
+       choosing which of your own mistakes to go over is not a choice worth
+       offering a nine year old. -->
+  <div class="block hide" id="redpenBlock">
+    <p class="label">What the red pen caught</p>
+    <p class="note" id="redpenNote"></p>
+  </div>
+
   <div class="block hide" id="penBlock">
     <p class="label">Which lesson</p>
     <div class="bigchips" id="handChips"></div>
@@ -2711,7 +2725,7 @@
    'troubleBlock','troubleList','practiceBtn','clearMissBtn','trailBlock','trailText','trailClear',
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'studyBlock','studyChips','studyOpts','studyNote','studyWaiting',
-   'penBlock','handChips','penNote',
+   'penBlock','handChips','penNote','redpenBlock','redpenNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
@@ -3021,7 +3035,8 @@
         if (s.subject === 'times' || s.subject === 'blends' || s.subject === 'scripture'
             || s.subject === 'spelling' || s.subject === 'sentence'
             || s.subject === 'proof' || s.subject === 'history'
-            || s.subject === 'science' || s.subject === 'trace') state.subject = s.subject;
+            || s.subject === 'science' || s.subject === 'trace'
+            || s.subject === 'redpen') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
         if (Array.isArray(s.chapters) && s.chapters.length) state.chapters = s.chapters;
@@ -3336,6 +3351,7 @@
     var proof = state.subject === 'proof';
     var study = studyNow();
     var pen = handNow();
+    var red = redpenNow();
     if (study && chipsBuiltFor !== state.subject) paintStudyChips();
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
@@ -3385,9 +3401,11 @@
         + 'right one. ' + proofCards() + ' cards.';
     }
     setOn(el.teachOpts, 'data-teach', state.teach ? '1' : '0');
-    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent || proof || study || pen);
+    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent || proof || study || pen || red);
     el.penBlock.classList.toggle('hide', !pen);
     if (pen) el.penNote.textContent = handSummary();
+    el.redpenBlock.classList.toggle('hide', !red);
+    if (red) el.redpenNote.textContent = redpenSummary();
     el.studyBlock.classList.toggle('hide', !study);
     if (study){
       setOn(el.studyOpts, 'data-study', state.study);
@@ -3412,7 +3430,7 @@
     el.topicsBlock.classList.toggle('hide', !verses);
     el.unitsBlock.classList.toggle('hide', !spell);
     el.writeBlock.classList.toggle('hide', !spell);
-    el.modeBlock.classList.toggle('hide', spell || sent || proof || study || pen);
+    el.modeBlock.classList.toggle('hide', spell || sent || proof || study || pen || red);
     el.setsNote.textContent = setsSummary();
     el.topicNote.textContent = groupKit()
       ? 'One subject a round. Read the verse and pick where it is found. King James, '
@@ -3475,7 +3493,7 @@
     /* 🔴 NO CLOCK ON HANDWRITING either, and for a stronger reason than
        spelling: the whole exercise is slowing down and forming the letters,
        so a card timer would be marking him down for doing it right. */
-    var noClock = spellingNow() || handNow();
+    var noClock = spellingNow() || handNow() || redpenNow();
     el.timerBlock.classList.toggle('hide', noClock);
     el.secsBlock.classList.toggle('hide', noClock || state.timer !== 'card');
     el.chaseBlock.classList.toggle('hide', noClock || state.timer !== 'chase');
@@ -3483,12 +3501,14 @@
     paintPairs();
     paintPace();
 
-    var chosen = pen ? state.penLessons.length : study ? state.chapters.length
+    var chosen = red ? myRedpen().length
+      : pen ? state.penLessons.length : study ? state.chapters.length
       : proof ? 1 : sent ? state.lessons.length : spell ? state.units.length
       : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
     // two cards a sentence, which kind and which mark
     // ⚠️ counted exactly the way the deck is built, teach cards deduped and all
-    var count = pen ? handCount() : study ? studyCount() : proof ? proofCards() : sent ? sentenceCards() : spell
+    var count = red ? myRedpen().length
+      : pen ? handCount() : study ? studyCount() : proof ? proofCards() : sent ? sentenceCards() : spell
       ? state.units.reduce(function(n, no){
           var u = unitById(no); return n + (u ? unitCards(u).length : 0);
         }, 0)
@@ -5774,6 +5794,12 @@
     lastHand = m;
     paintHandMark(m);
     var ok = m.score >= HAND_PASS;
+    /* ⭐ KEPT WHATEVER THE MARK. His teacher marks the paper, and the page she
+       gets has to show what he actually wrote, including the go that was not
+       good enough: a sheet of only his best attempts tells her nothing about
+       the thing she put a D on. The dot in the margin flags a row that took
+       more than one go, exactly as it does on a spelling page. */
+    keepInk(c, !ok);
     ok ? sfx.right() : sfx.wrong();
     if (state.tries === 0) bump(ok, !ok);
     if (!ok){
@@ -5814,7 +5840,222 @@
     setWHint(m.say, m.score >= HAND_PASS ? 'good' : 'bad');
   }
 
+  /* =========================================================
+     WHAT THE RED PEN CAUGHT. One round made of nothing but the
+     faults actually marked on the papers that came home, across
+     every subject at once.
+
+     ⭐ WHY IT IS ITS OWN SUBJECT rather than a filter over the
+     others. Andrew, 2026-08-29: "can you build something for the
+     things we know he missed so we can at least start somewhere".
+     The Keeps missing these list is built from what he gets wrong
+     ON THIS SITE, which is a different thing entirely: it cannot
+     know about a mark made in red on paper by his teacher. This
+     is that, and it is the shortest honest answer to "where do we
+     start", because every card in it is a mistake he really made
+     rather than one the site guessed he might.
+
+     ⚠️ EVERY CARD SAYS WHERE IT CAME FROM AND WHAT WENT WRONG.
+     `from` is the paper and `why` is the fault, and the fault is
+     shown BEFORE he answers, not after. This deck is teaching,
+     not testing: he has already been tested on all of it and this
+     is the going back over it.
+
+     🔴 READ OFF PHOTOGRAPHS OF THE MARKED PAPERS, so unlike the
+     study guides, which quote a printed book, some of this is a
+     judgement about what a red pen meant. Anything ambiguous is
+     LEFT OUT rather than guessed at: a deck that drills the wrong
+     fault is worse than a short one. The three deductions on the
+     spelling test whose items could not be made out are not here.
+     If any of these is misread, fix the entry, it is one line.
+     ========================================================= */
+  /* 🔴 NOT `REDPEN`. That name was already taken, by the localStorage key for
+     the words his teacher marked on a spelling list, eight hundred lines below
+     this. Both are `var` in the same scope, so the string won and this array
+     was a string by the time anything read it: "REDPEN.filter is not a
+     function", and a blank play screen. Same shape of bug as the one in the
+     note at the top of this file about a top level `var` clobbering a function,
+     and the reason that note is there. */
+  var MARKED_WORK = [
+    /* --- Spelling test, 8/27/26, 91 A- --- */
+    {
+      who: 'Seth', from: 'Spelling test, 27 August',
+      why: 'A month always starts with a capital letter.',
+      k: 'w', w: 'October', s: 'The leaves turn color in October.'
+    },
+    /* The ai rule off his own unit 1 list, and the three that came
+       back marked are all the SAME fault: the i falling out of ai. */
+    {
+      who: 'Seth', from: 'Spelling, unit 1',
+      why: 'The i fell out of ai. Remember: ai in the MIDDLE, ay at the END.',
+      k: 'w', w: 'stairway', s: 'He went up the stairway two steps at a time.'
+    },
+    {
+      who: 'Seth', from: 'Spelling, unit 1',
+      why: 'You wrote plan. It is plain, with the ai in the middle.',
+      k: 'w', w: 'plain', m: 'flat land with few trees'
+    },
+    {
+      who: 'Seth', from: 'Spelling, unit 1',
+      why: 'You wrote proclam. It is proclaim, with the ai in the middle.',
+      k: 'w', w: 'proclaim', m: 'to declare'
+    },
+    {
+      who: 'Seth', from: 'Spelling, unit 1',
+      why: 'Another ai word. The i is easy to lose in the middle.',
+      k: 'w', w: 'frail', m: 'weak'
+    },
+    {
+      who: 'Seth', from: 'Spelling, unit 1',
+      why: 'ai in the MIDDLE of the word.',
+      k: 'w', w: 'praise', s: 'His teacher had nothing but praise for the work he did.'
+    },
+
+    /* --- Language 3, Quiz 1, 8/27/26, 97 A --- */
+    {
+      who: 'Seth', from: 'Language quiz 1, question 2',
+      why: 'Marked in red. This is the word for a sentence that ASKS.',
+      k: 'qa', q: 'An ______ sentence asks a question.',
+      w: 'interrogative', o: ['exclamatory', 'imperative', 'declarative']
+    },
+    {
+      who: 'Seth', from: 'Language quiz 1, question 4',
+      why: 'Marked in red. This is the word for a sentence that COMMANDS.',
+      k: 'qa', q: 'An ______ sentence gives a command.',
+      w: 'imperative', o: ['interrogative', 'exclamatory', 'declarative']
+    },
+    /* He was marked down three for this one, having answered Exc.
+       It is a command, so it is Imp., and the first word gives it
+       away: look is a doing word. */
+    {
+      who: 'Seth', from: 'Language quiz 1, question 15',
+      why: 'You put Exc. It starts with look, which is a doing word, so it is bossing you about.',
+      k: 'qa', q: '"Look at the picture I drew of a barn owl." What kind of sentence is it?',
+      w: 'Imp., imperative, it gives a command',
+      o: ['Exc., exclamatory, it shows strong feeling',
+          'Int., interrogative, it asks a question',
+          'Dec., declarative, it tells you something']
+    },
+    /* ⭐ The words themselves, written out. His teacher's note on the
+       same quiz was about HOW the answers are written, and these two
+       are the longest words on the sheet. */
+    {
+      who: 'Seth', from: 'Language quiz 1',
+      why: 'Write the whole word out. This is the one you missed on question 2.',
+      k: 'w', w: 'interrogative', m: 'the kind of sentence that asks a question'
+    },
+    {
+      who: 'Seth', from: 'Language quiz 1',
+      why: 'Write the whole word out. This is the one you missed on question 4.',
+      k: 'w', w: 'imperative', m: 'the kind of sentence that gives a command'
+    },
+
+    /* --- Science practice quiz A, 8/27/26, 88 --- */
+    /* 🔴 BOTH OF THESE WERE PRINTED IN THE WORD BANK at the foot of
+       his own page and still came back wrong, which is the whole
+       diagnosis of this week in two words. */
+    {
+      who: 'Seth', from: 'Science quiz, question 7',
+      why: 'You wrote ful. It was in the word box at the bottom of your own page.',
+      k: 'w', w: 'fuel', s: 'Wind, water and solar energy can be turned into fuel.'
+    },
+    {
+      who: 'Seth', from: 'Science quiz, question 11',
+      why: 'You wrote plastif. It was in the word box at the bottom of your own page.',
+      k: 'w', w: 'plastic', s: 'An insulator like plastic is anything that electricity cannot flow through.'
+    },
+
+    /* --- History practice quiz A, 8/28/26, 88 --- */
+    /* Three names rewritten in red with "Capitalize!" beside them.
+       Every one is a place or a person, so every one takes a capital. */
+    {
+      who: 'Seth', from: 'History quiz, "Capitalize!"',
+      why: 'A place always takes a capital letter.',
+      k: 'w', w: 'Jamestown', m: 'the first permanent English settlement in the New World'
+    },
+    {
+      who: 'Seth', from: 'History quiz, "Capitalize!"',
+      why: "A person's name always takes a capital letter.",
+      k: 'w', w: 'Pocahontas', m: 'the daughter of Powhatan, who warned John Smith about a planned attack on Jamestown'
+    },
+    {
+      who: 'Seth', from: 'History quiz, "Capitalize!"',
+      why: "A person's name always takes a capital letter.",
+      k: 'w', w: 'Powhatan', m: 'the man who was the chief leader of many tribes'
+    },
+    {
+      who: 'Seth', from: 'History quiz, question 5',
+      why: 'Marked wrong. The king wanted to start an English settlement in the New World.',
+      k: 'qa', q: 'The king who wanted to start an English settlement in the New World was King ______.',
+      w: 'James I', o: ['Charles II', 'Newport', 'John Smith']
+    },
+
+    /* --- Writing with Purpose 3, lesson 9, D --- */
+    /* ⚠️ A TRACE CARD, not a word. The D was not about knowing
+       anything, so nothing written or tapped could practise it. It
+       rides the handwriting marker, which is why that had to exist
+       before this deck could be honest about the worst grade on the
+       sheet. */
+    {
+      who: 'Seth', from: 'Writing, lesson 9, graded D',
+      why: 'Proper formation, staying in the lines, writing neater. Her three words.',
+      k: 'tr', w: 'God', pass: 'trace', u: 201, row: 0
+    },
+    {
+      who: 'Seth', from: 'Writing, lesson 9, graded D',
+      why: 'Now on your own, and it is marked out of ten.',
+      k: 'tr', w: 'God', pass: 'own', u: 201, row: 0
+    },
+    {
+      who: 'Seth', from: 'Writing, lesson 9, graded D',
+      why: 'The other word on the page. Trace it first.',
+      k: 'tr', w: 'against', pass: 'trace', u: 201, row: 1
+    },
+    {
+      who: 'Seth', from: 'Writing, lesson 9, graded D',
+      why: 'Now on your own.',
+      k: 'tr', w: 'against', pass: 'own', u: 201, row: 1
+    }
+  ];
+
+  function redpenNow(){ return state.subject === 'redpen'; }
+  function myRedpen(){
+    if (!me.name) return MARKED_WORK;
+    return MARKED_WORK.filter(function(c){ return sameWho(c.who, me.name); });
+  }
+  /* ⚠️ NEVER SHUFFLED ACROSS A TRACE PAIR. Everything else in here is
+     independent, but a handwriting row is two cards and the trace has to
+     come immediately before the go it teaches, exactly as in the
+     handwriting subject. Shuffling is done on PAIRS, so the pair holds. */
+  function buildRedpenRounds(){
+    var mine = myRedpen(), groups = [], i;
+    for (i = 0; i < mine.length; i++){
+      var c = mine[i];
+      if (c.k === 'tr' && c.pass === 'trace' && mine[i + 1]
+          && mine[i + 1].k === 'tr' && mine[i + 1].w === c.w){
+        groups.push([c, mine[i + 1]]); i++;
+      } else groups.push([c]);
+    }
+    if (state.shuffle) shuffle(groups);
+    var all = [];
+    groups.forEach(function(g){ all = all.concat(g); });
+    return [{ label: '', table: 0, cards: all }];
+  }
+  function redpenSummary(){
+    var mine = myRedpen(), papers = {};
+    mine.forEach(function(c){ papers[c.from.split(',')[0]] = 1; });
+    return 'Every one of these is a mistake his teacher actually marked in red, off '
+      + Object.keys(papers).length + ' papers, and each card says which paper it came '
+      + 'off and what went wrong before he answers. ' + mine.length + ' cards. '
+      + 'Nothing here is a guess about what he might find hard.  '
+      + '⚠️ Read off photographs of the marked papers, so a few are a '
+      + 'judgement about what a red pen meant. Anything that could not be made out was '
+      + 'left out rather than guessed at. If one of these is not really his mistake, say '
+      + 'so and it comes out.';
+  }
+
   function buildRounds(){
+    if (redpenNow()) return buildRedpenRounds();
     if (handNow()) return buildHandRounds();
     if (studyNow()) return buildStudyRounds();
     if (state.subject === 'proof') return buildProofRounds();
@@ -7502,7 +7743,7 @@
        only ever follows a RIGHT answer. It runs 1500ms, which is exactly how
        long a wrong answer is held on screen. */
     var rb = card();
-    if (!correct && rb && rb.k === 'x' && rb.why) toast(rb.why);
+    if (!correct && rb && rb.why && (rb.k === 'x' || rb.from)) toast(rb.why);
     bump(correct);
     if (state.caught) return;
 
@@ -7666,6 +7907,14 @@
                 ? 'Trace it. Follow the letters, slowly.'
                 : 'Now write it yourself, on the line.')
       : '';
+    /* ⭐ On a red pen card the FAULT replaces the instruction, because this deck
+       is going back over a mistake rather than setting a fresh question, and
+       what went wrong is the whole reason the card is here. Shown before he
+       answers, not after. */
+    /* ⚠️ On a handwriting card it is ADDED to the instruction, never instead
+       of it: 'trace it' and 'now on your own' are two different jobs and the
+       card cannot say which it is without them. */
+    if (c.why && c.from) task = pen ? (task + '  ' + c.why) : c.why;
     el.wTask.textContent = task;
     el.wTask.classList.toggle('hide', !task);
     /* ⭐ A WAY TO WORK IT OUT, not a way to be told. It walks him through the
@@ -8149,16 +8398,36 @@
     if (pg && pg.stub) return pg.written || 0;
     return pg && pg.words ? Object.keys(pg.words).length : 0;
   }
+  /* ⭐ WHOSE PAGE IS THIS. It used to be `unitById(pg.unit)` inline in three
+     places, which meant the drawer only understood spelling weeks: a handwriting
+     page was minted, filtered straight back out so nothing showed, and still
+     counted against PAGE_CAP, so it would have quietly pushed his real spelling
+     pages out of the drawer. That was written down as a known hole beside
+     inkMark before handwriting existed; this is the fix. */
+  function pageUnit(unit){
+    var u = unitById(unit);
+    if (u) return { kind: 'spell', u: u };
+    u = handById(unit);
+    if (u) return { kind: 'hand', u: u };
+    return null;
+  }
   // this child's pages that actually have something on them, newest first
   function myPages(){
-    return pages.filter(function(pg){ return !!unitById(pg.unit) && pageWritten(pg); })
+    return pages.filter(function(pg){ return !!pageUnit(pg.unit) && pageWritten(pg); })
                 .sort(function(a, b){ return (b.at || 0) - (a.at || 0); });
   }
   // which go it was, so writing a word twice keeps both hands and not the last one
   /* ⚠️ A definition is filed under its own key. Without the prefix it writes
      to `frail`, which is where the SPELLING of frail is kept, and the meaning
      would quietly overwrite the word on the printed page. */
-  function inkKey(c){ return (isDef(c) ? 'def:' : '') + c.w + (c.n > 1 ? '#' + c.n : ''); }
+  /* ⚠️ A handwriting row is written TWICE, once over the letters and once on
+     his own, and both go on the page as their own slot. Without the pass in the
+     key the second go silently overwrote the first and the sheet showed one
+     column where his worksheet has two. */
+  function inkKey(c){
+    if (isTrace(c)) return c.w + ':' + c.pass;
+    return (isDef(c) ? 'def:' : '') + c.w + (c.n > 1 ? '#' + c.n : '');
+  }
 
   /* ⭐ WHAT THE CHECKER READ, kept only when it DISAGREED. The verdict used
      to live on screen for a second and then be gone, so "it rejected a word
@@ -9379,7 +9648,18 @@
     return rows.concat(defs);
   }
   function pageSlots(pg){
-    var u = unitById(pg.unit); if (!u) return { done: 0, all: 0 };
+    var own = pageUnit(pg && pg.unit);
+    if (!own) return { done: 0, all: 0 };
+    /* A handwriting page has two slots a row and nothing to work out: the rows
+       are the lesson's, fixed, and both goes are always set. */
+    if (own.kind === 'hand'){
+      var d = 0, a = 0;
+      own.u.rows.forEach(function(t){
+        [t + ':trace', t + ':own'].forEach(function(k){ a++; if (pg.words[k]) d++; });
+      });
+      return { done: d, all: a };
+    }
+    var u = own.u;
     var list = sheetRows(u, pg), done = 0, all = 0;
     list.forEach(function(row){
       row.keys.forEach(function(k){ all++; if (pg.words[k]) done++; });
@@ -9395,7 +9675,9 @@
   function buildSheet(page){
     var pg = page || sheetPage || myPages()[0];
     if (!pg) return false;
-    var u = unitById(pg.unit); if (!u) return false;
+    var own = pageUnit(pg.unit); if (!own) return false;
+    if (own.kind === 'hand') return buildHandSheet(pg, own.u);
+    var u = own.u;
     sheetPage = pg;
     var list = sheetRows(u, pg);
     var rows = list.map(function(row){
@@ -9418,6 +9700,37 @@
       + '<ol>' + rows + '</ol>'
       + '<p class="foot">Written with the Apple Pencil. A dot marks a word that took '
       + 'more than one go.</p>';
+    return true;
+  }
+  /* ⭐ THE HANDWRITING SHEET. Two slots a row, the traced go and his own, laid
+     out the way his Writing with Purpose page lays them out, so his teacher is
+     looking at the same exercise she set rather than at a screenshot of an app.
+
+     ⚠️ The MODEL IS NOT ON IT, and cannot be: inkSVG prints the strokes and the
+     guide was only ever painted on the live canvas. So the traced column is his
+     hand over letters that are not there any more, which reads exactly as it
+     should, as the neater of his two goes. */
+  function buildHandSheet(pg, u){
+    sheetPage = pg;
+    var rows = u.rows.map(function(t){
+      var missed = false;
+      var slots = [t + ':trace', t + ':own'].map(function(k){
+        var rec = pg.words[k];
+        if (rec && rec.missed) missed = true;
+        return '<span class="slot">' + (rec ? inkSVG(rec) : '') + '</span>';
+      }).join('');
+      return '<li class="defrow"><span class="dword">' + esc(t) + '</span>'
+           + slots + '<span class="flag">' + (missed ? '\u2022' : '') + '</span></li>';
+    }).join('');
+    el.sheet.classList.toggle('tight', u.rows.length > 22);
+    el.sheet.innerHTML =
+      '<div class="shead"><span class="swho">' + esc(me.name || 'Handwriting') + '</span>'
+      + '<span class="swhat">' + esc(u.book + ', ' + u.title) + ' &middot; '
+      + esc(pageWhen(pg, true)) + '</span></div>'
+      + '<ol>' + rows + '</ol>'
+      + '<p class="foot">Traced first, then written on his own, with the Apple Pencil. '
+      + 'A dot marks a row that took more than one go. Practised for '
+      + esc(u.practice.join(', ').toLowerCase()) + '.</p>';
     return true;
   }
   /* ⚠️ Read at noon, not midnight. A bare '2026-08-25' is parsed as UTC and
@@ -9605,14 +9918,15 @@
     if (!show) return;
     el.pagesList.innerHTML = '';
     mine.forEach(function(pg){
-      var u = unitById(pg.unit), n = pageSlots(pg);
+      var own = pageUnit(pg.unit), n = pageSlots(pg);
       // a page pulled from the server carries no ink until it is asked for
       var done = pg.stub ? (pg.written || 0) : n.done;
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'pg' + (done < n.all ? ' part' : '');
       b.setAttribute('data-id', pg.id);
-      b.innerHTML = '<span class="nm">Unit ' + u.unit + '</span>'
+      b.innerHTML = '<span class="nm">'
+                  + esc(own.kind === 'hand' ? 'Writing' : 'Unit ' + own.u.unit) + '</span>'
                   + '<span class="dy">' + esc(pageWhen(pg)) + '</span>'
                   + '<span class="ct">' + done + ' / ' + n.all + '</span>'
                   + '<span class="pr">\uD83D\uDDA8</span>';
@@ -9821,9 +10135,12 @@
     hushVoice(); clearTimeout(peekId);
     try { el.wInput.blur(); } catch(e){}
     document.body.classList.remove('write', 'listening', 'hand');
-    // the sheet is his spelling handwriting, so it belongs to a spelling round
-    // and nowhere else; it was turning up after scriptures on a shared phone
-    var canPrint = state.subject === 'spelling' && !groupKit() && pageWritten(sheetPage) > 0;
+    /* The sheet is a page in his own hand, so it belongs to a round that WROTE
+       one and nowhere else; it was turning up after scriptures on a shared
+       phone. Handwriting writes one too now, and so does the red pen deck when
+       it deals a handwriting row. */
+    var writes = state.subject === 'spelling' || handNow() || redpenNow();
+    var canPrint = writes && !groupKit() && pageWritten(sheetPage) > 0;
     el.printBtn.classList.toggle('hide', !canPrint);
     if (canPrint) buildSheet();
     // A dealt round is marked by the server, so none of the page's own
