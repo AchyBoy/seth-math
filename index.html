@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.64">
+<meta name="x-cards-version" content="4.66">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,6 +131,12 @@
     flex:1;justify-content:center}
   body.clocking .clock{display:flex}
   .clock canvas{width:min(78vw,320px);height:min(78vw,320px);touch-action:none}
+  /* ⚠️ On a telling card the dial is the PROMPT and the writing pad is the
+     answer, so the two have to share a phone screen. The face comes down to
+     about half and stops stretching the box. */
+  body.telling .clock{flex:none;gap:6px;padding-top:2px}
+  body.telling .clock canvas{width:min(46vw,190px);height:min(46vw,190px)}
+  body.telling .crow{display:none}
   .cnote{font-size:15px;font-weight:600;color:var(--muted);text-align:center;
     min-height:22px;margin:0 14px;line-height:1.35}
   .cnote.bad{color:#d2453c}
@@ -140,6 +146,8 @@
      shares it with the writing pad, which is where the answer goes. */
   body.summing .stage,body.clocking .stage,
   body.clocking .hint,body.clocking .grade,body.clocking .next{display:none}
+  /* the pad's own word block is the answer here too, same as on a sum */
+  body.telling .wtop{display:none}
   /* ⚠️ The word at the top of the writing panel is the ANSWER on a sum card, so
      the whole of that block goes. The sum above it is the prompt. */
   body.summing .wtop{display:none}
@@ -620,6 +628,11 @@
     font-size:13px;color:#444;flex:none}
   .sheet .slot{flex:1;height:100%;display:flex;align-items:center;min-width:0}
   .sheet .slot svg{height:34px;width:auto;max-width:100%}
+  /* ⚠️ A clock is not a line of writing. The slot sizes ink to the height of a
+     written word, which squeezed a whole dial into 34px and printed three
+     unreadable smudges. A clock row is as tall as the face needs. */
+  .sheet li.tallrow{height:auto;min-height:120px}
+  .sheet li.tallrow .slot svg{height:112px}
   /* written twice, so the row is halved and the second go is fenced off */
   .sheet .slot + .slot{border-left:1px dotted #bbb;padding-left:8px}
   /* A meaning row carries the word it belongs to, or the teacher is reading
@@ -6146,6 +6159,11 @@
     if (state.shuffle) shuffle(groups);
     var all = [];
     groups.forEach(function(g){ all = all.concat(g); });
+    /* ⚠️ Everything except the handwriting rows is filed under REDPEN_UNIT, so
+       the page it writes is its own. The trace rows keep the handwriting lesson
+       they came from, because their sheet has two slots a row and belongs with
+       the rest of his writing. */
+    all.forEach(function(c){ if (c.k !== 'tr' && !c.u) c.u = REDPEN_UNIT; });
     return [{ label: '', table: 0, cards: all }];
   }
   function redpenSummary(){
@@ -6205,6 +6223,11 @@
   function mathNow(){ return state.subject === 'math'; }
   function isSum(c){ return !!(c && c.k === 'sum'); }
   function isClock(c){ return !!(c && c.k === 'clock'); }
+  /* The clock read the other way round: the hands are set and he writes what
+     the time says. A WRITING card, so the pad, the rubber and the checker all
+     apply, with the dial above it as the prompt. */
+  function isClockSay(c){ return !!(c && c.k === 'clocksay'); }
+  function anyClock(c){ return isClock(c) || isClockSay(c); }
   function myMath(){
     if (!me.name) return MATH;
     return MATH.filter(function(u){ return sameWho(u.who, me.name); });
@@ -6313,10 +6336,107 @@
     var mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
     var m = mins[randInt(1, mins.length - 1)];
     if (Math.random() < 0.12) m = 0;
-    return { k: 'clock', h: randInt(1, 12), m: m, u: u.id, kind: 'clock' };
+    var c = { k: 'clock', h: randInt(1, 12), m: m, u: u.id, kind: 'clock' };
+    /* ⭐ Two in five are the WRITING direction, because that is the one Andrew
+       says he gets wrong. The rest are drawing, and half of those are asked in
+       words rather than in digits, which is the same difficulty from the other
+       side. */
+    c.say = Math.random() < 0.4;
+    c.worded = !c.say && Math.random() < 0.5;
+    if (c.say){ c.k = 'clocksay'; c.w = clockSaid(c); }
+    return c;
   }
   function clockWords(c){
     return c.h + ':' + (c.m < 10 ? '0' + c.m : c.m);
+  }
+  /* =========================================================
+     TIME IN WORDS. Andrew, 2026-08-29: "one thing he needs to
+     write that he gets wrong is things like Half past 3,
+     Quarter to 5". So the clock is drilled BOTH WAYS: given a
+     time he draws the hands, and given the hands he writes what
+     it says. The second is the one he is getting wrong.
+
+     ⚠️ AND THE PROMPT ITSELF IS SOMETIMES IN WORDS. "Show half
+     past three" is a harder ask than "Show 3:30" for exactly the
+     reason this exists, so the drawing cards use words about half
+     the time rather than always giving him the digits.
+     ========================================================= */
+  var HOUR_WORDS = ['twelve', 'one', 'two', 'three', 'four', 'five', 'six',
+                    'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  /* More than one word for the same number of minutes, because a quarter past
+     is also fifteen past and both are right on his page. */
+  var MIN_WORDS = { 5: ['five'], 10: ['ten'], 15: ['quarter', 'fifteen'],
+                    20: ['twenty'], 25: ['twenty-five'], 30: ['half', 'thirty'] };
+  function nextHour(h){ return h === 12 ? 1 : h + 1; }
+  /* The way a person would say it, which is what goes on the card. */
+  function clockSaid(c){
+    var h = c.h, m = c.m;
+    if (m === 0) return h + " o'clock";
+    if (m === 30) return 'half past ' + h;
+    if (m < 30) return (m === 15 ? 'quarter' : m) + ' past ' + h;
+    var left = 60 - m;
+    return (left === 15 ? 'quarter' : left) + ' to ' + nextHour(h);
+    /* the first word in MIN_WORDS is the one a teacher says; the rest are only
+       ever accepted, never shown */
+  }
+  function flat(t){ return String(t || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  /* ⭐ EVERY WAY OF SAYING IT THAT A TEACHER WOULD ACCEPT, because there is more
+     than one right answer and marking "three thirty" wrong for not being "half
+     past three" would be teaching him something false. Digits and words both,
+     since he is nine and writes whichever comes to him. */
+  function clockSayings(c){
+    var h = c.h, m = c.m, out = [], hw = HOUR_WORDS[h % 12] || String(h);
+    function hourForms(n){ return [String(n), HOUR_WORDS[n % 12]]; }
+    // the digital form, always allowed
+    out.push(h + ':' + (m < 10 ? '0' + m : m));
+    hourForms(h).forEach(function(a){
+      if (m === 0){ out.push(a + " o'clock"); out.push(a + ' oclock'); return; }
+      if (m <= 30){
+        out.push(m + ' past ' + a);
+        (MIN_WORDS[m] || []).forEach(function(mw){ out.push(mw + ' past ' + a); });
+        out.push(a + ' ' + m);
+      } else {
+        out.push(a + ' ' + m);
+      }
+    });
+    if (m > 30){
+      var left = 60 - m, lw = MIN_WORDS[left];
+      hourForms(nextHour(h)).forEach(function(a){
+        out.push(left + ' to ' + a);
+        (lw || []).forEach(function(w){ out.push(w + ' to ' + a); });
+      });
+    }
+    return out.map(flat).filter(function(v, i, all){ return v && all.indexOf(v) === i; });
+  }
+  /* 🔴 THE ONE CHARACTER OF SLACK IS FOR LETTERS ONLY, NEVER FOR DIGITS, and
+     this was found by testing rather than by thinking. A transcriber that reads
+     "thre" for "three" should not cost him the card. But one character apart on
+     the digits is a DIFFERENT TIME: 5:45 was being accepted for 5:15, "8
+     o'clock" for seven, and "20 to 12" for twenty to one. Three wrong answers
+     marked right, which is worse than a right one marked wrong, because he
+     never finds out.
+
+     So the numbers in the two have to agree exactly before any slack is
+     allowed, and the slack then only ever forgives a letter. */
+  function digitsIn(t){ return String(t).replace(/[^0-9]/g, ''); }
+  function nearlySame(a, b){
+    if (a === b) return true;
+    if (digitsIn(a) !== digitsIn(b)) return false;
+    if (Math.abs(a.length - b.length) > 1) return false;
+    var i = 0, j = 0, slips = 0;
+    while (i < a.length && j < b.length){
+      if (a.charAt(i) === b.charAt(j)){ i++; j++; continue; }
+      if (++slips > 1) return false;
+      if (a.length > b.length) i++;
+      else if (b.length > a.length) j++;
+      else { i++; j++; }
+    }
+    return slips + (a.length - i) + (b.length - j) <= 1;
+  }
+  function saidRight(c, read){
+    var got = flat(read);
+    if (!got) return false;
+    return clockSayings(c).some(function(v){ return nearlySame(got, v); });
   }
 
   function mathCards(u){
@@ -6432,19 +6552,42 @@
   }
 
   /* ---------- the clock ----------
-     ⭐ TAPPED, NOT DRAGGED. A drag needs a hand to grab, and the hands do not
-     exist until he has put them there. He taps where each one points, hour
-     first, and it is drawn as he goes. */
-  var clockHands = [];       // angles in degrees clockwise from twelve
+     🔴 HE DRAWS BOTH HANDS (Andrew, 2026-08-29: "he needs to draw the hour and
+     minute hands"). The first build had him tap where each one points and drew
+     the hand for him, which is a fair way to ANSWER and not the exercise: on
+     the worksheet he draws them, and drawing a short one and a long one out of
+     the middle of the dial is half of what is being taught.
+
+     ⭐ WHICH HAND IS WHICH IS READ OFF THE LENGTH, not asked for and not taken
+     in turn. The longer stroke is the minute hand and the shorter is the hour
+     hand, which is exactly how his teacher tells them apart on his page, and it
+     means drawing them the same length is itself a fault worth naming. */
+  var clockInk = [];         // strokes, each a run of [x, y] on the canvas
+  var clockCur = null;
   /* 🔴 THE TIME HAS TO BE SOMEWHERE HE CAN SEE IT. It was going to the card,
      which body.clocking hides, so the whole exercise was "draw the hands" with
      no time given at all. It goes at the front of the note instead, which is
      the only line of words on this screen. */
-  function clockAsk(c){ return 'Show ' + clockWords(c) + '.  '; }
+  function clockAsk(c){
+    return 'Show ' + (c.worded ? clockSaid(c) : clockWords(c)) + '.  ';
+  }
   function clockGeom(){
     var cv = el.clockCv, box = cv.getBoundingClientRect();
     var d = Math.max(120, Math.min(box.width, box.height));
     return { d: d, r: d / 2, cx: d / 2, cy: d / 2 };
+  }
+  /* Each stroke read as a hand: where it points, how long it is, and how near
+     the middle it started. */
+  function handOf(st, G){
+    var far = null, fd = -1, nd = 1e9;
+    st.forEach(function(p){
+      var d = Math.sqrt(Math.pow(p[0] - G.cx, 2) + Math.pow(p[1] - G.cy, 2));
+      if (d > fd){ fd = d; far = p; }
+      if (d < nd){ nd = d; }
+    });
+    if (!far) return null;
+    return { deg: (Math.atan2(far[1] - G.cy, far[0] - G.cx) * 180 / Math.PI + 90 + 360) % 360,
+             len: fd, from: nd };
   }
   function paintClock(c){
     var cv = el.clockCv, g = cv.getContext('2d');
@@ -6474,41 +6617,81 @@
       x = G.cx + Math.cos(a) * (G.r - 36); y = G.cy + Math.sin(a) * (G.r - 36);
       g.fillText(String(i), x, y);
     }
-    // his hands, short and fat for the hour, long and thin for the minute
-    clockHands.forEach(function(deg, k){
-      var rad = (deg - 90) * Math.PI / 180;
-      var len = k === 0 ? G.r * 0.50 : G.r * 0.76;
-      g.strokeStyle = k === 0 ? '#1b2330' : '#3c5af0';
-      g.lineWidth = k === 0 ? 8 : 5;
-      g.lineCap = 'round';
-      g.beginPath(); g.moveTo(G.cx, G.cy);
-      g.lineTo(G.cx + Math.cos(rad) * len, G.cy + Math.sin(rad) * len);
+    /* On a telling card the hands are the QUESTION, so they are drawn properly
+       from the time: short and fat for the hour, long and thin for the minute,
+       and the hour hand carries the minutes exactly as it must. */
+    if (isClockSay(c)){
+      [[((c.h % 12) + c.m / 60) * 30, 0.50, 8], [c.m * 6, 0.78, 5]].forEach(function(v){
+        var rad = (v[0] - 90) * Math.PI / 180;
+        g.strokeStyle = '#1b2330'; g.lineWidth = v[2]; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(G.cx, G.cy);
+        g.lineTo(G.cx + Math.cos(rad) * G.r * v[1], G.cy + Math.sin(rad) * G.r * v[1]);
+        g.stroke();
+      });
+    }
+    /* ⚠️ HIS OWN LINES, exactly as drawn, not a tidy hand rebuilt from his
+       angle. The wobble is his, and the sheet his teacher gets has to show it. */
+    g.strokeStyle = '#1b2330'; g.lineWidth = 5;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    clockInk.concat(clockCur ? [clockCur] : []).forEach(function(st){
+      if (st.length < 2) return;
+      g.beginPath(); g.moveTo(st[0][0], st[0][1]);
+      for (var i = 1; i < st.length; i++) g.lineTo(st[i][0], st[i][1]);
       g.stroke();
     });
     g.fillStyle = '#1b2330';
     g.beginPath(); g.arc(G.cx, G.cy, 7, 0, 6.284); g.fill();
-    el.clockUndo.disabled = !clockHands.length;
-    el.clockDone.disabled = clockHands.length < 2;
+    el.clockUndo.disabled = !clockInk.length;
+    el.clockDone.disabled = clockInk.length < 2;
+    // he is not drawing on a telling card, so its two buttons have no job
+    el.clockUndo.classList.toggle('hide', isClockSay(c));
+    el.clockDone.classList.toggle('hide', isClockSay(c));
   }
-  function clockTap(ev){
+  function clockAt(ev){
+    var box = el.clockCv.getBoundingClientRect();
+    return [ev.clientX - box.left, ev.clientY - box.top];
+  }
+  function clockDown(ev){
     var c = card(); if (!isClock(c) || state.answered) return;
-    if (clockHands.length >= 2) return;
-    var box = el.clockCv.getBoundingClientRect(), G = clockGeom();
-    var x = ev.clientX - box.left - G.cx, y = ev.clientY - box.top - G.cy;
-    if (Math.abs(x) < 6 && Math.abs(y) < 6) return;       // dead centre says nothing
-    var deg = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
-    clockHands.push(deg);
-    unlock(); sfx.tap();
+    if (clockInk.length >= 2) return;                 // two hands and no more
+    ev.preventDefault();
+    clockCur = [clockAt(ev)];
+    try { el.clockCv.setPointerCapture(ev.pointerId); } catch(e){}
+    unlock();
     paintClock(c);
-    setClockNote(clockAsk(c) + (clockHands.length < 2
-      ? 'Now tap where the MINUTE hand points.' : 'Tap Done when it looks right.'), '');
+  }
+  function clockMove(ev){
+    if (!clockCur) return;
+    ev.preventDefault();
+    clockCur.push(clockAt(ev));
+    paintClock(card());
+  }
+  function clockUp(){
+    if (!clockCur) return;
+    var c = card();
+    /* A tap with no travel is not a hand. Dropped rather than kept, or the
+       first stray touch on the dial becomes an hour hand of no length. */
+    if (clockCur.length > 2) clockInk.push(clockCur);
+    clockCur = null;
+    sfx.tap();
+    paintClock(c);
+    setClockNote(clockAsk(c) + (clockInk.length < 2
+      ? 'Now draw the other hand.' : 'Tap Done when it looks right.'), '');
   }
   function setClockNote(msg, cls){
     el.clockNote.textContent = msg || '';
     el.clockNote.className = 'cnote' + (cls ? ' ' + cls : '');
   }
   function markClock(c){
-    if (clockHands.length < 2) return;
+    if (clockInk.length < 2) return;
+    var G = clockGeom();
+    var hands = clockInk.map(function(st){ return handOf(st, G); }).filter(Boolean);
+    if (hands.length < 2) return;
+    /* The SHORT one is the hour hand. Sorted by length rather than by the order
+       he drew them, because on paper nobody draws them in a fixed order and the
+       length is what says which is which. */
+    hands.sort(function(a, b){ return a.len - b.len; });
+    var clockHands = [hands[0].deg, hands[1].deg];
     /* ⭐ THE HOUR HAND MOVES WITH THE MINUTES, and this is the whole lesson.
        At 3:40 it is two thirds of the way from the 3 to the 4, not still
        sitting on the 3, and putting it on the number is the classic mistake.
@@ -6519,10 +6702,36 @@
     function off(a, b){ var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
     var dh = off(clockHands[0], wantH), dm = off(clockHands[1], wantM);
     var okM = dm <= 7, okH = dh <= 12;
+    /* ⭐ TWO THINGS THAT ARE NOT ANGLES, marked because both are marked on his
+       page. The hands have to come out of the middle, and the hour hand has to
+       be visibly the shorter of the two: drawn the same length there is no
+       telling which is which, and a clock nobody can read is wrong however well
+       the angles line up. */
+    var fromMiddle = hands[0].from <= G.r * 0.30 && hands[1].from <= G.r * 0.30;
+    var different = hands[1].len - hands[0].len >= G.r * 0.14;
     state.answered = true;
-    if (okH && okM){
+    /* ⭐ KEPT FOR THE SHEET, right or wrong, with the dial it was drawn on.
+       Two bare lines cropped to their own ink mean nothing on a printed page:
+       what his teacher needs to see is where they sit on the face. The
+       geometry goes with the ink so the sheet can rebuild the dial at any
+       size. */
+    keepInk(c, !(okH && okM), clockInk, G.d, G.d);
+    var rec = currentPage(c.u || 0).words[inkKey(c)];
+    if (rec) rec.dial = { r: G.r, cx: G.cx, cy: G.cy };
+    savePages();
+    if (okH && okM && fromMiddle && different){
       sfx.right(); setClockNote('That is ' + clockWords(c) + '. Well done.', 'good');
       bump(true);
+    } else if (okH && okM && !fromMiddle){
+      sfx.wrong();
+      setClockNote('The angles are right, but both hands have to start in the '
+        + 'middle of the clock.', 'bad');
+      bump(false);
+    } else if (okH && okM){
+      sfx.wrong();
+      setClockNote('Close. Make the hour hand clearly SHORTER than the minute '
+        + 'hand, or nobody can tell which is which.', 'bad');
+      bump(false);
     } else {
       sfx.wrong();
       var onTheNumber = off(clockHands[0], (c.h % 12) * 30) <= 8 && c.m >= 10;
@@ -6538,13 +6747,16 @@
     }
     if (state.caught) return;
     clearTimeout(advanceId);
-    advanceId = setTimeout(step, okH && okM ? 1100 : 3200);
+    advanceId = setTimeout(step, okH && okM && fromMiddle && different ? 1100 : 3200);
   }
-  el.clockCv.addEventListener('pointerdown', clockTap);
+  el.clockCv.addEventListener('pointerdown', clockDown);
+  el.clockCv.addEventListener('pointermove', clockMove);
+  el.clockCv.addEventListener('pointerup', clockUp);
+  el.clockCv.addEventListener('pointercancel', clockUp);
   el.clockUndo.addEventListener('click', function(){
     var c = card(); if (!isClock(c) || state.answered) return;
-    unlock(); sfx.tap(); clockHands = []; paintClock(c);
-    setClockNote(clockAsk(c) + 'Tap where the HOUR hand points.', '');
+    unlock(); sfx.tap(); clockInk = []; clockCur = null; paintClock(c);
+    setClockNote(clockAsk(c) + 'Draw both hands from the middle.', '');
   });
   el.clockDone.addEventListener('click', function(){
     unlock(); var c = card(); if (isClock(c) && !state.answered) markClock(c);
@@ -6599,11 +6811,12 @@
      the spelling INSIDE the meaning counts too. `isWord` covers it, because
      everything about the writing panel, the ink and the retry applies. */
   function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd' || c.k === 'q'
-                                     || c.k === 'tr' || c.k === 'sum' || isSent(c))); }
+                                     || c.k === 'tr' || c.k === 'sum'
+                                     || c.k === 'clocksay' || isSent(c))); }
   /* ⚠️ THE PENCIL IS NOT OPTIONAL ON A HANDWRITING CARD. Everywhere else the
      keyboard is a fair way to answer; here it would be answering a different
      question entirely, so the pad is forced on whatever the setting says. */
-  function penFor(c){ return !!state.hand || isTrace(c) || isSum(c); }
+  function penFor(c){ return !!state.hand || isTrace(c) || isSum(c) || isClockSay(c); }
   function isDef(c){ return !!(c && c.k === 'd'); }
   /* ⭐ THE WORD AND THEN WHAT IT MEANS, both in his own hand. The word stays
      on screen as the prompt, so this is not a memory test; what it stops being
@@ -8106,10 +8319,25 @@
        for the same reason the proof row does: what he is working on IS the
        whole exercise rather than an answer to a question on a card. */
     document.body.classList.toggle('summing', isSum(c));
-    document.body.classList.toggle('clocking', isClock(c));
+    /* Both kinds of clock card show the dial. Only the drawing one owns the
+       whole screen; the writing one shares it with the pad below. */
+    document.body.classList.toggle('clocking', anyClock(c));
+    document.body.classList.toggle('telling', isClockSay(c));
     document.body.classList.toggle('proofing', isProof(c));
-    if (isClock(c)){
-      clockHands = [];
+    if (isClockSay(c)){
+      /* The hands are already there and are not his to move: this card asks
+         what they SAY. Drawn from the answer rather than from his ink.
+         🔴 AND IT FALLS THROUGH TO THE WRITING PANEL. This branch used to end
+         here, and the panel below the dial was never painted: it kept whatever
+         the last writing card had left in it, so the pad came up as a keyboard
+         box with no instruction on it. A card that is BOTH has to paint both. */
+      clockInk = []; clockCur = null;
+      paintClock(c);
+      requestAnimationFrame(function(){ if (card() === c) paintClock(c); });
+      setClockNote('What time does this clock say?');
+      paintWrite(c);
+    } else if (isClock(c)){
+      clockInk = []; clockCur = null;
       /* ⚠️ PAINTED NOW, and again on the next frame. The class that gives the
          canvas a box went on the body a few lines above, and measuring it forces
          the layout, so now is early enough. The second go covers the case where
@@ -8119,7 +8347,7 @@
          nothing drawn on it. */
       paintClock(c);
       requestAnimationFrame(function(){ if (card() === c) paintClock(c); });
-      setClockNote(clockAsk(c) + 'Tap where the HOUR hand points.');
+      setClockNote(clockAsk(c) + 'Draw both hands from the middle.');
       el.grade.classList.remove('on');
       el.nextBtn.style.display = 'none';
       el.hint.textContent = '';
@@ -8382,6 +8610,7 @@
 
   function paintWrite(c){
     var def = isDef(c), sen = isSent(c), ask = isAsk(c), pen = isTrace(c), sum = isSum(c);
+    var tell = isClockSay(c);
     /* The word is the PROMPT on a definition card, and the whole sentence is
        the prompt on a grammar one, so both stay on screen whatever the mode:
        there is nothing to peek at and nothing to hide, and reading it aloud
@@ -8392,7 +8621,7 @@
        still there for when he is stuck, and it is his to press. */
     /* A sum has nothing to show, hide, or read aloud: the problem is on screen
        above the pad and the answer is what he is working out. */
-    var mode = sum ? 'copy' : (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
+    var mode = (sum || tell) ? 'copy' : (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
     state.tries = 0; sayAgain = 0;
     clearTimeout(peekId);
     el.wInput.value = '';
@@ -8447,6 +8676,7 @@
                 ? 'Trace it. Follow the letters, slowly.'
                 : 'Now write it yourself, on the line.')
       : sum ? 'Write the answer.'
+      : tell ? 'Write the time in words, like half past three.'
       : '';
     /* ⭐ On a red pen card the FAULT replaces the instruction, because this deck
        is going back over a mistake rather than setting a fresh question, and
@@ -8945,11 +9175,41 @@
      counted against PAGE_CAP, so it would have quietly pushed his real spelling
      pages out of the drawer. That was written down as a known hole beside
      inkMark before handwriting existed; this is the fix. */
+  /* ⭐ EVERY WRITTEN SUBJECT KEEPS A PAGE (Andrew, 2026-08-29: "yes please do
+     for all activities"). Three shapes of sheet, and the difference between
+     them is real rather than cosmetic:
+
+       spell    a planned WORKSHEET. The rows are the week's list whether or not
+                he got to them, so a word set three times and written twice
+                prints with an empty third slot, because his teacher should see
+                what was set as well as what was done.
+       hand     two slots a row, the traced go and his own.
+       generic  what he wrote today, in the order he wrote it. Everything else
+                has no worksheet to be faithful to: a history term, a grammar
+                answer and a made up sum are just things he did, and a planned
+                grid would be inventing a page that never existed.
+
+     ⚠️ REDPEN_UNIT is a lesson that does not exist anywhere else. The red pen
+     deck is assembled from cards belonging to six different papers, so there is
+     nothing to file it under, and without an id of its own every card in it
+     would land on page zero along with anything else that lost its way. */
+  var REDPEN_UNIT = 401;
   function pageUnit(unit){
     var u = unitById(unit);
-    if (u) return { kind: 'spell', u: u };
+    if (u) return { kind: 'spell', u: u, title: 'Unit ' + u.unit, tab: 'Unit ' + u.unit };
     u = handById(unit);
-    if (u) return { kind: 'hand', u: u };
+    if (u) return { kind: 'hand', u: u, title: u.book + ', ' + u.title, tab: 'Writing' };
+    u = chapterById(unit);
+    if (u && u.subject) return { kind: 'generic', u: u, tab: u.subject === 'history' ? 'History' : 'Science',
+                                 title: u.book + ', chapter ' + u.unit + ', ' + u.title };
+    u = mathById(unit);
+    if (u) return { kind: 'generic', u: u, tab: 'Arithmetic', title: 'Arithmetic, ' + u.title };
+    u = lessonById(unit);
+    if (u) return { kind: 'generic', u: u, tab: 'Language', title: 'Language 3, lesson ' + u.lesson };
+    if (unit === REDPEN_UNIT){
+      return { kind: 'generic', u: { id: REDPEN_UNIT }, tab: 'Corrections',
+               title: 'Going back over what was marked' };
+    }
     return null;
   }
   // this child's pages that actually have something on them, newest first
@@ -8965,8 +9225,26 @@
      his own, and both go on the page as their own slot. Without the pass in the
      key the second go silently overwrote the first and the sheet showed one
      column where his worksheet has two. */
+  /* What the row is CALLED on a printed page. The key on its own is no use
+     outside spelling: on a sum it is the answer, which means nothing without
+     the problem, and on a history term it is the name without the clue that
+     was asked. */
+  function inkLabel(c){
+    if (isSum(c)) return c.ops.join(' ' + c.op + ' ') + ' =';
+    if (isClockSay(c)) return 'What time is this?';
+    if (isClock(c)) return 'Show ' + clockWords(c);
+    if (isSent(c)) return c.t;
+    if (isAsk(c)) return c.m;
+    if (isDef(c)) return c.w + ', and what it means';
+    return c.w || '';
+  }
   function inkKey(c){
     if (isTrace(c)) return c.w + ':' + c.pass;
+    if (isClockSay(c)) return 'said:' + c.h + ':' + c.m;
+    /* ⚠️ Keyed by the PROBLEM, not the answer. Two different sums can come out
+       the same and would overwrite each other on the page. */
+    if (isSum(c)) return c.ops.join(c.op);
+    if (isClock(c)) return 'clock:' + c.h + ':' + c.m;
     return (isDef(c) ? 'def:' : '') + c.w + (c.n > 1 ? '#' + c.n : '');
   }
 
@@ -9934,6 +10212,17 @@
         inkMark(right, d.read || '', d.note || d.cheer || '');
         return;
       }
+      /* ⭐ MARKED HERE, NOT BY THE SERVER, because there is more than one right
+         answer. The server compares the reading to the one phrase it was given,
+         and "three thirty" for "half past three" is right in any classroom, so
+         its verdict is set aside and the reading is checked against every way a
+         teacher would accept. See clockSayings. */
+      if (isClockSay(c)){
+        var said = saidRight(c, d.read || '');
+        if (!said) setClockNote('That is ' + clockSaid(c) + ', or ' + clockWords(c) + '.', 'bad');
+        inkMark(said, d.read || '', d.note || d.cheer || '');
+        return;
+      }
       if (d.ok){ inkMark(true, d.read || '', d.note || d.cheer || ''); return; }
       /* 🔴 A NO IS NOT A CHANCE TO PASS HIMSELF (Andrew, 2026-08-27): "he keeps
          failing the first one, then he just clicks got it on the second try".
@@ -10009,6 +10298,7 @@
        checker cannot be reached the answer is put on the sum itself, which is
        what a grown-up marking it needs anyway. */
     if (isSum(c)) setSumNote('The answer is ' + sumAnswer(c) + '. Did he get it?', '');
+    if (isClockSay(c)) setClockNote('It is ' + clockSaid(c) + '. Did he get it?', '');
     setWHint(why || 'Check every letter. Did you get it?', '');
     el.inkGrade.classList.add('on');
     el.inkRow.classList.add('hide');
@@ -10029,9 +10319,10 @@
     askTheChecker(c);
   });
 
-  function keepInk(c, missed){
+  function keepInk(c, missed, strokes, w, h){
     var pg = currentPage(c.u || 0);
-    pg.words[inkKey(c)] = { s: ink.strokes, w: ink.w, h: ink.h, missed: !!missed };
+    pg.words[inkKey(c)] = { s: strokes || ink.strokes, w: w || ink.w, h: h || ink.h,
+                            missed: !!missed, label: inkLabel(c), at: Date.now() };
     /* ⚠️ Widen the WORD, never the page. Turning a stepper up part way
        through a day still has to widen what it lands on, but pg.times is the
        fallback for every word without a slot of its own, so widening that
@@ -10090,11 +10381,19 @@
          back out so nothing showed, which is exactly why it would not have
          been noticed, but they still counted against PAGE_CAP and would have
          pushed his real spelling pages out of the drawer. */
-      /* ⚠️ NOT A SUM. The printing drawer understands spelling weeks and
-         handwriting lessons; an arithmetic lesson would be minted, hidden and
-         still count against PAGE_CAP, which is the bug pageUnit was written to
-         close. A sums sheet is worth having and is a separate job. */
-      if (!isSent(c) && !isSum(c)) keepInk(c, state.tries > 0);
+      /* ⭐ EVERYTHING is kept now, grammar and arithmetic included. The old
+         guard here was `!isSent(c)`, put in because a lesson id was not a unit
+         id and currentPage minted a page nobody could see; pageUnit knows about
+         every kind of lesson, so the guard is what has to go rather than the
+         subjects it was keeping out. */
+      keepInk(c, state.tries > 0);
+      /* ⚠️ A telling card's page row needs the DIAL as well as his writing, or
+         the sheet reads "half past three" with nothing to say what he was
+         looking at. The dial is the question, so it is stored beside the ink. */
+      if (isClockSay(c)){
+        var pgc = currentPage(c.u || 0).words[inkKey(c)];
+        if (pgc){ pgc.ask = { h: c.h, m: c.m }; savePages(); }
+      }
       if (state.tries === 0) bump(true);
       else { clearCard(true); chaseNudge(true); }   // the miss was already counted
       setWHint('Kept for the sheet', 'good');
@@ -10219,6 +10518,12 @@
       });
       return { done: d, all: a };
     }
+    /* Nothing was planned, so everything on it is done. The drawer still shows
+       a count because the number of things he wrote is worth seeing. */
+    if (own.kind === 'generic'){
+      var n = Object.keys(pg.words || {}).length;
+      return { done: n, all: n };
+    }
     var u = own.u;
     var list = sheetRows(u, pg), done = 0, all = 0;
     list.forEach(function(row){
@@ -10237,6 +10542,7 @@
     if (!pg) return false;
     var own = pageUnit(pg.unit); if (!own) return false;
     if (own.kind === 'hand') return buildHandSheet(pg, own.u);
+    if (own.kind === 'generic') return buildGenericSheet(pg, own);
     var u = own.u;
     sheetPage = pg;
     var list = sheetRows(u, pg);
@@ -10260,6 +10566,65 @@
       + '<ol>' + rows + '</ol>'
       + '<p class="foot">Written with the Apple Pencil. A dot marks a word that took '
       + 'more than one go.</p>';
+    return true;
+  }
+  /* ⭐ THE EVERYTHING ELSE SHEET: what he wrote today, in the order he wrote
+     it. No planned grid, because outside spelling there is no worksheet to be
+     faithful to and inventing one would print a page that never existed.
+     Ordered by when the ink was laid down, so it reads as the sitting did.
+
+     ⚠️ Ink from before this shipped carries no `label` and no `at`. It falls
+     back to the key, which for a spelling word is the word itself, so an old
+     page still prints rather than coming out blank. */
+  /* A clock on the printed page: the dial redrawn at the printer's own size
+     with his two lines on it. ⚠️ It cannot go through inkSVG, which crops to
+     the ink and would print two strokes floating in space with nothing to say
+     what angle they were at. */
+  function clockSVG(rec){
+    var d = rec.dial, size = 132, k = size / (d.r * 2.12);
+    function px(v, c){ return ((v - c) * k + size / 2).toFixed(1); }
+    var ticks = '';
+    for (var i = 0; i < 12; i++){
+      var a = (i / 12) * 6.2832 - 1.5708;
+      var r1 = d.r * 0.84, r2 = d.r * 0.97;
+      ticks += '<line x1="' + (size / 2 + Math.cos(a) * r1 * k).toFixed(1)
+             + '" y1="' + (size / 2 + Math.sin(a) * r1 * k).toFixed(1)
+             + '" x2="' + (size / 2 + Math.cos(a) * r2 * k).toFixed(1)
+             + '" y2="' + (size / 2 + Math.sin(a) * r2 * k).toFixed(1)
+             + '" stroke="#666" stroke-width="1.4"/>';
+    }
+    var paths = rec.s.map(function(st){
+      if (!st || st.length < 2) return '';
+      var dd = 'M' + px(st[0][0], d.cx) + ' ' + px(st[0][1], d.cy);
+      for (var j = 1; j < st.length; j++) dd += 'L' + px(st[j][0], d.cx) + ' ' + px(st[j][1], d.cy);
+      return '<path d="' + dd + '" fill="none" stroke="#111" stroke-width="2.2" '
+           + 'stroke-linecap="round" stroke-linejoin="round"/>';
+    }).join('');
+    return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size
+      + '" xmlns="http://www.w3.org/2000/svg">'
+      + '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + (d.r * k).toFixed(1)
+      + '" fill="none" stroke="#111" stroke-width="1.8"/>' + ticks + paths
+      + '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="2.6" fill="#111"/></svg>';
+  }
+  function buildGenericSheet(pg, own){
+    sheetPage = pg;
+    var keys = Object.keys(pg.words || {});
+    keys.sort(function(a, b){ return (pg.words[a].at || 0) - (pg.words[b].at || 0); });
+    var rows = keys.map(function(k){
+      var rec = pg.words[k];
+      return '<li class="defrow' + (rec.dial ? ' tallrow' : '') + '">'
+           + '<span class="dword">' + esc(rec.label || k) + '</span>'
+           + '<span class="slot">' + (rec.dial ? clockSVG(rec) : inkSVG(rec)) + '</span>'
+           + '<span class="flag">' + (rec.missed ? '\u2022' : '') + '</span></li>';
+    }).join('');
+    el.sheet.classList.toggle('tight', keys.length > 22);
+    el.sheet.innerHTML =
+      '<div class="shead"><span class="swho">' + esc(me.name || 'Work') + '</span>'
+      + '<span class="swhat">' + esc(own.title) + ' &middot; '
+      + esc(pageWhen(pg, true)) + '</span></div>'
+      + '<ol>' + rows + '</ol>'
+      + '<p class="foot">Written with the Apple Pencil, in the order he did them. '
+      + 'A dot marks one that took more than one go.</p>';
     return true;
   }
   /* ⭐ THE HANDWRITING SHEET. Two slots a row, the traced go and his own, laid
@@ -10485,8 +10850,7 @@
       b.type = 'button';
       b.className = 'pg' + (done < n.all ? ' part' : '');
       b.setAttribute('data-id', pg.id);
-      b.innerHTML = '<span class="nm">'
-                  + esc(own.kind === 'hand' ? 'Writing' : 'Unit ' + own.u.unit) + '</span>'
+      b.innerHTML = '<span class="nm">' + esc(own.tab || 'Page') + '</span>'
                   + '<span class="dy">' + esc(pageWhen(pg)) + '</span>'
                   + '<span class="ct">' + done + ' / ' + n.all + '</span>'
                   + '<span class="pr">\uD83D\uDDA8</span>';
@@ -10699,8 +11063,11 @@
        one and nowhere else; it was turning up after scriptures on a shared
        phone. Handwriting writes one too now, and so does the red pen deck when
        it deals a handwriting row. */
-    var writes = state.subject === 'spelling' || handNow() || redpenNow();
-    var canPrint = writes && !groupKit() && pageWritten(sheetPage) > 0;
+    /* ⭐ Any round that put ink on a page can print it, which is now every
+       subject he WRITES in. The old list was three subjects long and had to be
+       remembered; asking the page whether anything was written cannot fall out
+       of step with the subjects. */
+    var canPrint = !groupKit() && pageWritten(sheetPage) > 0;
     el.printBtn.classList.toggle('hide', !canPrint);
     if (canPrint) buildSheet();
     // A dealt round is marked by the server, so none of the page's own
