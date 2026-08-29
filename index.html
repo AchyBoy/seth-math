@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.63">
+<meta name="x-cards-version" content="4.64">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +88,61 @@
      question is the shape, and taking the model away would make it a memory
      test on top of a handwriting one. */
   body.tracing .wpeek,body.tracing #inkPeek{display:none}
+  /* 🔴 `.sline`, NOT `.srow`. That class was already the scoreboard's row,
+     eight hundred lines up, complete with a white background, a 2px border and
+     a 12px radius, so every line of the sum came out inside its own little
+     card. Second name collision in one evening, after REDPEN. Grep the file for
+     a class before inventing one, the same as for a var.
+     ⭐ THE SUM IS STACKED THE WAY HIS PAPER STACKS IT. Columns matter more
+     than anything else here: the whole fault being practised is a carry landing
+     in the wrong column, so the digits are in a fixed width grid and every row
+     lines up on the ones. */
+  /* ⭐ HE WRITES THE ANSWER, he does not tap it (Andrew, 2026-08-29: "I think he
+     needs to write the answers, same as he would in school"). The first build
+     had a number pad, which marks itself perfectly and practises nothing: the
+     whole of column arithmetic is done with a pencil. So the sum is the PROMPT
+     and the ordinary writing pad is the answer line, which brings the rubber,
+     the undo, the checker, the printed page and the self-marking with it. */
+  .sum{display:none;flex-direction:column;align-items:center;gap:8px;padding:4px 0 2px}
+  body.summing .sum{display:flex}
+  .stack{display:inline-block;font-variant-numeric:tabular-nums}
+  .stack .sline{display:grid;justify-content:end;gap:0;align-items:center}
+  .stack .cell{width:46px;text-align:center;font-size:38px;font-weight:600;
+    line-height:1.16;color:var(--ink)}
+  .stack .op{color:var(--muted);font-weight:700}
+  /* the carry line: his own working, never marked, and small so it reads as
+     pencil in the margin rather than as part of the sum */
+  .stack .carry .cell{font-size:17px;height:22px;line-height:22px;color:#b08b3e}
+  .stack .rule{height:3px;background:var(--ink);border-radius:2px;margin:6px 0 8px}
+  /* The answer line on the sum is a RULE, not boxes, because the answer is
+     written on the pad below. It still shows the marking afterwards, column by
+     column, which is the thing worth having. */
+  .stack .ans .cell{min-height:44px;line-height:44px;color:var(--blue);font-size:34px}
+  .stack .ans .cell.good{color:#1f9d55}
+  .stack .ans .cell.bad{color:#d2453c;text-decoration:line-through;
+    text-decoration-thickness:2px}
+  .snote{font-size:15px;font-weight:600;color:var(--muted);text-align:center;
+    min-height:22px;margin:0 14px;line-height:1.35}
+  .snote.bad{color:#d2453c}
+  .snote.good{color:#1f9d55}
+
+  /* the clock face */
+  .clock{display:none;flex-direction:column;align-items:center;gap:12px;
+    flex:1;justify-content:center}
+  body.clocking .clock{display:flex}
+  .clock canvas{width:min(78vw,320px);height:min(78vw,320px);touch-action:none}
+  .cnote{font-size:15px;font-weight:600;color:var(--muted);text-align:center;
+    min-height:22px;margin:0 14px;line-height:1.35}
+  .cnote.bad{color:#d2453c}
+  .cnote.good{color:#1f9d55}
+  .crow{display:flex;gap:10px;align-items:center}
+  /* Both take the card away. The clock owns the rest of the screen too; the sum
+     shares it with the writing pad, which is where the answer goes. */
+  body.summing .stage,body.clocking .stage,
+  body.clocking .hint,body.clocking .grade,body.clocking .next{display:none}
+  /* ⚠️ The word at the top of the writing panel is the ANSWER on a sum card, so
+     the whole of that block goes. The sum above it is the prompt. */
+  body.summing .wtop{display:none}
   .bigchips{display:grid;grid-template-columns:1fr;gap:8px}
   .bigchips .chip{aspect-ratio:auto;justify-content:flex-start;
     padding:13px 15px;font-size:16px;text-align:left}
@@ -911,6 +966,7 @@
       <button type="button" class="opt" data-subject="history">🇺🇸 History</button>
       <button type="button" class="opt" data-subject="science">🔬 Science</button>
       <button type="button" class="opt" data-subject="trace">✍️ Handwriting</button>
+      <button type="button" class="opt" data-subject="math">🔢 Arithmetic</button>
       <button type="button" class="opt" data-subject="redpen">🔴 What he missed</button>
     </div>
   </div>
@@ -925,6 +981,12 @@
   <!-- Nothing to pick. The deck is every mistake his teacher marked, and
        choosing which of your own mistakes to go over is not a choice worth
        offering a nine year old. -->
+  <div class="block hide" id="mathBlock">
+    <p class="label">What we are working on</p>
+    <div class="bigchips" id="mathChips"></div>
+    <p class="note" id="mathNote"></p>
+  </div>
+
   <div class="block hide" id="redpenBlock">
     <p class="label">What the red pen caught</p>
     <p class="note" id="redpenNote"></p>
@@ -1390,6 +1452,21 @@
       <p class="ptask" id="proofTask"></p>
       <p class="pline" id="proofLine"></p>
       <p class="pnote" id="proofNote"></p>
+    </div>
+    <!-- ⚠️ SIBLINGS of the write panel, never inside it, same as the proof and
+         teach boxes above. .wpanel is display:none unless body.write, and a sum
+         is not a writing card, so anything put in there comes up with no box. -->
+    <div class="sum" id="mathBox">
+      <div class="stack" id="sumStack"></div>
+      <p class="snote" id="sumNote"></p>
+    </div>
+    <div class="clock" id="clockBox">
+      <canvas id="clockCv"></canvas>
+      <p class="cnote" id="clockNote"></p>
+      <div class="crow">
+        <button type="button" class="small" id="clockUndo">↩︎ Start again</button>
+        <button type="button" class="wgo" id="clockDone">Done</button>
+      </div>
     </div>
     <div class="teach" id="teachBox">
       <p class="tkind" id="teachKind"></p>
@@ -2707,7 +2784,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], lessons: [], chapters: [], study: 'both', penLessons: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -2726,6 +2803,9 @@
    'subjectOpts','tablesBlock','setsBlock','setChips','allSetsBtn','noSetsBtn','setsNote',
    'studyBlock','studyChips','studyOpts','studyNote','studyWaiting',
    'penBlock','handChips','penNote','redpenBlock','redpenNote',
+   'mathBox','sumStack','sumNote',
+   'clockBox','clockCv','clockNote','clockUndo','clockDone',
+   'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
@@ -2974,6 +3054,9 @@
      answer he tapped. Their own prefixes because a term and a spelling word can
      be the same string and are not the same card. */
   function isTermKey(k){ return k.slice(0, 2) === 'q:'; }
+  function isMathKey(k){ return k.slice(0, 2) === 'm:'; }
+  var MATH_NAMES = { add: 'Adding three numbers', sub: 'Taking away',
+                     clock: 'Drawing the hands' };
   function isAskKey(k){ return k.slice(0, 2) === 'a:'; }
   function termByWord(w){
     for (var i = 0; i < STUDY.length; i++){
@@ -2995,6 +3078,7 @@
   }
   // what shows on the chip
   function prettyKey(k){
+    if (isMathKey(k)) return MATH_NAMES[k.slice(2)] || k.slice(2);
     if (isTermKey(k) || isAskKey(k)) return k.slice(2);
     if (isWordKey(k)) return k.slice(2);
     if (isVerseKey(k)) return k.slice(2);
@@ -3003,6 +3087,7 @@
   }
   // what shows when you tap it open
   function keyAnswer(k){
+    if (isMathKey(k)) return '';       // a generated sum has no one answer to show
     if (isTermKey(k)){ var tc = termByWord(k.slice(2)); return tc ? tc.m : ''; }
     if (isAskKey(k)) return '';        // the question it answered is not kept
     if (isWordKey(k)){
@@ -3015,6 +3100,7 @@
     return (p[0] * p[1]) ? String(p[0] * p[1]) : '';
   }
   function keyToCard(k){
+    if (isMathKey(k)) return null;     // nothing to rebuild, they are made fresh
     if (isTermKey(k)) return termByWord(k.slice(2));
     if (isAskKey(k)) return null;      // nothing to rebuild a tapped question from
     if (isWordKey(k)) return spellByWord(k.slice(2));
@@ -3036,12 +3122,13 @@
             || s.subject === 'spelling' || s.subject === 'sentence'
             || s.subject === 'proof' || s.subject === 'history'
             || s.subject === 'science' || s.subject === 'trace'
-            || s.subject === 'redpen') state.subject = s.subject;
+            || s.subject === 'redpen' || s.subject === 'math') state.subject = s.subject;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
         if (Array.isArray(s.chapters) && s.chapters.length) state.chapters = s.chapters;
         if (s.study === 'both' || s.study === 'terms' || s.study === 'asks') state.study = s.study;
         if (Array.isArray(s.penLessons) && s.penLessons.length) state.penLessons = s.penLessons;
+        if (Array.isArray(s.maths) && s.maths.length) state.maths = s.maths;
         if (typeof s.teach === 'boolean') state.teach = s.teach;
         if (s.times && typeof s.times === 'object') state.times = s.times;
         if (s.redTimes && typeof s.redTimes === 'object') state.redTimes = s.redTimes;
@@ -3067,7 +3154,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
-      chapters: state.chapters, study: state.study, penLessons: state.penLessons,
+      chapters: state.chapters, study: state.study, penLessons: state.penLessons, maths: state.maths,
         units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
@@ -3142,6 +3229,14 @@
     });
     paintStudyChips();
     paintHandChips();
+    paintMathChips();
+    el.mathChips.addEventListener('click', function(ev){
+      var b = ev.target.closest('.chip'); if (!b) return;
+      var n = parseInt(b.getAttribute('data-math'), 10);
+      var i = state.maths.indexOf(n);
+      if (i === -1) state.maths.push(n); else state.maths.splice(i, 1);
+      sfx.tap(); paintHome(); saveSettings();
+    });
     el.handChips.addEventListener('click', function(ev){
       var b = ev.target.closest('.chip'); if (!b) return;
       var n = parseInt(b.getAttribute('data-hand'), 10);
@@ -3352,6 +3447,7 @@
     var study = studyNow();
     var pen = handNow();
     var red = redpenNow();
+    var math = mathNow();
     if (study && chipsBuiltFor !== state.subject) paintStudyChips();
     var i, list = el.chips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
@@ -3367,6 +3463,11 @@
     for (i = 0; i < list.length; i++){
       list[i].classList.toggle('on',
         state.units.indexOf(parseInt(list[i].getAttribute('data-unit'), 10)) !== -1);
+    }
+    list = el.mathChips.querySelectorAll('.chip');
+    for (i = 0; i < list.length; i++){
+      list[i].classList.toggle('on',
+        state.maths.indexOf(parseInt(list[i].getAttribute('data-math'), 10)) !== -1);
     }
     list = el.handChips.querySelectorAll('.chip');
     for (i = 0; i < list.length; i++){
@@ -3401,11 +3502,13 @@
         + 'right one. ' + proofCards() + ' cards.';
     }
     setOn(el.teachOpts, 'data-teach', state.teach ? '1' : '0');
-    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent || proof || study || pen || red);
+    el.tablesBlock.classList.toggle('hide', blends || verses || spell || sent || proof || study || pen || red || math);
     el.penBlock.classList.toggle('hide', !pen);
     if (pen) el.penNote.textContent = handSummary();
     el.redpenBlock.classList.toggle('hide', !red);
     if (red) el.redpenNote.textContent = redpenSummary();
+    el.mathBlock.classList.toggle('hide', !math);
+    if (math) el.mathNote.textContent = mathSummary();
     el.studyBlock.classList.toggle('hide', !study);
     if (study){
       setOn(el.studyOpts, 'data-study', state.study);
@@ -3430,7 +3533,7 @@
     el.topicsBlock.classList.toggle('hide', !verses);
     el.unitsBlock.classList.toggle('hide', !spell);
     el.writeBlock.classList.toggle('hide', !spell);
-    el.modeBlock.classList.toggle('hide', spell || sent || proof || study || pen || red);
+    el.modeBlock.classList.toggle('hide', spell || sent || proof || study || pen || red || math);
     el.setsNote.textContent = setsSummary();
     el.topicNote.textContent = groupKit()
       ? 'One subject a round. Read the verse and pick where it is found. King James, '
@@ -3493,7 +3596,7 @@
     /* 🔴 NO CLOCK ON HANDWRITING either, and for a stronger reason than
        spelling: the whole exercise is slowing down and forming the letters,
        so a card timer would be marking him down for doing it right. */
-    var noClock = spellingNow() || handNow() || redpenNow();
+    var noClock = spellingNow() || handNow() || redpenNow() || mathNow();
     el.timerBlock.classList.toggle('hide', noClock);
     el.secsBlock.classList.toggle('hide', noClock || state.timer !== 'card');
     el.chaseBlock.classList.toggle('hide', noClock || state.timer !== 'chase');
@@ -3501,13 +3604,15 @@
     paintPairs();
     paintPace();
 
-    var chosen = red ? myRedpen().length
+    var chosen = math ? state.maths.length
+      : red ? myRedpen().length
       : pen ? state.penLessons.length : study ? state.chapters.length
       : proof ? 1 : sent ? state.lessons.length : spell ? state.units.length
       : verses ? state.topics.length : blends ? state.sets.length : state.tables.length;
     // two cards a sentence, which kind and which mark
     // ⚠️ counted exactly the way the deck is built, teach cards deduped and all
-    var count = red ? myRedpen().length
+    var count = math ? mathCount()
+      : red ? myRedpen().length
       : pen ? handCount() : study ? studyCount() : proof ? proofCards() : sent ? sentenceCards() : spell
       ? state.units.reduce(function(n, no){
           var u = unitById(no); return n + (u ? unitCards(u).length : 0);
@@ -3527,7 +3632,8 @@
       el.studyNote.classList.toggle('hide', chaseOn());
     } else el.studyNote.classList.add('hide');
     el.startBtn.textContent = chosen === 0
-      ? (pen ? 'Pick at least one lesson'
+      ? (math ? 'Pick at least one'
+         : pen ? 'Pick at least one lesson'
          : study ? 'Pick at least one chapter'
          : sent ? 'Pick at least one lesson'
          : spell ? 'Pick at least one week' : verses ? 'Pick at least one subject'
@@ -3675,6 +3781,7 @@
     paintUnitChips();
     paintStudyChips();
     paintHandChips();
+    paintMathChips();
     loadPages();
     fetchPages();          // and whatever this child wrote on another device
     loadReads();
@@ -6054,7 +6161,397 @@
       + 'so and it comes out.';
   }
 
+  /* =========================================================
+     ARITHMETIC. Built 2026-08-29 off what Andrew knows he
+     struggles with rather than off a paper, because his maths
+     book did not come home: "I know something he struggles on so
+     you can just make up the problems", with a worked example of
+     938 + 938 + 737 stacked in a column, the same for
+     subtraction, and drawing the hands on a clock.
+
+     ⭐ THE PROBLEMS ARE GENERATED, not a list. Everything else on
+     this site is copied off a page he was actually given, and
+     this is the one subject where that is impossible today. A
+     generator is the honest answer: it never runs out, and it can
+     be aimed at the fault rather than at a page. Retune the
+     shapes on Tuesday when the book arrives.
+
+     ⭐ AND IT IS MARKED COLUMN BY COLUMN. That is the whole point
+     of it and the reason this is not just a box to type an answer
+     into. The fault in 938 + 938 + 737 is never the arithmetic,
+     it is a carry landing in the wrong column or not landing at
+     all, and a single red cross over the whole sum does not tell
+     him which. Every digit is marked where it stands, and the
+     note names the column: ones, tens, hundreds.
+     ========================================================= */
+  var MATH = [
+    {
+      id: 301, who: 'Seth', kind: 'add', title: 'Adding three numbers',
+      what: 'Three 3-digit numbers stacked in a column, always with at least one carry.',
+      n: 3, digits: 3, count: 10
+    },
+    {
+      id: 302, who: 'Seth', kind: 'sub', title: 'Taking away',
+      what: 'One 3-digit number from another, always with at least one borrow.',
+      digits: 3, count: 10
+    },
+    {
+      id: 303, who: 'Seth', kind: 'clock', title: 'Draw the hands',
+      what: 'A time to show on a clock face, hour hand then minute hand.',
+      count: 10
+    }
+  ];
+
+  function mathNow(){ return state.subject === 'math'; }
+  function isSum(c){ return !!(c && c.k === 'sum'); }
+  function isClock(c){ return !!(c && c.k === 'clock'); }
+  function myMath(){
+    if (!me.name) return MATH;
+    return MATH.filter(function(u){ return sameWho(u.who, me.name); });
+  }
+  function mathById(id){
+    for (var i = 0; i < MATH.length; i++) if (MATH[i].id === id) return MATH[i];
+    return null;
+  }
+  function fixMath(){
+    var mine = myMath();
+    state.maths = state.maths.filter(function(id){
+      return mine.some(function(u){ return u.id === id; });
+    });
+    if (!state.maths.length && mine.length) state.maths = mine.map(function(u){ return u.id; });
+  }
+  function paintMathChips(){
+    var mine = myMath();
+    el.mathChips.innerHTML = '';
+    mine.forEach(function(u){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip';
+      b.setAttribute('data-math', String(u.id));
+      b.textContent = u.title;
+      el.mathChips.appendChild(b);
+    });
+    fixMath();
+  }
+  function randInt(lo, hi){ return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+
+  /* ⚠️ GENERATED UNTIL IT IS ACTUALLY HARD. A sum with no carry in it teaches
+     nothing he is getting wrong, and left to chance a fair few come out that
+     way, so the generator throws those back. Same for a subtraction with
+     nothing to borrow. The loop is bounded because a generator that cannot
+     satisfy its own condition must fail loudly rather than hang the page. */
+  /* ⚠️ `w` IS THE ANSWER, and it is on the card because that is what the
+     checker is handed to compare against. It is never painted: body.summing
+     hides the whole top of the writing panel, which is the one place a writing
+     card would otherwise show its own word. */
+  function sumCard(op, ops, u, kind){
+    var c = { k: 'sum', op: op, ops: ops, u: u.id, kind: kind };
+    c.w = String(sumAnswer(c));
+    return c;
+  }
+  function makeAdd(u){
+    var lo = Math.pow(10, u.digits - 1), hi = Math.pow(10, u.digits) - 1;
+    for (var tries = 0; tries < 200; tries++){
+      var ops = [], i;
+      for (i = 0; i < u.n; i++) ops.push(randInt(lo, hi));
+      if (carriesIn(ops) < 1) continue;
+      return sumCard('+', ops, u, 'add');
+    }
+    return sumCard('+', [938, 938, 737], u, 'add');
+  }
+  function carriesIn(ops){
+    var carry = 0, n = 0, place = 1, most = 0, i;
+    ops.forEach(function(v){ most = Math.max(most, String(v).length); });
+    for (i = 0; i < most; i++){
+      var sum = carry;
+      ops.forEach(function(v){ sum += Math.floor(v / place) % 10; });
+      carry = Math.floor(sum / 10);
+      if (carry > 0) n++;
+      place *= 10;
+    }
+    return n;
+  }
+  function makeSub(u){
+    var lo = Math.pow(10, u.digits - 1), hi = Math.pow(10, u.digits) - 1;
+    for (var tries = 0; tries < 200; tries++){
+      var a = randInt(lo + 100, hi), b = randInt(lo, a - 1);
+      if (!borrowsIn(a, b)) continue;
+      return sumCard('−', [a, b], u, 'sub');
+    }
+    return sumCard('−', [812, 349], u, 'sub');
+  }
+  function borrowsIn(a, b){
+    var place = 1;
+    while (place <= a){
+      if ((Math.floor(a / place) % 10) < (Math.floor(b / place) % 10)) return true;
+      place *= 10;
+    }
+    return false;
+  }
+  function sumAnswer(c){
+    if (c.op === '+'){
+      var t = 0;
+      c.ops.forEach(function(v){ t += v; });
+      return t;
+    }
+    return c.ops[0] - c.ops[1];
+  }
+  /* ⚠️ HOW MANY BOXES, and it must not give the answer away. One more than the
+     longest number in the sum, so 938 + 938 + 737 gets four and its answer 2613
+     fills all four, while 123 + 45 + 11 also gets four and its answer 179 leaves
+     the first one empty. Boxes that exactly fitted the answer would have told
+     him whether it carried past the hundreds before he added a thing. */
+  function sumBoxes(c){
+    var most = 0;
+    c.ops.forEach(function(v){ most = Math.max(most, String(v).length); });
+    return c.op === '+' ? most + 1 : most;
+  }
+
+  /* Times a clock can show. Whole hours are deliberately rare: the fault worth
+     practising is where the HOUR hand sits when the minutes are past the half,
+     and on the hour there is nothing to get wrong. */
+  function makeClock(u){
+    var mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+    var m = mins[randInt(1, mins.length - 1)];
+    if (Math.random() < 0.12) m = 0;
+    return { k: 'clock', h: randInt(1, 12), m: m, u: u.id, kind: 'clock' };
+  }
+  function clockWords(c){
+    return c.h + ':' + (c.m < 10 ? '0' + c.m : c.m);
+  }
+
+  function mathCards(u){
+    var out = [], i;
+    for (i = 0; i < (u.count || 10); i++){
+      out.push(u.kind === 'add' ? makeAdd(u) : u.kind === 'sub' ? makeSub(u) : makeClock(u));
+    }
+    return out;
+  }
+  function buildMathRounds(){
+    var all = [];
+    myMath().forEach(function(u){
+      if (state.maths.indexOf(u.id) !== -1) all = all.concat(mathCards(u));
+    });
+    if (state.shuffle) shuffle(all);
+    return [{ label: '', table: 0, cards: all }];
+  }
+  function mathCount(){
+    var n = 0;
+    myMath().forEach(function(u){
+      if (state.maths.indexOf(u.id) !== -1) n += (u.count || 10);
+    });
+    return n;
+  }
+  function mathSummary(){
+    var picked = myMath().filter(function(u){ return state.maths.indexOf(u.id) !== -1; });
+    if (!picked.length) return 'Pick something.';
+    return picked.map(function(u){ return u.what; }).join(' ')
+      + '  Every sum is marked COLUMN BY COLUMN, so a carry that landed in the '
+      + 'wrong place is named as the tens or the hundreds rather than the whole '
+      + 'sum coming back crossed out.'
+      + '  ⚠️ These are made up, not off his book, because it did not come home. '
+      + 'They can be aimed properly once there is a page to aim at.';
+  }
+
+  /* ---------- the column pad ---------- */
+  /* What the checker read, ones first, filled in only once it has been marked.
+     Empty while he is still writing, because nothing on this screen knows what
+     he has written until the reading comes back. */
+  var sumEntry = [];
+  function placeName(i){
+    return i === 0 ? 'ones' : i === 1 ? 'tens' : i === 2 ? 'hundreds'
+         : i === 3 ? 'thousands' : 'the ' + (i + 1) + 'th column';
+  }
+  function paintSum(c){
+    var boxes = sumBoxes(c), cols = boxes, rows = [];
+    function row(cells, cls){
+      return '<div class="sline' + (cls ? ' ' + cls : '') + '" style="grid-template-columns:repeat('
+           + (cols + 1) + ',46px)">' + cells + '</div>';
+    }
+    function cellsFor(n, op){
+      var t = String(n), out = '';
+      // one wider than the sum so the + or the minus has a column of its own
+      for (var i = 0; i < cols + 1 - t.length; i++){
+        out += '<span class="cell' + (op && i === cols - t.length ? ' op' : '') + '">'
+             + (op && i === cols - t.length ? op : '') + '</span>';
+      }
+      for (i = 0; i < t.length; i++) out += '<span class="cell">' + t.charAt(i) + '</span>';
+      return out;
+    }
+    /* His own carry line, blank and never marked. It is where the little 1 goes
+       on his paper and the sum reads wrong without somewhere to put it. */
+    var carry = '';
+    for (var i = 0; i <= cols; i++) carry += '<span class="cell"></span>';
+    rows.push(row(carry, 'carry'));
+    c.ops.forEach(function(v, i){
+      rows.push(row(cellsFor(v, i === c.ops.length - 1 ? c.op : '')));
+    });
+    rows.push('<div class="rule"></div>');
+    var ans = '<span class="cell"></span>';
+    for (i = 0; i < boxes; i++){
+      var at = boxes - 1 - i;                       // left to right, so ones last
+      var d = sumEntry[at];
+      ans += '<span class="cell" data-at="' + at + '">'
+           + (d === undefined ? '' : d) + '</span>';
+    }
+    rows.push(row(ans, 'ans'));
+    el.sumStack.innerHTML = rows.join('');
+  }
+  /* ⭐ MARKED COLUMN BY COLUMN off what the checker READ, which is the whole
+     reason the reading is a transcription rather than a yes or no. The server
+     is never told the answer, so what comes back is genuinely what is on the
+     page, and the digit that went astray can be pointed at where it stands. */
+  function markSumRead(c, read){
+    var want = String(sumAnswer(c)).split('').reverse();
+    var got = String(read || '').replace(/[^0-9]/g, '').split('').reverse();
+    sumEntry = got.slice();
+    var boxes = sumBoxes(c), wrong = [], i;
+    for (i = 0; i < boxes; i++){
+      var g = got[i] === undefined ? '' : got[i];
+      var w = want[i] === undefined ? '' : want[i];
+      if (g !== w) wrong.push(i);
+    }
+    paintSum(c);
+    var cells = el.sumStack.querySelectorAll('.ans .cell[data-at]');
+    for (i = 0; i < cells.length; i++){
+      var at = parseInt(cells[i].getAttribute('data-at'), 10);
+      var g2 = got[at] === undefined ? '' : got[at];
+      var w2 = want[at] === undefined ? '' : want[at];
+      cells[i].classList.add(g2 === w2 ? 'good' : 'bad');
+    }
+    if (!wrong.length){ setSumNote('Right, all the way across.', 'good'); return true; }
+    /* ⚠️ Name the RIGHTMOST wrong column, not the leftmost. In a column sum
+       everything to the left of the first mistake is downstream of it, so
+       telling him the hundreds are wrong when the ones went astray sends him to
+       the wrong end of his own working. */
+    setSumNote('Look at the ' + placeName(wrong[0]) + ' column again.', 'bad');
+    return false;
+  }
+  function setSumNote(msg, cls){
+    el.sumNote.textContent = msg || '';
+    el.sumNote.className = 'snote' + (cls ? ' ' + cls : '');
+  }
+
+  /* ---------- the clock ----------
+     ⭐ TAPPED, NOT DRAGGED. A drag needs a hand to grab, and the hands do not
+     exist until he has put them there. He taps where each one points, hour
+     first, and it is drawn as he goes. */
+  var clockHands = [];       // angles in degrees clockwise from twelve
+  /* 🔴 THE TIME HAS TO BE SOMEWHERE HE CAN SEE IT. It was going to the card,
+     which body.clocking hides, so the whole exercise was "draw the hands" with
+     no time given at all. It goes at the front of the note instead, which is
+     the only line of words on this screen. */
+  function clockAsk(c){ return 'Show ' + clockWords(c) + '.  '; }
+  function clockGeom(){
+    var cv = el.clockCv, box = cv.getBoundingClientRect();
+    var d = Math.max(120, Math.min(box.width, box.height));
+    return { d: d, r: d / 2, cx: d / 2, cy: d / 2 };
+  }
+  function paintClock(c){
+    var cv = el.clockCv, g = cv.getContext('2d');
+    if (!g) return;
+    var dpr = Math.min(3, window.devicePixelRatio || 1), G = clockGeom();
+    cv.width = Math.round(G.d * dpr); cv.height = Math.round(G.d * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, G.d, G.d);
+    g.fillStyle = '#fff'; g.strokeStyle = '#1b2330'; g.lineWidth = 3;
+    g.beginPath(); g.arc(G.cx, G.cy, G.r - 4, 0, 6.284); g.fill(); g.stroke();
+    var i, a, x, y;
+    for (i = 0; i < 60; i++){
+      a = (i / 60) * 6.2832 - 1.5708;
+      var big = i % 5 === 0;
+      var r1 = G.r - (big ? 18 : 11), r2 = G.r - 6;
+      g.strokeStyle = big ? '#1b2330' : '#b9b3a6'; g.lineWidth = big ? 3 : 1.5;
+      g.beginPath();
+      g.moveTo(G.cx + Math.cos(a) * r1, G.cy + Math.sin(a) * r1);
+      g.lineTo(G.cx + Math.cos(a) * r2, G.cy + Math.sin(a) * r2);
+      g.stroke();
+    }
+    g.fillStyle = '#1b2330';
+    g.font = '700 ' + Math.round(G.r * 0.19) + 'px system-ui,-apple-system,sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (i = 1; i <= 12; i++){
+      a = (i / 12) * 6.2832 - 1.5708;
+      x = G.cx + Math.cos(a) * (G.r - 36); y = G.cy + Math.sin(a) * (G.r - 36);
+      g.fillText(String(i), x, y);
+    }
+    // his hands, short and fat for the hour, long and thin for the minute
+    clockHands.forEach(function(deg, k){
+      var rad = (deg - 90) * Math.PI / 180;
+      var len = k === 0 ? G.r * 0.50 : G.r * 0.76;
+      g.strokeStyle = k === 0 ? '#1b2330' : '#3c5af0';
+      g.lineWidth = k === 0 ? 8 : 5;
+      g.lineCap = 'round';
+      g.beginPath(); g.moveTo(G.cx, G.cy);
+      g.lineTo(G.cx + Math.cos(rad) * len, G.cy + Math.sin(rad) * len);
+      g.stroke();
+    });
+    g.fillStyle = '#1b2330';
+    g.beginPath(); g.arc(G.cx, G.cy, 7, 0, 6.284); g.fill();
+    el.clockUndo.disabled = !clockHands.length;
+    el.clockDone.disabled = clockHands.length < 2;
+  }
+  function clockTap(ev){
+    var c = card(); if (!isClock(c) || state.answered) return;
+    if (clockHands.length >= 2) return;
+    var box = el.clockCv.getBoundingClientRect(), G = clockGeom();
+    var x = ev.clientX - box.left - G.cx, y = ev.clientY - box.top - G.cy;
+    if (Math.abs(x) < 6 && Math.abs(y) < 6) return;       // dead centre says nothing
+    var deg = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
+    clockHands.push(deg);
+    unlock(); sfx.tap();
+    paintClock(c);
+    setClockNote(clockAsk(c) + (clockHands.length < 2
+      ? 'Now tap where the MINUTE hand points.' : 'Tap Done when it looks right.'), '');
+  }
+  function setClockNote(msg, cls){
+    el.clockNote.textContent = msg || '';
+    el.clockNote.className = 'cnote' + (cls ? ' ' + cls : '');
+  }
+  function markClock(c){
+    if (clockHands.length < 2) return;
+    /* ⭐ THE HOUR HAND MOVES WITH THE MINUTES, and this is the whole lesson.
+       At 3:40 it is two thirds of the way from the 3 to the 4, not still
+       sitting on the 3, and putting it on the number is the classic mistake.
+       So the wanted angle carries the fraction, and a hand parked on the hour
+       is told exactly that rather than just marked wrong. */
+    var wantH = ((c.h % 12) + c.m / 60) * 30;
+    var wantM = c.m * 6;
+    function off(a, b){ var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+    var dh = off(clockHands[0], wantH), dm = off(clockHands[1], wantM);
+    var okM = dm <= 7, okH = dh <= 12;
+    state.answered = true;
+    if (okH && okM){
+      sfx.right(); setClockNote('That is ' + clockWords(c) + '. Well done.', 'good');
+      bump(true);
+    } else {
+      sfx.wrong();
+      var onTheNumber = off(clockHands[0], (c.h % 12) * 30) <= 8 && c.m >= 10;
+      setClockNote(!okM && !okH ? 'Both hands are out. It is ' + clockWords(c) + '.'
+        : !okM ? 'The minute hand is out. ' + c.m + ' minutes is the '
+                 + (c.m / 5) + ' mark, counting round in fives.'
+        : onTheNumber ? 'The hour hand does not stay on the ' + c.h + '. By '
+                 + clockWords(c) + ' it has moved most of the way to the '
+                 + ((c.h % 12) + 1) + '.'
+        : 'The hour hand is out. At ' + clockWords(c) + ' it sits between the '
+                 + c.h + ' and the ' + ((c.h % 12) + 1) + '.', 'bad');
+      bump(false);
+    }
+    if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, okH && okM ? 1100 : 3200);
+  }
+  el.clockCv.addEventListener('pointerdown', clockTap);
+  el.clockUndo.addEventListener('click', function(){
+    var c = card(); if (!isClock(c) || state.answered) return;
+    unlock(); sfx.tap(); clockHands = []; paintClock(c);
+    setClockNote(clockAsk(c) + 'Tap where the HOUR hand points.', '');
+  });
+  el.clockDone.addEventListener('click', function(){
+    unlock(); var c = card(); if (isClock(c) && !state.answered) markClock(c);
+  });
+
   function buildRounds(){
+    if (mathNow()) return buildMathRounds();
     if (redpenNow()) return buildRedpenRounds();
     if (handNow()) return buildHandRounds();
     if (studyNow()) return buildStudyRounds();
@@ -6102,11 +6599,11 @@
      the spelling INSIDE the meaning counts too. `isWord` covers it, because
      everything about the writing panel, the ink and the retry applies. */
   function isWord(c){ return !!(c && (c.k === 'w' || c.k === 'd' || c.k === 'q'
-                                     || c.k === 'tr' || isSent(c))); }
+                                     || c.k === 'tr' || c.k === 'sum' || isSent(c))); }
   /* ⚠️ THE PENCIL IS NOT OPTIONAL ON A HANDWRITING CARD. Everywhere else the
      keyboard is a fair way to answer; here it would be answering a different
      question entirely, so the pad is forced on whatever the setting says. */
-  function penFor(c){ return !!state.hand || isTrace(c); }
+  function penFor(c){ return !!state.hand || isTrace(c) || isSum(c); }
   function isDef(c){ return !!(c && c.k === 'd'); }
   /* ⭐ THE WORD AND THEN WHAT IT MEANS, both in his own hand. The word stays
      on screen as the prompt, so this is not a memory test; what it stops being
@@ -6146,6 +6643,10 @@
   function picking(){ return !spellingNow() && (state.mode === 'choice' || state.mode === 'shoot'); }
   function cardFace(c){
     if (isDealt(c)) return c.text;
+    /* Both draw themselves, so this is only what the debug trail and the round
+       log see. It still has to say something a person could read off a photo. */
+    if (isSum(c)) return c.ops.join(' ' + c.op + ' ') + ' =';
+    if (isClock(c)) return 'Show ' + clockWords(c);
     /* ⚠️ The CLUE, never the name. Every other writing card may show its own
        word on the face because the word is the prompt; on a term card the word
        IS the answer, and this string reaches the debug trail and the round log. */
@@ -6168,6 +6669,8 @@
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
   }
   function cardAnswer(c){
+    if (isSum(c)) return String(sumAnswer(c));
+    if (isClock(c)) return clockWords(c);
     if (isDealt(c)) return '';       // not ours to know
     if (isDef(c)) return defWanted(c);
     if (c && c.k === 'qa') return c.w;
@@ -6183,6 +6686,11 @@
     /* Its own prefix. A history term and a spelling word can be the same string
        and they are not the same card, so they must not share a line on the
        Keeps missing these list. */
+    /* ⚠️ BY KIND, not by problem. The sums are generated, so 938 + 938 + 737
+       will never come round again and a record of it would be a list of a
+       hundred things each missed once. What is worth knowing is that adding
+       three numbers is where he comes unstuck, so that is what is kept. */
+    if (isSum(c) || isClock(c)) return 'm:' + c.kind;
     if (isAsk(c)) return 'q:' + c.w;
     if (c && c.k === 'qa') return 'a:' + c.w;
     if (isWord(c)) return 'w:' + c.w;
@@ -7577,6 +8085,16 @@
     /* Spelling decides per card: the words are written, the two worksheet
        questions are tapped, and both can turn up in the same round. */
     var writing = isWord(c) && !isTeach(c) && !isProof(c), tapping = isTask(c);
+    /* The stack is painted before the panel below it, because a sum is a
+       writing card whose PROMPT happens to live outside the writing panel. */
+    if (isSum(c)){
+      sumEntry = [];
+      paintSum(c);
+      /* The red line below already says to write the answer, so this one stays
+         empty until it has something to say. Two instructions stacked read as
+         one long instruction and neither gets read. */
+      setSumNote('');
+    }
     document.body.classList.toggle('write', writing);
     document.body.classList.toggle('teaching', isTeach(c));
     /* Spelling and the study guides both mix written and tapped cards in one
@@ -7584,8 +8102,28 @@
        set once from the subject. */
     if (spellingNow() || studyNow()) document.body.classList.toggle('choice', tapping);
 
+    /* Both of these take the screen, the card and the answer buttons and all,
+       for the same reason the proof row does: what he is working on IS the
+       whole exercise rather than an answer to a question on a card. */
+    document.body.classList.toggle('summing', isSum(c));
+    document.body.classList.toggle('clocking', isClock(c));
     document.body.classList.toggle('proofing', isProof(c));
-    if (isProof(c)){
+    if (isClock(c)){
+      clockHands = [];
+      /* ⚠️ PAINTED NOW, and again on the next frame. The class that gives the
+         canvas a box went on the body a few lines above, and measuring it forces
+         the layout, so now is early enough. The second go covers the case where
+         it is not. A rAF ALONE was not enough: the debug harness runs with the
+         browser pane hidden, a hidden pane freezes requestAnimationFrame
+         entirely, and the clock came up as an unsized 300x150 buffer with
+         nothing drawn on it. */
+      paintClock(c);
+      requestAnimationFrame(function(){ if (card() === c) paintClock(c); });
+      setClockNote(clockAsk(c) + 'Tap where the HOUR hand points.');
+      el.grade.classList.remove('on');
+      el.nextBtn.style.display = 'none';
+      el.hint.textContent = '';
+    } else if (isProof(c)){
       paintProof(c);
       el.grade.classList.remove('on');
       el.nextBtn.style.display = 'none';
@@ -7843,7 +8381,7 @@
   function tidy(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
 
   function paintWrite(c){
-    var def = isDef(c), sen = isSent(c), ask = isAsk(c), pen = isTrace(c);
+    var def = isDef(c), sen = isSent(c), ask = isAsk(c), pen = isTrace(c), sum = isSum(c);
     /* The word is the PROMPT on a definition card, and the whole sentence is
        the prompt on a grammar one, so both stay on screen whatever the mode:
        there is nothing to peek at and nothing to hide, and reading it aloud
@@ -7852,7 +8390,9 @@
        is the thing on screen; here the MEANING is on screen and the word is
        what he has to come up with, so it is neither shown nor spoken. Peek is
        still there for when he is stuck, and it is his to press. */
-    var mode = (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
+    /* A sum has nothing to show, hide, or read aloud: the problem is on screen
+       above the pad and the answer is what he is working out. */
+    var mode = sum ? 'copy' : (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
     state.tries = 0; sayAgain = 0;
     clearTimeout(peekId);
     el.wInput.value = '';
@@ -7906,6 +8446,7 @@
       : pen ? (c.pass === 'trace'
                 ? 'Trace it. Follow the letters, slowly.'
                 : 'Now write it yourself, on the line.')
+      : sum ? 'Write the answer.'
       : '';
     /* ⭐ On a red pen card the FAULT replaces the instruction, because this deck
        is going back over a mistake rather than setting a fresh question, and
@@ -9351,7 +9892,8 @@
     apiCall('/handwriting', { method: 'POST',
       body: { token: me.token, word: c.w, image: img,
               meaning: isDef(c) ? (c.m || '') : '',
-              shape: c.k === 'sm' ? 'mark' : c.k === 'st' ? 'kind' : '',
+              shape: c.k === 'sm' ? 'mark' : c.k === 'st' ? 'kind'
+                   : isSum(c) ? 'digits' : '',
               choices: c.k === 'st' && lu ? lu.choices : [] } }).then(function(res){
       checking = false;
       el.inkDone.textContent = 'Done';
@@ -9383,6 +9925,15 @@
          writing. It says what it read, the word is on screen beside it, and
          the person holding the iPad decides. A YES still passes on its own,
          which is the whole point of having it. */
+      /* ⭐ A SUM IS MARKED COLUMN BY COLUMN off the transcription, not off the
+         server's yes or no. The yes and the no still decide whether it counts,
+         but which digit went astray is worked out here, where the columns are
+         known, and shown on the sum itself. */
+      if (isSum(c)){
+        var right = markSumRead(c, d.read || '');
+        inkMark(right, d.read || '', d.note || d.cheer || '');
+        return;
+      }
       if (d.ok){ inkMark(true, d.read || '', d.note || d.cheer || ''); return; }
       /* 🔴 A NO IS NOT A CHANCE TO PASS HIMSELF (Andrew, 2026-08-27): "he keeps
          failing the first one, then he just clicks got it on the second try".
@@ -9453,6 +10004,11 @@
       el.inkDone.disabled = false;
       return;
     }
+    /* ⚠️ A sum cannot be self-marked against a word he can see, because the top
+       of the panel is hidden and the answer was never on screen. So when the
+       checker cannot be reached the answer is put on the sum itself, which is
+       what a grown-up marking it needs anyway. */
+    if (isSum(c)) setSumNote('The answer is ' + sumAnswer(c) + '. Did he get it?', '');
     setWHint(why || 'Check every letter. Did you get it?', '');
     el.inkGrade.classList.add('on');
     el.inkRow.classList.add('hide');
@@ -9534,7 +10090,11 @@
          back out so nothing showed, which is exactly why it would not have
          been noticed, but they still counted against PAGE_CAP and would have
          pushed his real spelling pages out of the drawer. */
-      if (!isSent(c)) keepInk(c, state.tries > 0);
+      /* ⚠️ NOT A SUM. The printing drawer understands spelling weeks and
+         handwriting lessons; an arithmetic lesson would be minted, hidden and
+         still count against PAGE_CAP, which is the bug pageUnit was written to
+         close. A sums sheet is worth having and is a separate job. */
+      if (!isSent(c) && !isSum(c)) keepInk(c, state.tries > 0);
       if (state.tries === 0) bump(true);
       else { clearCard(true); chaseNudge(true); }   // the miss was already counted
       setWHint('Kept for the sheet', 'good');
@@ -10134,7 +10694,7 @@
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
     hushVoice(); clearTimeout(peekId);
     try { el.wInput.blur(); } catch(e){}
-    document.body.classList.remove('write', 'listening', 'hand');
+    document.body.classList.remove('write', 'listening', 'hand', 'summing', 'clocking');
     /* The sheet is a page in his own hand, so it belongs to a round that WROTE
        one and nowhere else; it was turning up after scriptures on a shared
        phone. Handwriting writes one too now, and so does the red pen deck when
