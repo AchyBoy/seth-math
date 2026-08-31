@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.66">
+<meta name="x-cards-version" content="4.67">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,6 +121,32 @@
   .stack .ans .cell.good{color:#1f9d55}
   .stack .ans .cell.bad{color:#d2453c;text-decoration:line-through;
     text-decoration-thickness:2px}
+  /* ⭐ A DIVISION IS DRAWN THE OTHER WAY UP: the quotient goes ON TOP of the
+     bracket, which is where she writes it on paper, so the answer row comes
+     FIRST and there is no .rule under it. The bar over the dividend and the
+     upright of the bracket are borders on the dividend cells themselves, which
+     is why this needs no extra markup: the divisor is the first cell, so every
+     cell after it is a dividend digit and takes the bar, and the first of those
+     takes the upright. */
+  /* ⚠️ The bar spans the DIVIDEND DIGITS and nothing else, which is why they
+     carry their own class rather than being picked out by position. Targeting
+     "every cell after the first" also caught the two spacer cells that hold
+     the r and its box, and the bar ran out past the last digit and under the
+     remainder, which reads as one long line over the whole card. */
+  .stack .dvd .d{border-top:3px solid var(--ink)}
+  /* ⚠️ NOT :first-of-type. Every cell in the row is a span, so :first-of-type
+     matched the DIVISOR and the upright of the bracket disappeared. The first
+     dividend digit carries its own class instead. */
+  .stack .dvd .d1{border-left:3px solid var(--ink);border-top-left-radius:3px}
+  .stack .dvd .cell:first-child{color:var(--ink);font-weight:600}
+  /* ⚠️ The remainder box is ALWAYS drawn, on every division card, including the
+     ones that come out exact. A box that appeared only when there was a
+     remainder would answer the question before she divided anything, which is
+     the same rule as the number of answer boxes. An empty one is the right
+     answer to 8)5,272. */
+  .stack .rlab{font-size:22px;color:var(--muted);font-weight:700}
+  .stack .rnum{width:auto;font-size:44px;letter-spacing:3px}
+  .stack .ans .cell.rbox{border-bottom:3px solid var(--muted);min-height:40px}
   .snote{font-size:15px;font-weight:600;color:var(--muted);text-align:center;
     min-height:22px;margin:0 14px;line-height:1.35}
   .snote.bad{color:#d2453c}
@@ -980,7 +1006,7 @@
       <button type="button" class="opt" data-subject="science">🔬 Science</button>
       <button type="button" class="opt" data-subject="trace">✍️ Handwriting</button>
       <button type="button" class="opt" data-subject="math">🔢 Arithmetic</button>
-      <button type="button" class="opt" data-subject="redpen">🔴 What he missed</button>
+      <button type="button" class="opt" data-subject="redpen">🔴 What you missed</button>
     </div>
   </div>
 
@@ -1014,7 +1040,7 @@
   <div class="block hide" id="studyBlock">
     <p class="label">Which chapter</p>
     <div class="bigchips" id="studyChips"></div>
-    <p class="label" style="margin-top:22px">What he does with it</p>
+    <p class="label" style="margin-top:22px">What you do with it</p>
     <div class="opts" id="studyOpts">
       <button type="button" class="opt on" data-study="both">Learn it, then test it</button>
       <button type="button" class="opt" data-study="terms">✏️ Just the words</button>
@@ -1136,7 +1162,7 @@
       <button type="button" class="opt" data-write="listen">🔊 Say it</button>
     </div>
     <p class="note" id="writeNote"></p>
-    <p class="label" style="margin-top:22px">What he writes with</p>
+    <p class="label" style="margin-top:22px">What you write with</p>
     <div class="opts" id="handOpts">
       <button type="button" class="opt on" data-hand="1">✏️ Apple Pencil</button>
       <button type="button" class="opt" data-hand="0">Keyboard</button>
@@ -3069,6 +3095,7 @@
   function isTermKey(k){ return k.slice(0, 2) === 'q:'; }
   function isMathKey(k){ return k.slice(0, 2) === 'm:'; }
   var MATH_NAMES = { add: 'Adding three numbers', sub: 'Taking away',
+                     mul: 'Multiplying', div: 'Dividing', roman: 'Roman numerals',
                      clock: 'Drawing the hands' };
   function isAskKey(k){ return k.slice(0, 2) === 'a:'; }
   function termByWord(w){
@@ -5996,6 +6023,75 @@
      function", and a blank play screen. Same shape of bug as the one in the
      note at the top of this file about a top level `var` clobbering a function,
      and the reason that note is there. */
+  /* ⭐ A RED PEN CARD BUILT THROUGH sumCard, never hand-written. The answers
+     are not typed out anywhere: 371+267+675+298+146 is worked out by the same
+     code that marks it, so the deck and the marker can never disagree and a
+     typo cannot teach her a wrong answer. The unit id points at her own
+     generated unit so the printed sheet and the record both file it in the
+     right place. */
+  function redSum(from, why, op, ops, uid){
+    var c = sumCard(op, ops, { id: uid }, op === '+' ? 'add' : op === '−' ? 'sub'
+                                       : op === '×' ? 'mul' : op === '÷' ? 'div' : 'roman');
+    c.who = 'Bailey'; c.from = from; c.why = why;
+    if (op === 'roman') c.roman = toRoman(ops[0]);
+    return c;
+  }
+  /* 🔴 BUILT ON FIRST USE, NEVER INSIDE THE MARKED_WORK LITERAL, and this cost
+     a round of debugging exactly as the two notes below it said it would.
+     redSum calls toRoman, toRoman reads ROMAN_PAIRS, and ROMAN_PAIRS is a
+     `var` five hundred lines FURTHER DOWN this file. Function declarations
+     hoist and a var array does not, so the calls ran against an undefined
+     ROMAN_PAIRS, threw, and took the rest of the IIFE with them: `var MATH`
+     below never got assigned, and the symptom was not an error message to the
+     child but the arithmetic screen coming up with NO CHIPS ON IT at all.
+     Third ordering trap in this file after REDPEN and .srow. The rule that
+     falls out of all three: nothing at the top level of this IIFE may RUN at
+     load, it may only be declared. Build it late and keep it. */
+  var baileyBuilt = null;
+  function baileySums(){
+    if (baileyBuilt) return baileyBuilt;
+    baileyBuilt = [
+    redSum('Test 1, question 2a',
+           'Five numbers in a column. The carry goes above the next column, and it '
+           + 'has to be added in with the rest.',
+           '+', [371, 267, 675, 298, 146], 311),
+    redSum('Test 1, question 2f',
+           'Two in a column. Keep the ones under the ones.',
+           '+', [369, 987], 311),
+    redSum('Test 1, question 2b',
+           'Taking away with borrowing. Cross out what you borrow from and write '
+           + 'what it becomes above it.',
+           '−', [1763, 865], 312),
+    redSum('Test 1, question 2e',
+           'Five digits. Work right to left and borrow one column at a time.',
+           '−', [59194, 46648], 312),
+    redSum('Test 1, question 2c',
+           'Times a single digit. The carry is added AFTER you multiply the next '
+           + 'digit, not before.',
+           '×', [3819, 8], 313),
+    redSum('Test 1, question 2d',
+           'Two digits, so there are two rows. The second row starts one place to '
+           + 'the LEFT, under the tens.',
+           '×', [517, 95], 314),
+    redSum('Test 1, question 2g',
+           'This one goes in exactly, so there is nothing left over.',
+           '÷', [5272, 8], 315),
+    redSum('Test 1, question 2h',
+           'Divide, multiply, take away, bring the next digit down. What is left at '
+           + 'the end is the remainder.',
+           '÷', [34378, 6], 315),
+    redSum('Test 1, question 7a',
+           'All three Roman numerals were marked wrong. A SMALLER letter before a '
+           + 'bigger one is taken away from it: CD is 400, not 600.',
+           'roman', [1496], 316),
+    redSum('Test 1, question 7b',
+           'Read it in groups. CC, then L, then XXX, then IX, and IX is nine '
+           + 'because the I comes first.',
+           'roman', [289], 316)
+    ];
+    return baileyBuilt;
+  }
+
   var MARKED_WORK = [
     /* --- Spelling test, 8/27/26, 91 A- --- */
     {
@@ -6135,13 +6231,32 @@
       who: 'Seth', from: 'Writing, lesson 9, graded D',
       why: 'Now on your own.',
       k: 'tr', w: 'against', pass: 'own', u: 201, row: 1
-    }
+    },
+
+    /* --- Bailey, Arithmetic 5 Test 1, 28 August, 77 ---
+       ⚠️ THESE ARE THE PROBLEMS OFF HER PAPER, NOT A LIST OF WHAT SHE GOT
+       WRONG, and the difference matters. Question 2 carries the whole of her
+       loss, twenty of the twenty-three marks, but WHICH of its eight were
+       crossed cannot be read off the photograph: the red pen sits over heavy
+       pencil working and the page was shot at an angle. So every one of the
+       eight is here, and not one `why` says "you wrote" anything.
+
+       That is the same rule the rest of this deck follows, that anything
+       ambiguous is left out rather than guessed at, applied to a different
+       kind of doubt. Drilling a fault she did not make is a smaller wrong than
+       telling her she made it.
+
+       The third Roman numeral on the paper is left out entirely: it reads DIY,
+       which is not a numeral, and it is most likely DIX for 509, but most
+       likely is not good enough to put in front of her. Two of the three are
+       certain and here. */
   ];
 
   function redpenNow(){ return state.subject === 'redpen'; }
   function myRedpen(){
-    if (!me.name) return MARKED_WORK;
-    return MARKED_WORK.filter(function(c){ return sameWho(c.who, me.name); });
+    var all = MARKED_WORK.concat(baileySums());
+    if (!me.name) return all;
+    return all.filter(function(c){ return sameWho(c.who, me.name); });
   }
   /* ⚠️ NEVER SHUFFLED ACROSS A TRACE PAIR. Everything else in here is
      independent, but a handwriting row is two cards and the trace has to
@@ -6217,6 +6332,55 @@
       id: 303, who: 'Seth', kind: 'clock', title: 'Draw the hands',
       what: 'A time to show on a clock face, hour hand then minute hand.',
       count: 10
+    },
+
+    /* ---------- Bailey, off Arithmetic 5 Test 1, 28 August, scored 77 ----------
+       ⭐ EVERY ONE OF THESE IS QUESTION 2, "Follow the signs". Her paper is
+       marked 0 wrong on questions 1, 3, 4, 5, 6, 8, 9, 10 and 11; the whole of
+       the 23 marks she lost is question 2 and the three Roman numerals in
+       question 7. So these units are not a general Arithmetic 5 practice, they
+       are that one question taken apart into its four operations at the size
+       she actually met them.
+       `from` marks a unit as aimed at a real paper rather than made up, which
+       is what mathSummary reads to decide whether to warn that it is guessing.
+       Sizes are taken straight off her eight problems:
+         a 371+267+675+298+146   five 3-digit          -> 311
+         b 1,763-865  e 59,194-46,648                  -> 312
+         c 3,819x8                                     -> 313
+         d 517x95                                      -> 314
+         g 8)5,272    h 6)34,378 r 4                   -> 315
+         q7 MCDXCVI, CCLXXXIX and the third            -> 316 */
+    {
+      id: 311, who: 'Bailey', kind: 'add', title: 'Adding five numbers',
+      what: 'Five 3-digit numbers stacked in a column, always with at least one carry.',
+      n: 5, digits: 3, count: 10, from: 'Test 1, question 2a'
+    },
+    {
+      id: 312, who: 'Bailey', kind: 'sub', title: 'Taking away',
+      what: 'One 5-digit number from another, always with at least one borrow.',
+      digits: 5, count: 10, from: 'Test 1, questions 2b and 2e'
+    },
+    {
+      id: 313, who: 'Bailey', kind: 'mul', title: 'Multiplying by one digit',
+      what: 'A 4-digit number times a single digit, always with at least one carry.',
+      digits: 4, by: 1, count: 10, from: 'Test 1, question 2c'
+    },
+    {
+      id: 314, who: 'Bailey', kind: 'mul', title: 'Multiplying by two digits',
+      what: 'A 3-digit number times a 2-digit number, so there are two rows to add up.',
+      digits: 3, by: 2, count: 10, from: 'Test 1, question 2d'
+    },
+    {
+      id: 315, who: 'Bailey', kind: 'div', title: 'Dividing, with remainders',
+      what: 'A long division by a single digit. Most leave a remainder and some go in exactly, '
+          + 'and the card never says which.',
+      digits: 5, dlo: 3, dhi: 9, rem: true, count: 10, from: 'Test 1, questions 2g and 2h'
+    },
+    {
+      id: 316, who: 'Bailey', kind: 'roman', title: 'Roman numerals',
+      what: 'A Roman numeral to write as an ordinary number. Every one has a subtractive pair '
+          + 'in it, the CD or XC sort, because that is the part that goes wrong.',
+      lo: 40, hi: 3999, count: 10, from: 'Test 1, question 7'
     }
   ];
 
@@ -6268,7 +6432,15 @@
      card would otherwise show its own word. */
   function sumCard(op, ops, u, kind){
     var c = { k: 'sum', op: op, ops: ops, u: u.id, kind: kind };
-    c.w = String(sumAnswer(c));
+    /* ⭐ A DIVISION CARRIES TWO ANSWERS. `w` is what a teacher would write on
+       the page and what the printed sheet shows, "5729 r 4"; the quotient and
+       the remainder are kept apart on the card because they are marked apart.
+       See splitQuot for why running them together is a trap. */
+    if (op === '÷'){
+      c.q = Math.floor(ops[0] / ops[1]);
+      c.rem = ops[0] % ops[1];
+      c.w = String(c.q) + (c.rem ? ' r ' + c.rem : '');
+    } else c.w = String(sumAnswer(c));
     return c;
   }
   function makeAdd(u){
@@ -6310,12 +6482,123 @@
     }
     return false;
   }
+  /* =========================================================
+     BAILEY'S SECTION 2, and the three shapes Seth's units never had.
+     Her Arithmetic 5 test came home 77, and the whole of the loss is in one
+     question: "Follow the signs", eight column problems mixing all four
+     operations. Everything else on the paper is marked 0 wrong. So these
+     generators exist to aim at that question, and her units below run bigger
+     numbers than Seth's because Arithmetic 5 is a level up from his.
+     ⚠️ WHICH of her eight were crossed could not be read off the photograph:
+     the red pen sits over heavy pencil working. That is exactly why these are
+     GENERATED across every shape on the question rather than copied item by
+     item. It does not matter which of the eight she missed if she practises
+     all four operations at that size.
+     ========================================================= */
+
+  /* Thrown back and made again until it CARRIES, the same rule as addition:
+     a product with nothing to carry practises nothing she is getting wrong. */
+  function makeMul(u){
+    var alo = Math.pow(10, u.digits - 1), ahi = Math.pow(10, u.digits) - 1;
+    var by = u.by || 1;
+    var blo = Math.pow(10, by - 1), bhi = Math.pow(10, by) - 1;
+    for (var tries = 0; tries < 200; tries++){
+      var a = randInt(alo, ahi), b = randInt(Math.max(2, blo), bhi);
+      if (!mulCarries(a, b)) continue;
+      return sumCard('×', [a, b], u, 'mul');
+    }
+    return sumCard('×', [517, 95], u, 'mul');
+  }
+  /* ⚠️ Every digit of the multiplier has to be 2 or more. A 0 or a 1 in it
+     makes a partial-product row that is a copy or a line of noughts, which
+     looks like practice and is not, and on a two-digit multiplier it wastes
+     half the card. This is why 517 \u00d7 95 is the shape and 517 \u00d7 10
+     is never generated. */
+  function mulCarries(a, b){
+    var bs = String(b), any = false, i;
+    for (i = 0; i < bs.length; i++){
+      var d = parseInt(bs.charAt(i), 10);
+      if (d < 2) return false;
+      if (rowCarries(a, d)) any = true;
+    }
+    return any;
+  }
+  function rowCarries(a, d){
+    var carry = 0, place = 1;
+    while (place <= a){
+      var t = (Math.floor(a / place) % 10) * d + carry;
+      carry = Math.floor(t / 10);
+      if (carry > 0) return true;
+      place *= 10;
+    }
+    return false;
+  }
+
+  /* ⭐ THE REMAINDER IS PART OF DIVIDING, so a unit that only ever came out
+     exact would quietly teach her it never happens. Her own paper has both:
+     8)5,272 goes exactly and 6)34,378 leaves 4. With `rem` on the unit, most
+     of them leave one and some do not, and she cannot tell which from the
+     card. */
+  function makeDiv(u){
+    var lo = Math.pow(10, u.digits - 1), hi = Math.pow(10, u.digits) - 1;
+    for (var tries = 0; tries < 200; tries++){
+      var b = randInt(u.dlo || 3, u.dhi || 9);
+      var a = randInt(lo, hi), r = a % b;
+      if (!u.rem && r !== 0) continue;
+      // exact ones stay possible even on a remainder unit, just rarer
+      if (u.rem && r === 0 && Math.random() < 0.7) continue;
+      // a one or two digit quotient is not a long division worth writing out
+      if (Math.floor(a / b) < 100) continue;
+      return sumCard('÷', [a, b], u, 'div');
+    }
+    return sumCard('÷', [34378, 6], u, 'div');
+  }
+
+  /* ⭐ ROMAN NUMERALS, question 7, where she lost all three. Marked column by
+     column like every other sum on this screen, and that turns out to be the
+     right way round for it: the fault in reading MCDXCVI is almost always one
+     GROUP misread, the CD taken for 400 or not, and naming the hundreds column
+     points at that group rather than at the whole numeral. */
+  var ROMAN_PAIRS = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],
+                     [90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],
+                     [5,'V'],[4,'IV'],[1,'I']];
+  function toRoman(n){
+    var out = '', i;
+    for (i = 0; i < ROMAN_PAIRS.length; i++){
+      while (n >= ROMAN_PAIRS[i][0]){ out += ROMAN_PAIRS[i][1]; n -= ROMAN_PAIRS[i][0]; }
+    }
+    return out;
+  }
+  /* Thrown back until the numeral contains a SUBTRACTIVE pair (CM, CD, XC, XL,
+     IX, IV), because that is the whole difficulty. MCCCXXVII is read left to
+     right and adds up; MCDXCVI is the one that came back wrong. */
+  function makeRoman(u){
+    for (var tries = 0; tries < 200; tries++){
+      var n = randInt(u.lo || 40, u.hi || 3999);
+      var r = toRoman(n);
+      if (!/CM|CD|XC|XL|IX|IV/.test(r)) continue;
+      var c = sumCard('roman', [n], u, 'roman');
+      c.roman = r;
+      return c;
+    }
+    var c2 = sumCard('roman', [1496], u, 'roman');
+    c2.roman = 'MCDXCVI';
+    return c2;
+  }
+
   function sumAnswer(c){
     if (c.op === '+'){
       var t = 0;
       c.ops.forEach(function(v){ t += v; });
       return t;
     }
+    if (c.op === '×') return c.ops[0] * c.ops[1];
+    /* The quotient alone. The remainder is c.rem and is never folded in here,
+       or every caller that prints a number would print the wrong one. */
+    if (c.op === '÷') return Math.floor(c.ops[0] / c.ops[1]);
+    /* A Roman numeral card keeps its value in ops[0] and there is nothing to
+       work out: the reading of the numeral IS the answer. */
+    if (c.op === 'roman') return c.ops[0];
     return c.ops[0] - c.ops[1];
   }
   /* ⚠️ HOW MANY BOXES, and it must not give the answer away. One more than the
@@ -6326,6 +6609,19 @@
   function sumBoxes(c){
     var most = 0;
     c.ops.forEach(function(v){ most = Math.max(most, String(v).length); });
+    /* ⚠️ SAME RULE FOR A PRODUCT, and it is easier to get wrong here. As long
+       as its two numbers put together, so 517 \u00d7 95 gets five boxes and
+       49,115 fills them, while 517 \u00d7 12 also gets five and 6,204 leaves
+       the first empty. Boxes cut to fit would have told her how long the answer
+       was before she multiplied anything. */
+    if (c.op === '×') return String(c.ops[0]).length + String(c.ops[1]).length;
+    /* A quotient is never longer than its dividend and is usually shorter, and
+       the dividend is the longest number on the card, so `most` already leaves
+       slack without being told to. 6)34,378 gets five boxes for 5,729. */
+    if (c.op === '÷') return most;
+    /* One more than the value needs, for the same reason as everywhere else:
+       the number of digits in 1,496 is part of what reading MCDXCVI is. */
+    if (c.op === 'roman') return String(c.ops[0]).length + 1;
     return c.op === '+' ? most + 1 : most;
   }
 
@@ -6442,7 +6738,9 @@
   function mathCards(u){
     var out = [], i;
     for (i = 0; i < (u.count || 10); i++){
-      out.push(u.kind === 'add' ? makeAdd(u) : u.kind === 'sub' ? makeSub(u) : makeClock(u));
+      out.push(u.kind === 'add' ? makeAdd(u) : u.kind === 'sub' ? makeSub(u)
+             : u.kind === 'mul' ? makeMul(u) : u.kind === 'div' ? makeDiv(u)
+             : u.kind === 'roman' ? makeRoman(u) : makeClock(u));
     }
     return out;
   }
@@ -6461,6 +6759,17 @@
     });
     return n;
   }
+  /* "Test 1, questions 2b and 2e" for one unit, "Test 1" for several off the
+     same paper, so the line never turns into a list of every question picked. */
+  function aimedAt(picked){
+    if (picked.length === 1) return picked[0].from;
+    var papers = {}, out = [];
+    picked.forEach(function(u){
+      var p = String(u.from).split(',')[0];
+      if (!papers[p]){ papers[p] = 1; out.push(p); }
+    });
+    return out.join(' and ') + ', the questions she lost marks on';
+  }
   function mathSummary(){
     var picked = myMath().filter(function(u){ return state.maths.indexOf(u.id) !== -1; });
     if (!picked.length) return 'Pick something.';
@@ -6468,8 +6777,18 @@
       + '  Every sum is marked COLUMN BY COLUMN, so a carry that landed in the '
       + 'wrong place is named as the tens or the hundreds rather than the whole '
       + 'sum coming back crossed out.'
-      + '  ⚠️ These are made up, not off his book, because it did not come home. '
-      + 'They can be aimed properly once there is a page to aim at.';
+      /* ⚠️ THE WARNING IS PER UNIT NOW, not per subject. It was true of
+         everything here while arithmetic was Seth's alone and his book had not
+         come home. Bailey's units are taken off a marked test, so telling her
+         they are guesses would be false, and it is the one line on the screen
+         that says how much to trust them. A unit carrying `from` is aimed at a
+         real paper. */
+      + (picked.every(function(u){ return u.from; })
+          ? '  These are aimed at ' + aimedAt(picked) + '.'
+          : picked.some(function(u){ return u.from; })
+            ? '  Some of these are aimed at a marked paper and some are made up.'
+            : '  ⚠️ These are made up, not off his book, because it did not come '
+              + 'home. They can be aimed properly once there is a page to aim at.');
   }
 
   /* ---------- the column pad ---------- */
@@ -6477,11 +6796,17 @@
      Empty while he is still writing, because nothing on this screen knows what
      he has written until the reading comes back. */
   var sumEntry = [];
+  /* Where the remainder lives in sumEntry. Deliberately far above any real
+     column so it can never collide with one: the quotient uses 0 upwards from
+     the ones, and a five box quotient uses 0 to 4. */
+  var REM_AT = 90;
   function placeName(i){
     return i === 0 ? 'ones' : i === 1 ? 'tens' : i === 2 ? 'hundreds'
          : i === 3 ? 'thousands' : 'the ' + (i + 1) + 'th column';
   }
   function paintSum(c){
+    if (c.op === '÷') return paintDiv(c);
+    if (c.op === 'roman') return paintRoman(c);
     var boxes = sumBoxes(c), cols = boxes, rows = [];
     function row(cells, cls){
       return '<div class="sline' + (cls ? ' ' + cls : '') + '" style="grid-template-columns:repeat('
@@ -6516,11 +6841,118 @@
     rows.push(row(ans, 'ans'));
     el.sumStack.innerHTML = rows.join('');
   }
+  /* The answer row, shared by the division and the Roman numeral layouts.
+     Left to right, so the ones column is the LAST cell written and data-at
+     still counts from the ones up, exactly as on a stacked sum. */
+  function ansCells(c, boxes){
+    var out = '', i;
+    for (i = 0; i < boxes; i++){
+      var at = boxes - 1 - i, d = sumEntry[at];
+      out += '<span class="cell" data-at="' + at + '">' + (d === undefined ? '' : d) + '</span>';
+    }
+    return out;
+  }
+  /* ⭐ The quotient sits ON TOP of the bracket, so the answer row is drawn
+     first and there is no rule beneath it: the bar over the dividend IS the
+     rule, and it is a border on the dividend cells. The two extra columns on
+     the right are the r and its box, and the dividend row carries them empty so
+     the quotient digits stay lined up over the dividend digits. */
+  function paintDiv(c){
+    var boxes = sumBoxes(c), cols = boxes + 3, rows = [], i;
+    function row(cells, cls){
+      return '<div class="sline' + (cls ? ' ' + cls : '') + '" style="grid-template-columns:repeat('
+           + cols + ',46px)">' + cells + '</div>';
+    }
+    var d = sumEntry[REM_AT];
+    var ans = '<span class="cell"></span>' + ansCells(c, boxes)
+            + '<span class="cell rlab">r</span>'
+            + '<span class="cell rbox" data-at="' + REM_AT + '">'
+            + (d === undefined ? '' : d) + '</span>';
+    rows.push(row(ans, 'ans'));
+    var t = String(c.ops[0]), inner = '<span class="cell op">' + c.ops[1] + '</span>';
+    for (i = 0; i < boxes - t.length; i++) inner += '<span class="cell"></span>';
+    for (i = 0; i < t.length; i++){
+      inner += '<span class="cell d' + (i === 0 ? ' d1' : '') + '">' + t.charAt(i) + '</span>';
+    }
+    // the two the r and its box sit over, deliberately outside the bar
+    inner += '<span class="cell"></span><span class="cell"></span>';
+    rows.push(row(inner, 'dvd'));
+    el.sumStack.innerHTML = rows.join('');
+  }
+  /* The numeral is the prompt and the boxes are the answer, so this is the
+     plain stacked shape with the numeral where the numbers would be. */
+  function paintRoman(c){
+    var boxes = sumBoxes(c), cols = boxes, rows = [];
+    function row(cells, cls){
+      return '<div class="sline' + (cls ? ' ' + cls : '') + '" style="grid-template-columns:repeat('
+           + cols + ',46px)">' + cells + '</div>';
+    }
+    rows.push('<div class="sline rnumrow" style="grid-template-columns:1fr">'
+            + '<span class="cell rnum">' + c.roman + '</span></div>');
+    rows.push('<div class="rule"></div>');
+    rows.push(row(ansCells(c, boxes), 'ans'));
+    el.sumStack.innerHTML = rows.join('');
+  }
+
   /* ⭐ MARKED COLUMN BY COLUMN off what the checker READ, which is the whole
      reason the reading is a transcription rather than a yes or no. The server
      is never told the answer, so what comes back is genuinely what is on the
      page, and the digit that went astray can be pointed at where it stands. */
+  /* ⭐ A QUOTIENT AND A REMAINDER ARE TWO ANSWERS AND ARE MARKED SEPARATELY,
+     which is the reason division could not just ride the digit reader. Run
+     "5729 r 4" through the strip that takes out everything but digits and you
+     get 57294, which happens to match; but a child who FORGETS the remainder
+     writes 5729, and the strip then lines her digits up one column out and
+     blames her ones column, when what she actually missed is the remainder
+     entirely. Two answers, two verdicts, and the note names the one that went
+     wrong. */
+  function splitQuot(read){
+    var t = String(read || '').toLowerCase();
+    var m = t.match(/^[^0-9]*([0-9][0-9\s,]*?)\s*(?:r|rem|remainder)[^0-9]*([0-9]+)/);
+    if (m) return { q: m[1].replace(/[^0-9]/g, ''), r: m[2].replace(/[^0-9]/g, '') };
+    return { q: t.replace(/[^0-9]/g, ''), r: '' };
+  }
+  function markDivRead(c, read){
+    var got = splitQuot(read);
+    var want = String(c.q).split('').reverse();
+    var mine = got.q.split('').reverse();
+    sumEntry = mine.slice();
+    sumEntry[REM_AT] = got.r;
+    var boxes = sumBoxes(c), wrong = [], i;
+    for (i = 0; i < boxes; i++){
+      var g = mine[i] === undefined ? '' : mine[i];
+      var w = want[i] === undefined ? '' : want[i];
+      if (g !== w) wrong.push(i);
+    }
+    /* An exact division wants the remainder box LEFT EMPTY, so '' is the right
+       answer to 8)5,272 and writing a 0 in it is not marked wrong: a nought
+       remainder is what a lot of teachers ask for and both say the same thing. */
+    var wantRem = c.rem ? String(c.rem) : '';
+    var gotRem = got.r === '0' && !c.rem ? '' : got.r;
+    var remOk = gotRem === wantRem;
+    paintSum(c);
+    var cells = el.sumStack.querySelectorAll('.ans .cell[data-at]');
+    for (i = 0; i < cells.length; i++){
+      var at = parseInt(cells[i].getAttribute('data-at'), 10);
+      if (at === REM_AT){ cells[i].classList.add(remOk ? 'good' : 'bad'); continue; }
+      var g2 = mine[at] === undefined ? '' : mine[at];
+      var w2 = want[at] === undefined ? '' : want[at];
+      cells[i].classList.add(g2 === w2 ? 'good' : 'bad');
+    }
+    if (!wrong.length && remOk){ setSumNote('Right, all the way across.', 'good'); return true; }
+    /* The remainder is named FIRST when the quotient is right, because then it
+       is the only thing wrong and pointing at a column would be a lie. */
+    if (!wrong.length){
+      setSumNote(wantRem
+        ? 'The quotient is right. It does not go in exactly, so look at what is left over.'
+        : 'The quotient is right, and this one goes in exactly, so nothing is left over.', 'bad');
+      return false;
+    }
+    setSumNote('Look at the ' + placeName(wrong[0]) + ' column again.', 'bad');
+    return false;
+  }
   function markSumRead(c, read){
+    if (c.op === '÷') return markDivRead(c, read);
     var want = String(sumAnswer(c)).split('').reverse();
     var got = String(read || '').replace(/[^0-9]/g, '').split('').reverse();
     sumEntry = got.slice();
@@ -8675,7 +9107,13 @@
       : pen ? (c.pass === 'trace'
                 ? 'Trace it. Follow the letters, slowly.'
                 : 'Now write it yourself, on the line.')
-      : sum ? 'Write the answer.'
+      /* ⚠️ A division has to SAY the remainder is wanted, or a child who
+         divides perfectly and writes 5729 is marked down for a rule nobody
+         told her. "if there is one" gives nothing away: plenty go in
+         exactly. */
+      : sum ? (c.op === '÷' ? 'Write the answer, and the remainder if there is one.'
+             : c.op === 'roman' ? 'Write it as an ordinary number.'
+             : 'Write the answer.')
       : tell ? 'Write the time in words, like half past three.'
       : '';
     /* ⭐ On a red pen card the FAULT replaces the instruction, because this deck
@@ -10171,7 +10609,7 @@
       body: { token: me.token, word: c.w, image: img,
               meaning: isDef(c) ? (c.m || '') : '',
               shape: c.k === 'sm' ? 'mark' : c.k === 'st' ? 'kind'
-                   : isSum(c) ? 'digits' : '',
+                   : isSum(c) ? (c.op === '÷' ? 'quot' : 'digits') : '',
               choices: c.k === 'st' && lu ? lu.choices : [] } }).then(function(res){
       checking = false;
       el.inkDone.textContent = 'Done';
