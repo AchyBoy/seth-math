@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.67">
+<meta name="x-cards-version" content="4.68">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1593,7 +1593,7 @@
       <button type="button" class="link" id="studyMissed">Study these</button>
     </div>
 
-    <button type="button" class="again hide" id="printBtn">🖨 Print his sheet</button>
+    <button type="button" class="again hide" id="printBtn">🖨 Print this sheet</button>
     <button type="button" class="again" id="againBtn">Go again</button>
     <button type="button" class="link" id="changeBtn">Home</button>
   </div>
@@ -6277,8 +6277,15 @@
     /* ⚠️ Everything except the handwriting rows is filed under REDPEN_UNIT, so
        the page it writes is its own. The trace rows keep the handwriting lesson
        they came from, because their sheet has two slots a row and belongs with
-       the rest of his writing. */
-    all.forEach(function(c){ if (c.k !== 'tr' && !c.u) c.u = REDPEN_UNIT; });
+       the rest of his writing.
+       🔴 THE `!c.u` GUARD HAD TO GO. It was only ever true because no red pen
+       card carried a unit of its own, and Bailey's arithmetic corrections do:
+       they point at her generated units so the sum machinery can find them. The
+       effect was that her going back over the test scattered itself across the
+       six Arithmetic practice pages, and the Corrections sheet, the one a
+       parent opens to see her work the test again, came up empty. A sum needs
+       `u` for nothing during play, only for which page it lands on. */
+    all.forEach(function(c){ if (c.k !== 'tr') c.u = REDPEN_UNIT; });
     return [{ label: '', table: 0, cards: all }];
   }
   function redpenSummary(){
@@ -7286,11 +7293,22 @@
      since four whole verses will not fit on a phone but four references will. */
   // both answer-from-four modes work the same way round, only the flip does not
   function picking(){ return !spellingNow() && (state.mode === 'choice' || state.mode === 'shoot'); }
+  /* ⭐ ONE DESCRIPTION OF A SUM, shared by the debug trail, the round log and
+     the printed sheet, because three copies of this drifted apart the moment a
+     card type stopped being a column of numbers.
+     🔴 A ROMAN NUMERAL CARD KEEPS ITS VALUE IN `ops`, so joining ops prints the
+     ANSWER and never asks the question: the sheet came out "1496 =" next to her
+     handwritten 1496, which tells a parent nothing and gives the answer away to
+     anyone reading it back. The numeral is the prompt. */
+  function sumFace(c){
+    if (c.op === 'roman') return c.roman + ' =';
+    return c.ops.join(' ' + c.op + ' ') + ' =';
+  }
   function cardFace(c){
     if (isDealt(c)) return c.text;
     /* Both draw themselves, so this is only what the debug trail and the round
        log see. It still has to say something a person could read off a photo. */
-    if (isSum(c)) return c.ops.join(' ' + c.op + ' ') + ' =';
+    if (isSum(c)) return sumFace(c);
     if (isClock(c)) return 'Show ' + clockWords(c);
     /* ⚠️ The CLUE, never the name. Every other writing card may show its own
        word on the face because the word is the prompt; on a term card the word
@@ -7314,7 +7332,10 @@
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
   }
   function cardAnswer(c){
-    if (isSum(c)) return String(sumAnswer(c));
+    /* ⚠️ `w`, NOT sumAnswer. sumAnswer is the quotient alone, so a division
+       revealed itself as "5729" and quietly dropped the remainder it had just
+       asked her for, in the one place she looks to find out what was right. */
+    if (isSum(c)) return c.w || String(sumAnswer(c));
     if (isClock(c)) return clockWords(c);
     if (isDealt(c)) return '';       // not ours to know
     if (isDef(c)) return defWanted(c);
@@ -9668,7 +9689,7 @@
      the problem, and on a history term it is the name without the clue that
      was asked. */
   function inkLabel(c){
-    if (isSum(c)) return c.ops.join(' ' + c.op + ' ') + ' =';
+    if (isSum(c)) return sumFace(c);
     if (isClockSay(c)) return 'What time is this?';
     if (isClock(c)) return 'Show ' + clockWords(c);
     if (isSent(c)) return c.t;
@@ -9681,7 +9702,7 @@
     if (isClockSay(c)) return 'said:' + c.h + ':' + c.m;
     /* ⚠️ Keyed by the PROBLEM, not the answer. Two different sums can come out
        the same and would overwrite each other on the page. */
-    if (isSum(c)) return c.ops.join(c.op);
+    if (isSum(c)) return c.op === 'roman' ? 'roman:' + c.roman : c.ops.join(c.op);
     if (isClock(c)) return 'clock:' + c.h + ':' + c.m;
     return (isDef(c) ? 'def:' : '') + c.w + (c.n > 1 ? '#' + c.n : '');
   }
@@ -10735,8 +10756,12 @@
        of the panel is hidden and the answer was never on screen. So when the
        checker cannot be reached the answer is put on the sum itself, which is
        what a grown-up marking it needs anyway. */
-    if (isSum(c)) setSumNote('The answer is ' + sumAnswer(c) + '. Did he get it?', '');
-    if (isClockSay(c)) setClockNote('It is ' + clockSaid(c) + '. Did he get it?', '');
+    /* 🔴 cardAnswer, NOT sumAnswer, and this is the worst place to get it
+       wrong. sumAnswer is the quotient alone, so the line a grown-up marks off
+       read "The answer is 8558" on a card whose answer is 8558 r 3, and a child
+       who wrote the remainder correctly would be marked wrong off it. */
+    if (isSum(c)) setSumNote('The answer is ' + cardAnswer(c) + '. Did they get it?', '');
+    if (isClockSay(c)) setClockNote('It is ' + clockSaid(c) + '. Did they get it?', '');
     setWHint(why || 'Check every letter. Did you get it?', '');
     el.inkGrade.classList.add('on');
     el.inkRow.classList.add('hide');
@@ -11061,7 +11086,7 @@
       + '<span class="swhat">' + esc(own.title) + ' &middot; '
       + esc(pageWhen(pg, true)) + '</span></div>'
       + '<ol>' + rows + '</ol>'
-      + '<p class="foot">Written with the Apple Pencil, in the order he did them. '
+      + '<p class="foot">Written with the Apple Pencil, in the order they were done. '
       + 'A dot marks one that took more than one go.</p>';
     return true;
   }
