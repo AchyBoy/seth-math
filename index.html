@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.68">
+<meta name="x-cards-version" content="4.69">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,6 +105,12 @@
      the undo, the checker, the printed page and the self-marking with it. */
   .sum{display:none;flex-direction:column;align-items:center;gap:8px;padding:4px 0 2px}
   body.summing .sum{display:flex}
+  /* ⭐ THE STACK GOES, THE NOTE STAYS. The problem is drawn inside the pad now,
+     so a second copy of it above would be the same sum twice and only one of
+     them writable. `#sumNote` is a sibling and keeps its place: it is the
+     marking in words, "look at the ones column again", and the coloured
+     underlines in the pad are the same marking in place. */
+  body.summing .stack{display:none}
   .stack{display:inline-block;font-variant-numeric:tabular-nums}
   .stack .sline{display:grid;justify-content:end;gap:0;align-items:center}
   .stack .cell{width:46px;text-align:center;font-size:38px;font-weight:600;
@@ -491,6 +497,14 @@
   .ink{position:relative;border:2px solid var(--line);border-radius:22px;background:#fff;
     height:190px;touch-action:none;overflow:hidden;box-shadow:0 6px 18px rgba(32,36,46,.06)}
   body.hand .ink{flex:1 1 auto;height:auto;min-height:200px;max-height:min(58vh,600px)}
+  /* ⚠️ AFTER body.hand, not before it. Both are one element and two classes, so
+     they have the same weight and SOURCE ORDER decides; sitting up beside the
+     other summing rules this lost to min-height:200px and did nothing at all.
+     It only looked right because the flex grow happened to make the pad tall
+     enough anyway, which would not have held on a phone.
+     A word needs a line to sit on. A column sum needs the carries above it, the
+     rows, the rule, and the answer under it. */
+  body.summing .ink{min-height:330px;max-height:min(66vh,660px)}
   body.write.hand .wpanel{flex:1}
   /* The 560px column is right for reading and wrong for writing: on an iPad it
      left the pad narrower than the word while most of the glass sat empty
@@ -6938,14 +6952,14 @@
     var gotRem = got.r === '0' && !c.rem ? '' : got.r;
     var remOk = gotRem === wantRem;
     paintSum(c);
-    var cells = el.sumStack.querySelectorAll('.ans .cell[data-at]');
-    for (i = 0; i < cells.length; i++){
-      var at = parseInt(cells[i].getAttribute('data-at'), 10);
-      if (at === REM_AT){ cells[i].classList.add(remOk ? 'good' : 'bad'); continue; }
-      var g2 = mine[at] === undefined ? '' : mine[at];
-      var w2 = want[at] === undefined ? '' : want[at];
-      cells[i].classList.add(g2 === w2 ? 'good' : 'bad');
+    sumMarks = {};
+    sumMarks[REM_AT] = remOk ? 'good' : 'bad';
+    for (i = 0; i < boxes; i++){
+      var gd = mine[i] === undefined ? '' : mine[i];
+      var wd = want[i] === undefined ? '' : want[i];
+      sumMarks[i] = gd === wd ? 'good' : 'bad';
     }
+    inkPaint();
     if (!wrong.length && remOk){ setSumNote('Right, all the way across.', 'good'); return true; }
     /* The remainder is named FIRST when the quotient is right, because then it
        is the only thing wrong and pointing at a column would be a lie. */
@@ -6970,13 +6984,13 @@
       if (g !== w) wrong.push(i);
     }
     paintSum(c);
-    var cells = el.sumStack.querySelectorAll('.ans .cell[data-at]');
-    for (i = 0; i < cells.length; i++){
-      var at = parseInt(cells[i].getAttribute('data-at'), 10);
-      var g2 = got[at] === undefined ? '' : got[at];
-      var w2 = want[at] === undefined ? '' : want[at];
-      cells[i].classList.add(g2 === w2 ? 'good' : 'bad');
+    sumMarks = {};
+    for (i = 0; i < boxes; i++){
+      var gd = got[i] === undefined ? '' : got[i];
+      var wd = want[i] === undefined ? '' : want[i];
+      sumMarks[i] = gd === wd ? 'good' : 'bad';
     }
+    inkPaint();
     if (!wrong.length){ setSumNote('Right, all the way across.', 'good'); return true; }
     /* ⚠️ Name the RIGHTMOST wrong column, not the leftmost. In a column sum
        everything to the left of the first mistake is downstream of it, so
@@ -8755,6 +8769,8 @@
        writing card whose PROMPT happens to live outside the writing panel. */
     if (isSum(c)){
       sumEntry = [];
+      sumMarks = {};   // or the last card's red columns carry on to this one
+      ink.sumG = null; // and never keep the last card's layout against this one
       paintSum(c);
       /* The red line below already says to write the answer, so this one stays
          empty until it has something to say. Two instructions stacked read as
@@ -9175,6 +9191,19 @@
       el.inkDone.textContent = 'Done';
       el.inkDone.disabled = false;
       el.wCheck.textContent = 'Check it';
+      /* 🔴 MEASURED AGAIN AFTER THE LAYOUT SETTLES. `body.summing` makes the pad
+         tall enough for a column sum, and inkReset paints before the browser
+         has applied that height: the sum was laid out for a 200px pad, drawn
+         off the bottom of it, and the pad sat BLANK until the first stroke
+         happened to repaint it at the right size. Nothing said it was broken,
+         which is the worst kind.
+         ⚠️ Not requestAnimationFrame alone. The debug harness runs with the
+         browser pane hidden, which freezes rAF entirely, and this is the exact
+         trap the clock hit. The timeout runs either way. */
+      if (isSum(c)){
+        requestAnimationFrame(function(){ if (card() === c) inkPaint(); });
+        setTimeout(function(){ if (card() === c) inkPaint(); }, 0);
+      }
     }
 
     if (mode === 'copy'){
@@ -10171,8 +10200,14 @@
   function inkSetup(){
     var box = el.inkBox.getBoundingClientRect();
     var dpr = Math.min(3, window.devicePixelRatio || 1);
-    ink.w = Math.round(box.width) || 320;
-    ink.h = Math.round(box.height) || 190;
+    /* 🔴 A NEAR ZERO WIDTH IS THE PANEL MID LAYOUT, NOT A PAD THAT NARROW. This
+       box measures 4px wide for a moment every time the writing panel opens,
+       and `|| 320` only catches an exact 0. The sum was laid out for a 4px pad
+       and, worse, that 4 was stored on the page record, so the printed sheet
+       redrew the problem at a width it never had. Keep the last good one. */
+    var w = Math.round(box.width), h = Math.round(box.height);
+    ink.w = w > 40 ? w : (ink.w > 40 ? ink.w : 320);
+    ink.h = h > 40 ? h : (ink.h > 40 ? ink.h : 190);
     el.inkCv.width = Math.round(ink.w * dpr);
     el.inkCv.height = Math.round(ink.h * dpr);
     var g = el.inkCv.getContext('2d');
@@ -10200,20 +10235,187 @@
     return { band: band, top: top, base: top + band,
              mid: top + Math.round(band * 0.55) };
   }
+  /* =========================================================
+     THE SUM LIVES IN THE PAD (Andrew, 2026-08-31: "I really want the math
+     problems to work like he would do on paper where he can cross out the nine
+     and put the one by the four and all that, not just an input for the
+     answer").
+
+     ⭐ IT IS THE WHOLE POINT, not a nicety. The fault this subject exists to
+     catch is a borrow or a carry going astray, and until now there was nowhere
+     to put one: the problem was printed above the pad and the pad took the
+     final answer only, so the app tested the one part she can already do and
+     watched the part she gets wrong happen off screen, on nothing.
+
+     So the problem is DRAWN INSIDE the pad and she writes over it, the same
+     way the handwriting trace is drawn under her letters. The carry space is
+     real space above the top row. The answer goes in faint boxes under the
+     rule.
+
+     ⚠️ THE CHECKER READS BELOW THE RULE AND NOTHING ELSE. Her working is
+     crossings out and little ones scattered over the digits, and handing that
+     to a transcriber asking "what number is this" would come back as noise and
+     mark a right answer wrong. `inkPNG` takes a floor for that reason. Her
+     working is still KEPT and PRINTED, it is just never read.
+     ========================================================= */
+  var SUMPAD = { cell: 42, row: 46, carry: 34, gap: 16, ansGap: 10 };
+  function sumGeom(c){
+    var boxes = sumBoxes(c);
+    var rows = c.op === '÷' ? 1 : c.op === 'roman' ? 1 : c.ops.length;
+    var cols = c.op === '÷' ? boxes + 1 : boxes;
+    var cw = SUMPAD.cell;
+    var w = cols * cw;
+    // right aligned in the pad, with room for the operator column on the left
+    var left = Math.max(14, Math.round((ink.w - w) / 2));
+    var top = SUMPAD.gap + SUMPAD.carry;
+    var g = { cw: cw, cols: cols, boxes: boxes, left: left, top: top, rows: rows };
+    if (c.op === '÷'){
+      /* Drawn the other way up: the answer sits ON TOP of the bracket, so the
+         boxes come first and the dividend below them. */
+      g.ansY = top;
+      g.ruleY = top + SUMPAD.row;
+      g.dvdY = g.ruleY + SUMPAD.row;
+      g.bottom = g.dvdY + SUMPAD.row;
+    } else {
+      g.firstY = top;
+      g.ruleY = top + rows * SUMPAD.row + 6;
+      g.ansY = g.ruleY + SUMPAD.ansGap;
+      g.bottom = g.ansY + SUMPAD.row;
+    }
+    return g;
+  }
+  /* Where the checker stops looking. Everything above this line is her
+     working. A little slack below the rule so a digit written tight under it
+     is not clipped in half. */
+  /* 🔴 A DIVISION IS THE OTHER WAY UP AND SO IS ITS ANSWER BAND. The quotient
+     goes ON TOP of the bar, and the long division working, the multiply, take
+     away and bring the next one down, goes UNDERNEATH the dividend. So on a
+     division the answer is everything ABOVE the bar, and on every other sum it
+     is everything BELOW the rule. Backwards, this hands the checker a column
+     of subtractions and asks it what number that is. */
+  function answerBand(c){
+    var g = sumGeom(c);
+    return c.op === '÷' ? { min: -1e9, max: g.ruleY + 6 }
+                        : { min: g.ruleY + 4, max: 1e9 };
+  }
+  function drawSumOn(g2, c){
+    var g = sumGeom(c), i, j;
+    /* 🔴 THE GEOMETRY THAT WAS ACTUALLY PAINTED, kept for the printed sheet.
+       Recomputing it at save time reads whatever the pad measures THEN, and
+       the two disagreed: her strokes are in the coordinates the sum was drawn
+       in, so a sheet laid out from a second, narrower measurement put the
+       working half a page to the right of the sum it belonged to. One
+       calculation, used for both. */
+    /* ⚠️ ONLY FROM A PAD THAT IS ACTUALLY LAID OUT. inkPaint also runs while the
+       writing panel is collapsing between cards, when the box measures a few
+       pixels wide, and that paint would otherwise replace a good layout with a
+       useless one moments before keepInk stores it against her strokes. A real
+       pad is hundreds of pixels wide; nothing else is worth remembering. */
+    if (ink.w > 200) ink.sumG = g;
+    function cellX(col){ return g.left + col * g.cw; }
+    function digits(v, y, op){
+      var t = String(v), start = g.boxes - t.length;
+      for (j = 0; j < t.length; j++){
+        g2.fillText(t.charAt(j), cellX(start + j) + g.cw / 2, y);
+      }
+      if (op){
+        g2.save(); g2.fillStyle = '#8a93a5';
+        g2.fillText(op, cellX(start - 1) + g.cw / 2, y);
+        g2.restore();
+      }
+    }
+    g2.save();
+    g2.textAlign = 'center'; g2.textBaseline = 'middle';
+    g2.font = '600 32px ' + getComputedStyle(document.body).fontFamily;
+    g2.fillStyle = '#1b2330';
+    if (c.op === 'roman'){
+      g2.font = '700 38px ' + getComputedStyle(document.body).fontFamily;
+      g2.fillText(c.roman, ink.w / 2, g.firstY + SUMPAD.row / 2);
+    } else if (c.op === '÷'){
+      var t = String(c.ops[0]);
+      // divisor, then the bracket, then the dividend under the bar
+      g2.fillText(String(c.ops[1]), cellX(0) + g.cw / 2, g.dvdY + SUMPAD.row / 2);
+      for (j = 0; j < t.length; j++){
+        g2.fillText(t.charAt(j), cellX(1 + j) + g.cw / 2, g.dvdY + SUMPAD.row / 2);
+      }
+      g2.strokeStyle = '#1b2330'; g2.lineWidth = 2.5;
+      g2.beginPath();
+      g2.moveTo(cellX(1) - 4, g.dvdY + SUMPAD.row);
+      g2.lineTo(cellX(1) - 4, g.ruleY + 2);
+      g2.lineTo(cellX(1 + t.length), g.ruleY + 2);
+      g2.stroke();
+    } else {
+      for (i = 0; i < c.ops.length; i++){
+        digits(c.ops[i], g.firstY + i * SUMPAD.row + SUMPAD.row / 2,
+               i === c.ops.length - 1 ? c.op : '');
+      }
+      g2.strokeStyle = '#1b2330'; g2.lineWidth = 3;
+      g2.beginPath();
+      g2.moveTo(cellX(-1) + 6, g.ruleY); g2.lineTo(cellX(g.boxes), g.ruleY);
+      g2.stroke();
+    }
+    /* The answer boxes. Faint, because they are a place to write rather than a
+       thing to fill in, and there is always one more of them than the answer
+       needs so their number never says how long it is. */
+    g2.strokeStyle = '#c7d4f0'; g2.lineWidth = 2;
+    var bx = c.op === '÷' ? 1 : 0;
+    for (i = 0; i < g.boxes; i++){
+      var x = cellX(bx + i), y = g.ansY + SUMPAD.row - 4;
+      var mk = sumMark(i);
+      if (mk){
+        g2.save();
+        g2.strokeStyle = mk === 'good' ? '#1f9d55' : '#d2453c';
+        g2.lineWidth = 3;
+        g2.beginPath(); g2.moveTo(x + 5, y); g2.lineTo(x + g.cw - 5, y); g2.stroke();
+        g2.restore();
+      } else {
+        g2.beginPath(); g2.moveTo(x + 5, y); g2.lineTo(x + g.cw - 5, y); g2.stroke();
+      }
+    }
+    if (c.op === '÷'){
+      g2.save();
+      g2.fillStyle = '#8a93a5'; g2.font = '700 22px ' + getComputedStyle(document.body).fontFamily;
+      g2.fillText('r', cellX(g.cols) + 14, g.ansY + SUMPAD.row / 2);
+      g2.strokeStyle = sumMark(REM_AT) === 'good' ? '#1f9d55'
+                     : sumMark(REM_AT) === 'bad' ? '#d2453c' : '#c7d4f0';
+      g2.lineWidth = sumMark(REM_AT) ? 3 : 2;
+      g2.beginPath();
+      g2.moveTo(cellX(g.cols) + 30, g.ansY + SUMPAD.row - 4);
+      g2.lineTo(cellX(g.cols) + 30 + g.cw - 10, g.ansY + SUMPAD.row - 4);
+      g2.stroke();
+      g2.restore();
+    }
+    g2.restore();
+  }
+  /* Filled in by the marking, cleared on every new card. Read by drawSumOn so
+     a column that went wrong is underlined in red where she wrote it, which is
+     the column by column marking landing on her OWN working rather than on a
+     tidy copy of it above. */
+  var sumMarks = {};
+  function sumMark(at){ return sumMarks[at] || ''; }
+
   function inkPaint(){
     var g = inkSetup();
     g.clearRect(0, 0, ink.w, ink.h);
-    var geom = inkRules();
-    var band = geom.band, top = geom.top, base = geom.base, mid = geom.mid;
-    g.strokeStyle = '#dbe6ff'; g.lineWidth = 1.5; g.setLineDash([]);
-    [top, base].forEach(function(y){
-      g.beginPath(); g.moveTo(12, y); g.lineTo(ink.w - 12, y); g.stroke();
-    });
-    g.setLineDash([5, 7]);
-    g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
-    g.setLineDash([]);
-    // under his ink, over the rules, so a stroke he lays down always reads on top
-    if (traceable(card())) drawTrace(g, card().w, top, base, mid);
+    /* ⭐ A SUM CARD IS NOT RULED PAPER. The three handwriting rules are there to
+       land letters on a line; a column sum wants columns, a rule of its own and
+       room above the top row for the carries. So the sum replaces them
+       entirely rather than being drawn on top of them. */
+    if (isSum(card())){
+      drawSumOn(g, card());
+    } else {
+      var geom = inkRules();
+      var band = geom.band, top = geom.top, base = geom.base, mid = geom.mid;
+      g.strokeStyle = '#dbe6ff'; g.lineWidth = 1.5; g.setLineDash([]);
+      [top, base].forEach(function(y){
+        g.beginPath(); g.moveTo(12, y); g.lineTo(ink.w - 12, y); g.stroke();
+      });
+      g.setLineDash([5, 7]);
+      g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
+      g.setLineDash([]);
+      // under his ink, over the rules, so a stroke he lays down always reads on top
+      if (traceable(card())) drawTrace(g, card().w, top, base, mid);
+    }
     g.strokeStyle = '#1b2330'; g.lineWidth = 3.4; g.lineCap = 'round'; g.lineJoin = 'round';
     ink.strokes.forEach(function(st){
       if (st.length === 1){
@@ -10232,7 +10434,8 @@
       g.setLineDash([]);
     }
     // the traced word IS the "write it here", and the two sat on top of each other
-    el.inkHint.classList.toggle('hide', ink.strokes.length > 0 || traceable(card()));
+    el.inkHint.classList.toggle('hide',
+      ink.strokes.length > 0 || traceable(card()) || isSum(card()));
     el.inkUndo.disabled = !ink.past.length;
     el.inkClear.disabled = !ink.strokes.length;
   }
@@ -10542,10 +10745,29 @@
   /* The ink as a picture for the checker: cropped to the writing, black on
      white, no bigger than it needs to be. A tight crop is both the cheapest
      a vision call gets and the easiest thing for it to read. */
+  /* 🔴 ONLY WHAT IS BELOW THE RULE. On a sum the pad now holds her working as
+     well as her answer: crossings out over the digits, little ones squeezed
+     above them. Handing all of that to a transcriber asking "what number is
+     written here" comes back as noise, and a right answer gets marked wrong
+     off it. A stroke belongs to the answer when MOST of its points are below
+     the line, not when it starts there, because a 9 looped up from below
+     should still count and a slash through a 4 above should not.
+     ⚠️ Her working is still kept and printed. It is only never READ. */
+  function answerStrokes(){
+    var c = card();
+    if (!c || !isSum(c)) return ink.strokes;
+    var b = answerBand(c);
+    return ink.strokes.filter(function(st){
+      var inside = 0;
+      st.forEach(function(pt){ if (pt[1] > b.min && pt[1] < b.max) inside++; });
+      return inside * 2 > st.length;
+    });
+  }
   function inkPNG(){
-    if (!ink.strokes.length) return '';
+    var strokes = answerStrokes();
+    if (!strokes.length) return '';
     var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    ink.strokes.forEach(function(st){
+    strokes.forEach(function(st){
       st.forEach(function(pt){
         if (pt[0] < x0) x0 = pt[0]; if (pt[0] > x1) x1 = pt[0];
         if (pt[1] < y0) y0 = pt[1]; if (pt[1] > y1) y1 = pt[1];
@@ -10568,7 +10790,7 @@
     g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
     g.setTransform(scale, 0, 0, scale, -x0 * scale, -y0 * scale);
     g.strokeStyle = '#000'; g.lineWidth = 3.4; g.lineCap = 'round'; g.lineJoin = 'round';
-    ink.strokes.forEach(function(st){
+    strokes.forEach(function(st){
       if (st.length === 1){
         g.beginPath(); g.arc(st[0][0], st[0][1], 1.8, 0, 6.284);
         g.fillStyle = '#000'; g.fill(); return;
@@ -10786,6 +11008,20 @@
     var pg = currentPage(c.u || 0);
     pg.words[inkKey(c)] = { s: strokes || ink.strokes, w: w || ink.w, h: h || ink.h,
                             missed: !!missed, label: inkLabel(c), at: Date.now() };
+    /* ⭐ THE SUM GOES ON THE RECORD, for exactly the reason the clock's dial
+       does. Her working is crossings out and little ones sitting ON the
+       digits, and inkSVG crops to the ink: printed on its own that is a
+       handful of marks floating in space saying nothing about what they were
+       written over. The sheet has to redraw the problem underneath them, so
+       the problem is stored beside the strokes. */
+    if (isSum(c)){
+      /* ⚠️ The GEOMETRY, not the width it was worked out from. The sheet is
+         drawn long after the pad has gone, and recomputing the layout there
+         means depending on whatever the pad happens to measure at print time,
+         which is how a 4px pad reached the page in the first place. */
+      pg.words[inkKey(c)].sum = { op: c.op, ops: c.ops, roman: c.roman || '',
+                                  g: ink.sumG || sumGeom(c) };
+    }
     /* ⚠️ Widen the WORD, never the page. Turning a stepper up part way
        through a day still has to widen what it lands on, but pg.times is the
        fallback for every word without a slot of its own, so widening that
@@ -11014,7 +11250,8 @@
       var slots = row.keys.map(function(k){
         var rec = pg.words[k];
         if (rec && rec.missed) missed = true;
-        return '<span class="slot">' + (rec ? inkSVG(rec) : '') + '</span>';
+        return '<span class="slot">'
+             + (rec ? (rec.sum ? sumSVG(rec) : inkSVG(rec)) : '') + '</span>';
       }).join('');
       return '<li' + (row.def ? ' class="defrow"' : '') + '>'
            + (row.def ? '<span class="dword">' + esc(row.w) + '</span>' : '')
@@ -11043,6 +11280,69 @@
      with his two lines on it. ⚠️ It cannot go through inkSVG, which crops to
      the ink and would print two strokes floating in space with nothing to say
      what angle they were at. */
+  /* The sum and her working together, at the printer's own size. Same job as
+     clockSVG: the strokes are meaningless without the thing they were written
+     on, so both are drawn into one picture in the ORIGINAL pad coordinates and
+     the whole lot is scaled down as a unit. */
+  function sumSVG(rec){
+    var sm = rec.sum, W = 300;
+    var g = sm.g;
+    if (!g) return inkSVG(rec);   // written before the geometry was kept
+    /* Cropped to the sum and her ink together, never to one of them, or the
+       two come out at different scales and stop lining up. */
+    var x0 = g.left - g.cw, y0 = 6, x1 = g.left + (g.cols + 1) * g.cw, y1 = g.bottom + 10;
+    (rec.s || []).forEach(function(st){
+      st.forEach(function(pt){
+        if (pt[0] < x0) x0 = pt[0]; if (pt[0] > x1) x1 = pt[0];
+        if (pt[1] < y0) y0 = pt[1]; if (pt[1] > y1) y1 = pt[1];
+      });
+    });
+    var w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+    var k = W / w, H = Math.round(h * k);
+    function X(v){ return ((v - x0) * k).toFixed(1); }
+    function Y(v){ return ((v - y0) * k).toFixed(1); }
+    function cellX(col){ return g.left + col * g.cw; }
+    var out = '', i, j, t;
+    var fs = (30 * k).toFixed(1);
+    function txt(ch, cx, cy, fill){
+      return '<text x="' + X(cx) + '" y="' + Y(cy) + '" font-size="' + fs
+           + '" text-anchor="middle" dominant-baseline="central" fill="' + (fill || '#111')
+           + '" font-family="ui-sans-serif,system-ui,sans-serif" font-weight="600">' + ch + '</text>';
+    }
+    if (sm.op === 'roman'){
+      out += txt(sm.roman, g.left + g.boxes * g.cw / 2, g.firstY + SUMPAD.row / 2);
+    } else if (sm.op === '÷'){
+      t = String(sm.ops[0]);
+      out += txt(String(sm.ops[1]), cellX(0) + g.cw / 2, g.dvdY + SUMPAD.row / 2);
+      for (j = 0; j < t.length; j++){
+        out += txt(t.charAt(j), cellX(1 + j) + g.cw / 2, g.dvdY + SUMPAD.row / 2);
+      }
+      out += '<path d="M' + X(cellX(1) - 4) + ' ' + Y(g.dvdY + SUMPAD.row)
+           + 'L' + X(cellX(1) - 4) + ' ' + Y(g.ruleY + 2)
+           + 'L' + X(cellX(1 + t.length)) + ' ' + Y(g.ruleY + 2)
+           + '" fill="none" stroke="#111" stroke-width="1.6"/>';
+    } else {
+      for (i = 0; i < sm.ops.length; i++){
+        t = String(sm.ops[i]);
+        var start = g.boxes - t.length, y = g.firstY + i * SUMPAD.row + SUMPAD.row / 2;
+        for (j = 0; j < t.length; j++) out += txt(t.charAt(j), cellX(start + j) + g.cw / 2, y);
+        if (i === sm.ops.length - 1){
+          out += txt(sm.op, cellX(start - 1) + g.cw / 2, y, '#777');
+        }
+      }
+      out += '<line x1="' + X(cellX(-1) + 6) + '" y1="' + Y(g.ruleY) + '" x2="'
+           + X(cellX(g.boxes)) + '" y2="' + Y(g.ruleY) + '" stroke="#111" stroke-width="1.8"/>';
+    }
+    out += (rec.s || []).map(function(st){
+      if (!st || st.length < 2) return '';
+      var dd = 'M' + X(st[0][0]) + ' ' + Y(st[0][1]);
+      for (var m = 1; m < st.length; m++) dd += 'L' + X(st[m][0]) + ' ' + Y(st[m][1]);
+      return '<path d="' + dd + '" fill="none" stroke="#111" stroke-width="2" '
+           + 'stroke-linecap="round" stroke-linejoin="round"/>';
+    }).join('');
+    return '<svg viewBox="0 0 ' + W.toFixed(1) + ' ' + H + '" width="' + W + '" height="' + H
+         + '" xmlns="http://www.w3.org/2000/svg">' + out + '</svg>';
+  }
   function clockSVG(rec){
     var d = rec.dial, size = 132, k = size / (d.r * 2.12);
     function px(v, c){ return ((v - c) * k + size / 2).toFixed(1); }
@@ -11075,9 +11375,10 @@
     keys.sort(function(a, b){ return (pg.words[a].at || 0) - (pg.words[b].at || 0); });
     var rows = keys.map(function(k){
       var rec = pg.words[k];
-      return '<li class="defrow' + (rec.dial ? ' tallrow' : '') + '">'
+      return '<li class="defrow' + (rec.dial || rec.sum ? ' tallrow' : '') + '">'
            + '<span class="dword">' + esc(rec.label || k) + '</span>'
-           + '<span class="slot">' + (rec.dial ? clockSVG(rec) : inkSVG(rec)) + '</span>'
+           + '<span class="slot">'
+           + (rec.dial ? clockSVG(rec) : rec.sum ? sumSVG(rec) : inkSVG(rec)) + '</span>'
            + '<span class="flag">' + (rec.missed ? '\u2022' : '') + '</span></li>';
     }).join('');
     el.sheet.classList.toggle('tight', keys.length > 22);
@@ -11105,7 +11406,8 @@
       var slots = [t + ':trace', t + ':own'].map(function(k){
         var rec = pg.words[k];
         if (rec && rec.missed) missed = true;
-        return '<span class="slot">' + (rec ? inkSVG(rec) : '') + '</span>';
+        return '<span class="slot">'
+             + (rec ? (rec.sum ? sumSVG(rec) : inkSVG(rec)) : '') + '</span>';
       }).join('');
       return '<li class="defrow"><span class="dword">' + esc(t) + '</span>'
            + slots + '<span class="flag">' + (missed ? '\u2022' : '') + '</span></li>';
