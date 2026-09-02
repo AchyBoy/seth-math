@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.70">
+<meta name="x-cards-version" content="4.71">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2291,6 +2291,26 @@
         ['voyage', 'a long trip across water'],
         ['loyal',  'faithful and true'],
         ['employ', 'to hire for a job']
+      ],
+      /* What the red pen marked on the test that came home, 2 September, read
+         off the photo. Eleven of the twenty, and they are TWO faults wearing
+         eleven faces.
+
+         One is last unit's fault again: a letter falls out of the vowel pair.
+         chose for choice, rejoce for rejoice, misture for moisture, voige for
+         voyage, and fathful for faithful in his own definition, which is the
+         ai one his unit 1 test was full of.
+
+         The other is the days of the week, five of the seven: a letter he
+         cannot HEAR does not get written. wensday has no d, Tusday no e,
+         Thrsday no u, Saterday an e where the u goes. Monday and Friday were
+         spelled right and marked for the capital, the same mark October got
+         in August, so they are in here for that. Tapping a chip on the home
+         screen overrides this. */
+      marked: [
+        'choice', 'rejoice', 'moisture',
+        'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+        'voyage', 'loyal'
       ],
       /* Both of these carry oy in the middle, where the rule says oi belongs.
          employ is NOT one: its oy is on the end, exactly as the rule says. */
@@ -6175,6 +6195,93 @@
       who: 'Seth', from: 'Spelling, unit 1',
       why: 'ai in the MIDDLE of the word.',
       k: 'w', w: 'praise', s: 'His teacher had nothing but praise for the work he did.'
+    },
+
+    /* --- Spelling test, list 2, 9/2/26 --- */
+    /* Eleven of twenty marked, and they fall into two piles. The oi and oy
+       words lost a letter out of the pair, which is exactly what the ai words
+       did on the last test, and five of the seven days of the week lost a
+       letter nobody says out loud. The days are the bigger pile and the
+       easier fix, so their `why` names the silent letter every time. */
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote chose. The i is in there: ch-oi-ce, and oi sits in the MIDDLE.',
+      k: 'w', w: 'choice', s: 'He made the right choice and told the truth.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote rejoce. Same oi, hiding in the middle where it is easy to skip.',
+      k: 'w', w: 'rejoice', s: 'We rejoice every time good news comes.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote misture. The o went missing. It starts moi, the same oi sound.',
+      k: 'w', w: 'moisture', s: 'There was moisture on the window in the morning.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote wensday. There is a d in it that nobody says: Wed nes day.',
+      k: 'w', w: 'Wednesday', s: 'We have gym class on Wednesday.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote Tusday. There is an e after the u: Tues day.',
+      k: 'w', w: 'Tuesday', s: 'His piano lesson is every Tuesday.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote Thrsday. The u comes before the r: Thurs day.',
+      k: 'w', w: 'Thursday', s: 'The trash goes out on Thursday night.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote Saterday. It is Sat ur day, a u where you put the e.',
+      k: 'w', w: 'Saturday', s: 'On Saturday he helps his dad in the yard.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'The spelling was right. A day of the week is a name, so it takes a capital M.',
+      k: 'w', w: 'Monday', s: 'School starts again on Monday.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'Same mark as Monday. A day of the week takes a capital F.',
+      k: 'w', w: 'Friday', s: 'Friday is the last day of the school week.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote voige. It is voy age, and this is one of the two words that break the rule, because the oy is in the middle.',
+      k: 'w', w: 'voyage', m: 'a long trip across water'
+    },
+    /* The word line itself was blank and his teacher filled it in, so this
+       card is about writing the WORD, not about the meaning, which he had. */
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'The word line was left empty and your teacher wrote it in for you. The word comes first, then what it means.',
+      k: 'w', w: 'loyal', m: 'faithful and true'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote fathful in your own answer. The i fell out of ai again, the same one as last month.',
+      k: 'w', w: 'faithful', s: 'A faithful friend keeps his word.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote trew. It is true, with the u before the e.',
+      k: 'w', w: 'true', s: 'Every word of the story was true.'
+    },
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'You wrote aross. It is a and cross without the c: two s letters at the end.',
+      k: 'w', w: 'across', s: 'The voyage took them across the water.'
+    },
+    /* Not a spelling mark. She circled the middle of the word and wrote
+       "watch the height of those letters, looks like 2 i's", so it belongs in
+       here as the writing job it is. */
+    {
+      who: 'Seth', from: 'Spelling test list 2, 2 September',
+      why: 'Spelled right, but she circled it: watch the height of those letters. It read as two i letters. The l and the d go all the way up.',
+      k: 'w', w: 'toiled', s: 'The men toiled all day in the hot sun.'
     },
 
     /* --- Language 3, Quiz 1, 8/27/26, 97 A --- */
