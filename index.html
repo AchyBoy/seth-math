@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.71">
+<meta name="x-cards-version" content="4.72">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -320,6 +320,12 @@
     font-size:20px;font-weight:600;width:100%;box-shadow:0 6px 0 var(--green-dark);
     transition:transform .1s ease,box-shadow .1s ease}
   .night:active{transform:translateY(4px);box-shadow:0 2px 0 var(--green-dark)}
+  /* The app says out loud that it has put itself into the test shape. Red and
+     above the green button, because it is a statement about today rather than
+     another thing to press. */
+  .testflag{display:inline-block;background:var(--red-soft);color:var(--red);
+    border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700;
+    letter-spacing:.02em;margin:0 0 10px}
   .start[disabled]{background:#c9c6bd;box-shadow:0 6px 0 #b3b0a7;cursor:default}
 
   /* ---------- play ---------- */
@@ -999,6 +1005,7 @@
   </div>
 
   <div class="block hide" id="nightBlock">
+    <p class="testflag hide" id="testFlag"></p>
     <button type="button" class="night" id="nightBtn">📝 Get me ready for the test</button>
     <p class="note" id="nightNote"></p>
   </div>
@@ -2883,6 +2890,11 @@
   function misspell(w){
     var i = w.toLowerCase().indexOf('ai');
     if (i !== -1) return w.slice(0, i + 1) + w.slice(i + 2);      // praise -> prase
+    /* ⭐ oi joined ai on 2 September: the list 2 test came back with chose,
+       rejoce and misture on it, the same letter falling out of the same kind
+       of pair. It is the mistake he actually makes, so it goes second. */
+    i = w.toLowerCase().indexOf('oi');
+    if (i !== -1) return w.slice(0, i + 1) + w.slice(i + 2);      // choice -> choce
     i = w.toLowerCase().indexOf('ea');
     if (i !== -1) return w.slice(0, i + 1) + w.slice(i + 2);      // daydream -> daydrem
     if (/([bcdfglmnprst])\1/.test(w)) return w.replace(/([bcdfglmnprst])\1/, '$1');
@@ -2893,7 +2905,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -2918,7 +2930,7 @@
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
-   'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote',
+   'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote','testFlag',
    'resumeBlock','resumeBtn','resumeNote','resumeDrop',
    'lessonBlock','lessonChips','lessonNote','teachOpts',
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
@@ -3242,6 +3254,7 @@
         if (typeof s.teach === 'boolean') state.teach = s.teach;
         if (s.times && typeof s.times === 'object') state.times = s.times;
         if (s.redTimes && typeof s.redTimes === 'object') state.redTimes = s.redTimes;
+        if (typeof s.armedFor === 'string') state.armedFor = s.armedFor;
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.defs === 'boolean') state.defs = s.defs;
@@ -3266,6 +3279,7 @@
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
       chapters: state.chapters, study: state.study, penLessons: state.penLessons, maths: state.maths,
         units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
+        armedFor: state.armedFor,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
@@ -3905,6 +3919,8 @@
     loadRed();
     loadSaved();
     if (hasSheet()) buildSheet();
+    /* after loadRed and the chips, or it arms against the last child's week */
+    armTestMode();
     paintHome();       // the week and the pages just changed underneath it
     paintCheer();
     paintPurse();
@@ -10014,7 +10030,23 @@
     var show = state.subject === 'spelling' && !groupKit() && !!plan;
     el.nightBlock.classList.toggle('hide', !show);
     if (!show) return;
-    el.nightNote.textContent = plan.work === 0
+    var gap = testGap();
+    var when = gap === 0 ? 'today' : gap === 1 ? 'tomorrow' : '';
+    el.testFlag.classList.toggle('hide', !when);
+    if (when) el.testFlag.textContent = '🔴 Spelling test ' + when;
+    el.nightBtn.textContent = when
+      ? '📝 His test is ' + when + '. Start it'
+      : '📝 Get me ready for the test';
+    /* ⚠️ Only say it is already set if it IS. It arms once a day and every
+       control stays live afterwards, so a note that keeps claiming the test
+       shape after somebody has switched to Copy it would be the app telling
+       him something he can see is untrue. */
+    var ready = state.write === 'listen' && state.hand && state.timer === 'off'
+      && state.autoMark && plan.times === RED_TIMES;
+    el.nightNote.textContent = (!when ? ''
+      : ready ? 'Everything is already set the way the test goes. '
+      : 'A setting has been changed since. This puts it all back the way the test goes. ')
+      + (plan.work === 0
       ? 'Tap what the red pen marked on his paper, just below, and this sets the rest up '
         + 'and starts. Nothing tapped yet, so it would deal all ' + plan.all + ' words once, '
         + 'read aloud, written by hand, no timer.'
@@ -10023,7 +10055,58 @@
         + (state.defs ? ', the vocabulary words with their meanings' : '')
         + '. ' + plan.cards + ' cards, read '
         + 'aloud, written by hand, no timer. The app does the marking and he cannot '
-        + 'switch it off. Nothing to set up.';
+        + 'switch it off. Nothing to set up.');
+  }
+  /* ⭐ THE TEST IS ALWAYS ON A THURSDAY (Andrew, 2 September 2026), so the app
+     stops waiting to be told. From the Wednesday it puts ITSELF into the shape
+     the test takes, rather than leaving a green button to be found: spelling,
+     his week, read aloud, written by hand, no timer, the marking on, the words
+     his teacher marked three times each and the rest of the list once.
+
+     ⚠️ IT ARMS ONCE A DAY AND NEVER AGAIN, which is the whole reason it is
+     safe. Anything it sets is still a setting: turn the repeat count down or
+     switch to Copy it after it has armed and it stays where you put it until
+     tomorrow. Re-applying on every paint would make those controls unusable on
+     the two days they matter most.
+
+     ⚠️ IT DOES NOT START A ROUND. Opening the app to do arithmetic and being
+     dropped into a spelling test is the same mistake as a locked button a
+     child can keep pressing. It sets the table, he still presses go.
+
+     A day per child, because the only test day anybody has told me about is
+     Seth's. Bailey's is one line when it is known. */
+  var TEST_DAY = { Seth: 4 };                    // 0 Sunday .. 4 Thursday
+  function testDayFor(name){
+    var keys = Object.keys(TEST_DAY);
+    for (var i = 0; i < keys.length; i++) if (sameWho(keys[i], name)) return TEST_DAY[keys[i]];
+    return -1;
+  }
+  /* 0 = the test is today, 1 = tomorrow, -1 = nobody with a test day signed in */
+  function testGap(){
+    var d = testDayFor(me.name);
+    if (d < 0) return -1;
+    return (d - new Date().getDay() + 7) % 7;
+  }
+  function testTime(){ var g = testGap(); return g === 0 || g === 1; }
+  function armTestMode(){
+    if (!testTime()) return;
+    var picked = redUnits();
+    if (!picked.length) return;                  // no week of his to be ready for
+    var stamp = (me.name || '') + ':' + today();
+    if (state.armedFor === stamp) return;
+    state.armedFor = stamp;
+    state.subject = 'spelling';
+    state.timer = 'off';
+    state.write = 'listen';
+    state.hand = true;
+    state.shuffle = true;
+    state.mode = 'flip';
+    state.autoMark = true;
+    picked.forEach(function(u){
+      state.times[u.id] = 1;                     // the rest of the list, once
+      state.redTimes[u.id] = RED_TIMES;          // and the marked words three times
+    });
+    saveSettings();
   }
   /* ⚠️ The seed is written into the same store the chips read, on purpose. A
      second hidden list of "words the app thinks are hard" would be invisible,
@@ -10035,6 +10118,11 @@
       var work = needsWork(u);
       if (work.length) redpen[u.id] = work; else delete redpen[u.id];
       state.times[u.id] = 1;                   // the rest of the list, once
+      /* ⚠️ AND THE MARKED WORDS BACK TO THREE. Andrew's rule for a test night,
+         said again on 2 September: a word he missed is written three times.
+         The stepper is remembered per week, so a week left on 1 for ordinary
+         practice would otherwise walk into the test carrying it. */
+      state.redTimes[u.id] = RED_TIMES;
     });
     saveRed();
     state.timer = 'off';                       // he asked for no timer, first
@@ -12195,6 +12283,7 @@
   loadRecord();
   buildChips();
   buildPairs();
+  armTestMode();     // buildChips settled which week is ticked
   paintHome();
   if (!me.token){ show('who'); showAuthPin('login', ''); }   // nothing before signing in
   // built once on the way in, so a Share > Print straight after a reload
