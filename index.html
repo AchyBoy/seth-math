@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.69">
+<meta name="x-cards-version" content="4.70">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -456,6 +456,12 @@
   .wword .blank{color:#c9c4b8;letter-spacing:.16em}
   .wword.gone .word{display:none}
   .wword.shown .blank{display:none}
+  /* Under the word, in the same card, big enough to read across the room and
+     plainly not the word itself. It is what he has to copy, so it is not the
+     grey aside .wclue is. */
+  .wmean{font-size:clamp(19px,4.2vw,24px);font-weight:600;color:var(--blue);
+    text-align:center;line-height:1.3;max-width:34ch}
+  .wmean.hide{display:none}
   .wsay{border:2px solid var(--blue);border-radius:999px;background:var(--blue-soft);
     color:var(--blue);font-size:17px;font-weight:600;padding:12px 22px;
     display:none;align-items:center;gap:8px}
@@ -505,6 +511,18 @@
      A word needs a line to sit on. A column sum needs the carries above it, the
      rows, the rule, and the answer under it. */
   body.summing .ink{min-height:330px;max-height:min(66vh,660px)}
+  /* ⚠️ SAME SOURCE ORDER TRAP as the sum above: after body.hand or it loses to
+     min-height:200px and does nothing. Two lines need room for two, and the
+     word plus its meaning would not fit on the one ruled line the pad had. */
+  body.meaning .ink{min-height:300px;max-height:min(64vh,640px)}
+  /* ⚠️ On a phone the meaning on the card and the longer instruction above the
+     pad cost about 110px, and the pad does not give it back on its own: Done
+     went under the fold and every card wanted a scroll before it could be
+     handed in. Only short screens, so the iPad he actually writes on keeps the
+     big pad. */
+  @media (max-height: 900px){
+    body.meaning .ink{min-height:250px;max-height:40vh}
+  }
   body.write.hand .wpanel{flex:1}
   /* The 560px column is right for reading and wrong for writing: on an iPad it
      left the pad narrower than the word while most of the glass sat empty
@@ -673,6 +691,18 @@
      unreadable smudges. A clock row is as tall as the face needs. */
   .sheet li.tallrow{height:auto;min-height:120px}
   .sheet li.tallrow .slot svg{height:112px}
+  /* ⚠️ A meaning is written across TWO rules, so its ink is about twice as
+     tall as a word's. inkSVG crops to the ink and the slot fixes the height,
+     so at 34px the two lines came out at half the size of every other row on
+     the page. Only rows whose ink was actually written that way: an older
+     page carries no `lines` and prints as it always did. */
+  /* Sized so the WRITING comes out about the size it does on every other row,
+     not so the block fits: the slot fixes the height and the ink is a line, a
+     gap and another line, so two thirds of what is being sized is the gap. */
+  .sheet li.tworow{height:auto;min-height:108px}
+  .sheet li.tworow .slot svg{height:100px}
+  .sheet.tight li.tworow{height:auto;min-height:66px}
+  .sheet.tight li.tworow .slot svg{height:60px}
   /* written twice, so the row is halved and the second go is fenced off */
   .sheet .slot + .slot{border-left:1px dotted #bbb;padding-left:8px}
   /* A meaning row carries the word it belongs to, or the teacher is reading
@@ -1531,6 +1561,12 @@
     <div class="wtop">
       <p class="wclue hide" id="wClue"></p>
       <div class="wword" id="wWord"><span class="word" id="wText"></span><span class="blank" id="wBlank"></span></div>
+      <!-- ⭐ WHAT IT MEANS, ON THE CARD WITH THE WORD (Andrew, 2026-09-01:
+           "it says write the word and then what it means, but it doesn't show
+           what it means"). It was withheld on purpose, as the answer. It is
+           not: his sheet prints the word and its meaning side by side and the
+           job is getting both onto the line in his own hand. -->
+      <p class="wmean hide" id="wMean"></p>
       <button type="button" class="wsay" id="wSay">🔊 Hear it again</button>
     </div>
     <p class="wtask hide" id="wTask"></p>
@@ -2868,7 +2904,7 @@
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
-   'writeBox','wClue','wWord','wText','wBlank','wSay','wMark','wTask','wInput','wHint','wPeek','wCheck',
+   'writeBox','wClue','wWord','wText','wBlank','wMean','wSay','wMark','wTask','wInput','wHint','wPeek','wCheck',
    'teachBox','teachKind','teachWhat','teachSpot','teachMark','helpBtn',
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
@@ -9118,6 +9154,17 @@
     // a meaning is a phrase, and 32 characters cuts "flat land with few trees" short
     el.wInput.maxLength = def ? 120 : 32;
     document.body.classList.toggle('defining', def || sen);
+    /* ⭐ THE MEANING IS SHOWN, NOT WITHHELD (Andrew, 2026-09-01). It used to be
+       treated as the answer and kept back until three failed goes, so the card
+       asked for something it never told him, and there was no way in the app to
+       find out. What is being tested is writing the word and its meaning out
+       on one line, the way his sheet asks for it, and the spelling of both.
+       ⚠️ `meaning` is its own class rather than `defining`, which is also on
+       for sentence cards: a sentence answer is "Dec." and must not get a pad
+       sized for a phrase. */
+    el.wMean.textContent = def ? (c.m || '') : '';
+    el.wMean.classList.toggle('hide', !(def && c.m));
+    document.body.classList.toggle('meaning', def);
     el.wCheck.textContent = 'Check it';
     setWHint('');
     document.body.classList.toggle('listening', mode === 'listen');
@@ -9134,7 +9181,12 @@
        is printed at the top of his sheet and he may look at it. */
     var task = c.k === 'st' ? 'What kind is it? Write ' + kindList
       : c.k === 'sm' ? 'What goes on the end? Draw it:  .  ?  or  !'
-      : def ? 'Write ' + c.w + ', then what it means'
+      /* The pad has two rules under a meaning card, so the instruction names
+         them. Typed, there is one field and it is still one line. */
+      /* Kept short: three lines of red instruction on a phone pushed the pad
+         and the Done button under the fold. */
+      : def ? (penFor(c) ? 'Write ' + c.w + ', then what it means underneath'
+                         : 'Write ' + c.w + ', then what it means')
       /* ⚠️ SAY THE CAPITAL OUT LOUD when the word carries one. His teacher wrote
          "Capitalize!" beside three names on one quiz, so the instruction names
          the thing he is being marked on rather than leaving him to remember. */
@@ -9200,7 +9252,7 @@
          ⚠️ Not requestAnimationFrame alone. The debug harness runs with the
          browser pane hidden, which freezes rAF entirely, and this is the exact
          trap the clock hit. The timeout runs either way. */
-      if (isSum(c)){
+      if (isSum(c) || isDef(c)){
         requestAnimationFrame(function(){ if (card() === c) inkPaint(); });
         setTimeout(function(){ if (card() === c) inkPaint(); }, 0);
       }
@@ -9331,8 +9383,7 @@
       state.tries++;
       if (state.tries >= 3){
         state.answered = true;
-        el.wClue.textContent = c.m || '';
-        el.wClue.classList.remove('hide');
+        // the meaning is on the card now, so printing it again here read twice
         setWHint('It means: ' + (c.m || '') + '. Have a good look, then carry on.', 'bad');
         bump(false);
         clearTimeout(advanceId);
@@ -9345,8 +9396,6 @@
       return;
     }
     state.answered = true;
-    el.wClue.textContent = c.m || '';
-    el.wClue.classList.remove('hide');
     setWHint(why, '');
     el.grade.classList.add('on');
     el.inkGrade.classList.add('on');
@@ -10235,6 +10284,34 @@
     return { band: band, top: top, base: top + band,
              mid: top + Math.round(band * 0.55) };
   }
+  /* ⭐ TWO LINES FOR A WORD AND ITS MEANING (Andrew, 2026-09-01: "he may need a
+     second input field or a larger one"). A meaning is a phrase, and the word
+     plus a phrase on the single line the pad had came out squeezed to nothing
+     or ran off the edge.
+
+     ⚠️ It is ONE pad and one list of strokes, not a second canvas. Everything
+     downstream reads `ink.strokes`: the checker's PNG, the SVG on the sheet his
+     teacher gets, Undo, the rubber. A second canvas would need a second of each
+     of those, so the second line is a second RULE, not a second field.
+
+     ⚠️ inkRules is left exactly as it is. The handwriting mark measures ink off
+     the baseline it returns, and vocabulary cards are never graded that way, so
+     this stays beside it rather than inside it. */
+  function inkBands(){
+    if (!isDef(card())) return [inkRules()];
+    // the 116 is the margin above the first rule and below the last, so the
+    // descenders on the bottom line are not written into the edge of the pad
+    var band = Math.max(56, Math.min(Math.round((ink.h - 116) / 2), 150));
+    var gap = Math.max(20, Math.round(band * 0.42));
+    // sits a shade high, same reason as inkRules: a y needs somewhere to go
+    var top = Math.max(10, Math.round((ink.h - (band * 2 + gap)) / 2 - band * 0.10));
+    var out = [];
+    for (var i = 0; i < 2; i++){
+      var t = top + i * (band + gap);
+      out.push({ band: band, top: t, base: t + band, mid: t + Math.round(band * 0.55) });
+    }
+    return out;
+  }
   /* =========================================================
      THE SUM LIVES IN THE PAD (Andrew, 2026-08-31: "I really want the math
      problems to work like he would do on paper where he can cross out the nine
@@ -10404,17 +10481,34 @@
     if (isSum(card())){
       drawSumOn(g, card());
     } else {
-      var geom = inkRules();
-      var band = geom.band, top = geom.top, base = geom.base, mid = geom.mid;
-      g.strokeStyle = '#dbe6ff'; g.lineWidth = 1.5; g.setLineDash([]);
-      [top, base].forEach(function(y){
-        g.beginPath(); g.moveTo(12, y); g.lineTo(ink.w - 12, y); g.stroke();
+      var bands = inkBands();
+      bands.forEach(function(geom, i){
+        var top = geom.top, base = geom.base, mid = geom.mid;
+        g.strokeStyle = '#dbe6ff'; g.lineWidth = 1.5; g.setLineDash([]);
+        [top, base].forEach(function(y){
+          g.beginPath(); g.moveTo(12, y); g.lineTo(ink.w - 12, y); g.stroke();
+        });
+        g.setLineDash([5, 7]);
+        g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
+        g.setLineDash([]);
+        /* Which line is which, said on the line itself. Two blank rules do not
+           tell him the meaning goes on the second one, and the red instruction
+           above the pad is out of sight by the time his hand is down.
+           ⚠️ On screen only, exactly like the traced word: inkPNG builds a
+           fresh canvas from ink.strokes and inkSVG prints the strokes as
+           paths, so neither the checker nor his teacher's sheet ever sees it. */
+        if (bands.length > 1){
+          g.fillStyle = '#c9c4b8';
+          g.font = '600 12px system-ui,-apple-system,"Segoe UI",sans-serif';
+          g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+          g.fillText(i === 0 ? 'the word' : 'what it means', 14, top - 6);
+        }
       });
-      g.setLineDash([5, 7]);
-      g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
-      g.setLineDash([]);
       // under his ink, over the rules, so a stroke he lays down always reads on top
-      if (traceable(card())) drawTrace(g, card().w, top, base, mid);
+      if (traceable(card())){
+        var one = bands[0];
+        drawTrace(g, card().w, one.top, one.base, one.mid);
+      }
     }
     g.strokeStyle = '#1b2330'; g.lineWidth = 3.4; g.lineCap = 'round'; g.lineJoin = 'round';
     ink.strokes.forEach(function(st){
@@ -10435,7 +10529,7 @@
     }
     // the traced word IS the "write it here", and the two sat on top of each other
     el.inkHint.classList.toggle('hide',
-      ink.strokes.length > 0 || traceable(card()) || isSum(card()));
+      ink.strokes.length > 0 || traceable(card()) || isSum(card()) || isDef(card()));
     el.inkUndo.disabled = !ink.past.length;
     el.inkClear.disabled = !ink.strokes.length;
   }
@@ -11008,6 +11102,13 @@
     var pg = currentPage(c.u || 0);
     pg.words[inkKey(c)] = { s: strokes || ink.strokes, w: w || ink.w, h: h || ink.h,
                             missed: !!missed, label: inkLabel(c), at: Date.now() };
+    /* ⚠️ HOW MANY LINES IT WAS WRITTEN ACROSS, stamped, same reason the sum's
+       geometry is: the sheet is built long after the pad has gone. A meaning is
+       written on two rules now, so its ink is twice as tall, and a slot sized
+       for one line prints both of them at half the height of every other row.
+       Absent on every page written before this, and those pages have one line
+       of ink and must keep printing exactly as they did. */
+    if (isDef(c)) pg.words[inkKey(c)].lines = 2;
     /* ⭐ THE SUM GOES ON THE RECORD, for exactly the reason the clock's dial
        does. Her working is crossings out and little ones sitting ON the
        digits, and inkSVG crops to the ink: printed on its own that is a
@@ -11245,6 +11346,7 @@
     var u = own.u;
     sheetPage = pg;
     var list = sheetRows(u, pg);
+    var deepRows = 0;
     var rows = list.map(function(row){
       var missed = false;
       var slots = row.keys.map(function(k){
@@ -11253,13 +11355,20 @@
         return '<span class="slot">'
              + (rec ? (rec.sum ? sumSVG(rec) : inkSVG(rec)) : '') + '</span>';
       }).join('');
-      return '<li' + (row.def ? ' class="defrow"' : '') + '>'
+      var deep = row.keys.some(function(k){
+        return pg.words[k] && pg.words[k].lines > 1;
+      });
+      if (deep) deepRows++;
+      return '<li class="' + (row.def ? 'defrow' : '') + (deep ? ' tworow' : '') + '">'
            + (row.def ? '<span class="dword">' + esc(row.w) + '</span>' : '')
            + slots
            + '<span class="flag">' + (missed ? '•' : '') + '</span></li>';
     }).join('');
-    // twenty lines fit a page at full height; thirty only fit squeezed up
-    el.sheet.classList.toggle('tight', list.length > 22);
+    /* twenty lines fit a page at full height; thirty only fit squeezed up.
+       ⚠️ A two line row counts as TWO. It stands about two and a half rows
+       tall, so a page that just fitted at 22 rows spilled onto a second one
+       as soon as three meanings on it grew. */
+    el.sheet.classList.toggle('tight', list.length + deepRows > 22);
     el.sheet.innerHTML =
       '<div class="shead"><span class="swho">' + esc(me.name || 'Spelling') + '</span>'
       + '<span class="swhat">Unit ' + u.unit + ' &middot; ' + esc(pageWhen(pg, true)) + '</span></div>'
@@ -11823,7 +11932,8 @@
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
     hushVoice(); clearTimeout(peekId);
     try { el.wInput.blur(); } catch(e){}
-    document.body.classList.remove('write', 'listening', 'hand', 'summing', 'clocking');
+    document.body.classList.remove('write', 'listening', 'hand', 'summing', 'clocking',
+                                   'meaning', 'defining');
     /* The sheet is a page in his own hand, so it belongs to a round that WROTE
        one and nowhere else; it was turning up after scriptures on a shared
        phone. Handwriting writes one too now, and so does the red pen deck when
