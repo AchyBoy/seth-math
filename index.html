@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.72">
+<meta name="x-cards-version" content="4.73">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10041,7 +10041,7 @@
        control stays live afterwards, so a note that keeps claiming the test
        shape after somebody has switched to Copy it would be the app telling
        him something he can see is untrue. */
-    var ready = state.write === 'listen' && state.hand && state.timer === 'off'
+    var ready = state.write === TEST_WRITE && state.hand && state.timer === 'off'
       && state.autoMark && plan.times === RED_TIMES;
     el.nightNote.textContent = (!when ? ''
       : ready ? 'Everything is already set the way the test goes. '
@@ -10049,19 +10049,20 @@
       + (plan.work === 0
       ? 'Tap what the red pen marked on his paper, just below, and this sets the rest up '
         + 'and starts. Nothing tapped yet, so it would deal all ' + plan.all + ' words once, '
-        + 'read aloud, written by hand, no timer.'
+        + testWriteWords() + ', written by hand, no timer.'
       : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
         + (state.defs ? ', the vocabulary words with their meanings' : '')
-        + '. ' + plan.cards + ' cards, read '
-        + 'aloud, written by hand, no timer. The app does the marking and he cannot '
+        + '. ' + plan.cards + ' cards, '
+        + testWriteWords() + ', written by hand, no timer. The app does the marking and he cannot '
         + 'switch it off. Nothing to set up.');
   }
   /* ⭐ THE TEST IS ALWAYS ON A THURSDAY (Andrew, 2 September 2026), so the app
      stops waiting to be told. From the Wednesday it puts ITSELF into the shape
      the test takes, rather than leaving a green button to be found: spelling,
-     his week, read aloud, written by hand, no timer, the marking on, the words
-     his teacher marked three times each and the rest of the list once.
+     his week, the word on screen to copy, written by hand, no timer, the
+     marking on, the words his teacher marked three times each and the rest of
+     the list once.
 
      ⚠️ IT ARMS ONCE A DAY AND NEVER AGAIN, which is the whole reason it is
      safe. Anything it sets is still a setting: turn the repeat count down or
@@ -10076,6 +10077,16 @@
      A day per child, because the only test day anybody has told me about is
      Seth's. Bailey's is one line when it is known. */
   var TEST_DAY = { Seth: 4 };                    // 0 Sunday .. 4 Thursday
+  /* ⭐ AND COPY IT, NOT SAY IT, FOR NOW (Andrew, 2 September: "for his test we
+     just do the copy, not the speak it for now"). Both ways in read this, the
+     arming and the green button, and so does the note that describes them, so
+     moving a test night back to listen is this one line. */
+  var TEST_WRITE = 'copy';
+  function testWriteWords(){
+    return TEST_WRITE === 'listen' ? 'read aloud'
+      : TEST_WRITE === 'peek' ? 'shown for a moment and then hidden'
+      : 'with the word on screen to copy';
+  }
   function testDayFor(name){
     var keys = Object.keys(TEST_DAY);
     for (var i = 0; i < keys.length; i++) if (sameWho(keys[i], name)) return TEST_DAY[keys[i]];
@@ -10097,7 +10108,7 @@
     state.armedFor = stamp;
     state.subject = 'spelling';
     state.timer = 'off';
-    state.write = 'listen';
+    state.write = TEST_WRITE;
     state.hand = true;
     state.shuffle = true;
     state.mode = 'flip';
@@ -10126,7 +10137,7 @@
     });
     saveRed();
     state.timer = 'off';                       // he asked for no timer, first
-    state.write = 'listen';                    // she reads it out, he writes it
+    state.write = TEST_WRITE;                  // the word on screen, and he copies it
     state.hand = true;                         // and by hand, like the real thing
     state.shuffle = true;
     state.mode = 'flip';                       // never the archer on a spelling night
