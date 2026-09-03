@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.75">
+<meta name="x-cards-version" content="4.76">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1147,6 +1147,7 @@
     <p class="label">Which week</p>
     <div class="chips" id="unitChips"></div>
     <p class="note" id="unitNote"></p>
+    <p class="note warnnote hide" id="unitSoon"></p>
   </div>
 
   <div class="block hide" id="proofBlock">
@@ -2222,7 +2223,21 @@
      without anything being written by hand. */
   var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday',
               'Saturday'];
-  var NAMED = [{ kind: 'month', list: MONTHS }, { kind: 'day', list: DAYS }];
+  /* Unit 3's Spelling Pictures asks for the word that names the season, off
+     four drawings of the same tree. That is the months question again with a
+     different list, so it is one more NAMED group and not a new kind of card. */
+  var SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+  /* ⭐ THE ASK LIVES ON THE GROUP NOW. It was a ternary in cardPrompt reading
+     "day, or else month", so the moment a third list existed it would have
+     asked "Which one names a month?" over four seasons and marked the answer
+     right. A two-way ternary is fine until it is not, and nothing warns you. */
+  var NAMED = [{ kind: 'month',  list: MONTHS,  ask: 'Which one names a month?' },
+               { kind: 'day',    list: DAYS,    ask: 'Which one names a day of the week?' },
+               { kind: 'season', list: SEASONS, ask: 'Which one names a season?' }];
+  function namedAsk(kind){
+    for (var i = 0; i < NAMED.length; i++) if (NAMED[i].kind === kind) return NAMED[i].ask;
+    return 'Which one is it?';
+  }
 
   var SPELLING = [
     {
@@ -2360,6 +2375,214 @@
         words: ['voyage', 'loyal'],
         why: 'Its oy is in the MIDDLE, and the rule says oy goes on the END.'
       }
+    },
+    /* =========================================================
+       UNITS 3 TO 7, all five off photographs taken 3 September.
+       Only unit 3 is open today; the rest carry `opens` and turn
+       up on their own Thursday. See liveUnits for why.
+
+       ⚠️ THE IDS SKIP 6 AND 7 ON PURPOSE. Those two belong to the
+       Language 3 lessons in SENTENCES, and `pageUnit` resolves a
+       page's id across EVERY array in turn, spelling first. A
+       reused number would hand a lesson's written page back as a
+       spelling week's.
+       ========================================================= */
+    {
+      id: 4, who: 'Seth', unit: 3,
+      rule: 'In English, every syllable must have a written vowel or vowel sound. '
+          + 'Sometimes, a silent e is added to the final syllable of a word.',
+      words: [
+        ['Bible',      'He read a chapter of the Bible before bed.'],
+        ['parable',    'Jesus told a parable about a lost sheep.'],
+        ['miracle',    'Feeding the five thousand was a miracle.'],
+        ['disciple',   'Peter was a disciple who followed the Lord.'],
+        ['tumble',     'The puppies tumble over each other in the grass.'],
+        ['scramble',   'We had to scramble up the hill before dark.'],
+        ['drizzle',    'A light drizzle fell all afternoon.'],
+        ['icicle',     'One long icicle hung from the edge of the roof.'],
+        ['eagle',      'The eagle circled high above the field.'],
+        ['sprinkle',   'She let him sprinkle a little salt on the potatoes.'],
+        ['strawberry', 'He picked one ripe strawberry from the garden.'],
+        ['ladybug',    'A ladybug landed on his sleeve.'],
+        ['milkshake',  'He shared a chocolate milkshake with his sister.'],
+        ['spring',     'The flowers come up again in the spring.'],
+        ['summer',     'We swim almost every day in the summer.'],
+        ['autumn',     'The leaves turn red and gold in autumn.'],
+        ['winter',     'He wears his heavy coat all winter.']
+      ],
+      vocab: [
+        ['struggle', 'a difficult task'],
+        ['valuable', 'worth much'],
+        ['brittle',  'easily broken']
+      ],
+      /* The four seasons on this sheet answer the Spelling Pictures question
+         through NAMED, the same machinery the months and the days go through.
+         Nothing is written by hand for it. */
+      compounds: [
+        ['milk','shake'], ['straw','berry'], ['lady','bug']
+      ]
+      /* No exceptions block: this week's Catch This! states the rule and does
+         not ask him to find anything that breaks it. */
+    },
+    {
+      id: 5, who: 'Seth', unit: 4, opens: '2026-09-10',
+      rule: 'English words do not end in i unless borrowed from another language. '
+          + 'We usually place an e at the end of the word.',
+      words: [
+        ['cookie',    'He ate one cookie and saved the rest for later.'],
+        ['magpie',    'A magpie carried off the shiny button.'],
+        ['collie',    'Their collie brings the sheep in every evening.'],
+        ['brownie',   'She cut the brownie into nine even squares.'],
+        ['pie',       'Mother baked an apple pie for Sunday dinner.'],
+        ['untie',     'He had to untie the knot in his shoelace.'],
+        ['ski',       'They will ski down the hill once the snow falls.'],
+        ['safari',    'On the safari they saw elephants and giraffes.'],
+        ['macaroni',  'We had macaroni and cheese for lunch.'],
+        ['Hawaii',    'The islands of Hawaii sit far out in the Pacific.'],
+        ['moonlight', 'The path was easy to follow by moonlight.'],
+        ['firefly',   'A firefly blinked once in the tall grass.'],
+        ['butterfly', 'The butterfly rested on the yellow flower.'],
+        ['slippery',  'The wet steps were slippery.'],
+        ['splatter',  'Try not to splatter the paint on the floor.'],
+        ['balloon',   'His red balloon floated up into the tree.'],
+        ['scribble',  'Do not scribble on a clean page.']
+      ],
+      vocab: [
+        ['timpani', 'large drums'],
+        ['appear',  'to be seen'],
+        ['prairie', 'grassland with few trees']
+      ],
+      /* ⚠️ Only two halves once the duplicates go (light, fly), so these come
+         out as a two-way choice rather than the usual four. His own sheet has
+         three compounds and two of them end in fly; padding the choices from
+         another week's list would be inventing a question the teacher did not
+         ask. Left as it is, and worth knowing before it reads as a bug. */
+      compounds: [
+        ['moon','light'], ['fire','fly'], ['butter','fly']
+      ],
+      /* The Catch This! box asks it outright: which of these came from another
+         language? Those are the ones allowed to keep a bare i on the end. The
+         wrong answers are words 1 to 6, which took the e exactly as the rule
+         says, so he has to read the word rather than count letters. */
+      exceptions: {
+        ask: 'Which word was borrowed from another language, so it still ends in i?',
+        letters: ['ie'],
+        words: ['ski', 'safari', 'macaroni', 'Hawaii', 'timpani'],
+        why: 'It came into English from another language, so it keeps its i '
+           + 'instead of taking an e on the end.'
+      }
+    },
+    {
+      id: 8, who: 'Seth', unit: 5, opens: '2026-09-17',
+      rule: 'English words do not end in v. We add a silent e to the end of the '
+          + 'word, even though the preceding vowel may not need it.',
+      words: [
+        ['above',      'The clouds drifted above the barn.'],
+        ['cursive',    'He is learning to write his name in cursive.'],
+        ['olive',      'She put one green olive on the side of the plate.'],
+        ['native',     'The robin is a native bird of this state.'],
+        ['forgive',    'We are told to forgive one another.'],
+        ['active',     'A puppy is active from morning to night.'],
+        ['creative',   'She found a creative way to wrap the gift.'],
+        ['glove',      'He lost one glove on the way to school.'],
+        ['captive',    'The bird was captive in a wire cage.'],
+        ['playground', 'They ran out to the playground at recess.'],
+        ['skateboard', 'He rode his skateboard down the sidewalk.'],
+        ['crosswalk',  'Wait at the crosswalk until the cars stop.'],
+        ['friendship', 'Their friendship has lasted since first grade.'],
+        ['arithmetic', 'We do arithmetic right after reading.'],
+        ['science',    'In science we learned about the water cycle.'],
+        ['language',   'English is the language we speak at home.'],
+        ['history',    'Our history lesson was about the Pilgrims.']
+      ],
+      vocab: [
+        ['adjective', 'word that describes a noun'],
+        ['observe',   'to watch carefully'],
+        ['relative',  'a family member']
+      ],
+      compounds: [
+        ['play','ground'], ['skate','board'], ['cross','walk'], ['friend','ship']
+      ]
+    },
+    {
+      id: 9, who: 'Seth', unit: 6, opens: '2026-09-24',
+      rule: 'To form the plural of most words ending in f or fe, change the f or fe to ves.',
+      words: [
+        ['knives',     'The knives go in the drawer by the sink.'],
+        ['leaves',     'He raked the leaves into one big pile.'],
+        ['shelves',    'The shelves were full of books.'],
+        ['yourselves', 'Help yourselves to more bread.'],
+        ['wolves',     'The wolves howled far off in the woods.'],
+        ['thieves',    'The thieves were caught before morning.'],
+        ['giraffes',   'Two giraffes stretched up to the high branches.'],
+        ['scarves',    'Their scarves hung by the door all winter.'],
+        ['loaves',     'She baked three loaves of bread on Saturday.'],
+        ['football',   'He threw the football clear across the yard.'],
+        ['peanuts',    'We ate peanuts at the ball game.'],
+        ['hayride',    'The hayride went all the way around the field.'],
+        ['scarecrow',  'A scarecrow stood in the middle of the corn.'],
+        ['raincoat',   'Wear your raincoat, it is pouring.'],
+        ['pumpkins',   'The pumpkins were stacked beside the barn door.'],
+        ['bountiful',  'It was a bountiful harvest this year.'],
+        ['orchard',    'We picked apples in the orchard.']
+      ],
+      vocab: [
+        ['acorn',   'the seed of an oak tree'],
+        ['harvest', 'the gathering of crops'],
+        ['weather', 'the condition of the air']
+      ],
+      compounds: [
+        ['foot','ball'], ['hay','ride'], ['scare','crow'], ['rain','coat']
+      ],
+      /* His sheet asks for the one plural that breaks the pattern, and it is
+         the only word here spelled with ffes instead of ves. The wrong answers
+         are the eight that DID change to ves, so the card is the exercise. */
+      exceptions: {
+        ask: 'Which plural on this list breaks the f to ves rule?',
+        letters: ['ves'],
+        words: ['giraffes'],
+        why: 'giraffe just takes an s on the end. Its f never changes to ves.'
+      }
+    },
+    {
+      id: 10, who: 'Seth', unit: 7, opens: '2026-10-01',
+      /* ⚠️ TWENTY WORDS AND THREE VOCABULARY, not seventeen and three. This
+         sheet is longer than the four before it, so a round is 23 cards
+         before the worksheet questions and the printed page has 23 lines. */
+      rule: 'English words do not end in j. We write dge after a short vowel '
+          + 'sound and ge after a consonant or long vowel sound.',
+      words: [
+        ['pledge',      'We say the pledge every morning before class.'],
+        ['judge',       'The judge listened carefully to both sides.'],
+        ['fringe',      'The rug had a white fringe along the edge.'],
+        ['bridge',      'The bridge crosses the widest part of the river.'],
+        ['smudge',      'There was a smudge of ink on his thumb.'],
+        ['hedge',       'Father trimmed the hedge on Saturday morning.'],
+        ['dodge',       'He had to dodge the ball to stay in the game.'],
+        ['plunge',      'They watched him plunge into the cold water.'],
+        ['badge',       'The officer wore a shiny badge on his coat.'],
+        ['knowledge',   'Her knowledge of birds surprised the whole class.'],
+        ['wheelbarrow', 'He carried the bricks over in a wheelbarrow.'],
+        ['sunshine',    'The kitchen was full of sunshine.'],
+        ['beehive',     'Bees came and went from the beehive all day.'],
+        ['farmhouse',   'The old farmhouse sits at the end of the lane.'],
+        ['windmill',    'The windmill turned slowly in the breeze.'],
+        ['haystack',    'The kitten was asleep on top of the haystack.'],
+        ['tractor',     'Grandfather drove the tractor out to the field.'],
+        ['weathervane', 'The weathervane on the barn pointed north.'],
+        ['northeast',   'The storm came in from the northeast.'],
+        ['southwest',   'They drove southwest until they reached the desert.']
+      ],
+      vocab: [
+        ['wage',      'the payment someone earns'],
+        ['advantage', 'a help or benefit'],
+        ['trudge',    'to walk slowly and heavily']
+      ],
+      compounds: [
+        ['wheel','barrow'], ['sun','shine'], ['bee','hive'], ['farm','house'],
+        ['wind','mill'], ['hay','stack'], ['weather','vane'],
+        ['north','east'], ['south','west']
+      ]
     }
   ];
 
@@ -2961,7 +3184,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
+   'modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -3699,7 +3922,31 @@
         + 'so the words are the ones you will hear read aloud.'
       : 'King James, so the words are the ones he will hear read aloud. Flip the card to '
         + 'check yourself, or switch to Pick the answer and match the verse to where it is found.';
+    /* 🔴 THE CHIPS WERE BUILT ONCE AND A WEEK NOW OPENS ON A DATE.
+       paintUnitChips ran at boot and when the player changed, which was
+       enough while a sign in was the only thing that moved a week on or off
+       the list. `opens` moves one on its own, at noon on a Thursday, and an
+       iPad left sitting on this screen would say unit 4 had opened with no
+       chip to tap. Caught by winding a fake clock forward, not by reading it.
+       So the chips are rebuilt the moment the live set stops matching what is
+       on screen, and BEFORE the note is written, because paintUnitChips runs
+       fixUnits and that is what decides which week the note describes.
+       It cannot loop: paintUnitChips never calls back into here. */
+    var wantChips = liveUnits().map(function(u){ return u.id; }).join(',');
+    var haveChips = [].map.call(el.unitChips.querySelectorAll('.chip'), function(b){
+      return b.getAttribute('data-unit');
+    }).join(',');
+    if (wantChips !== haveChips) paintUnitChips();
     el.unitNote.textContent = unitSummary();
+    /* Next week's sheet is already in and says when it opens, so a hidden
+       chip never reads as a list that was never photographed. */
+    var soon = spell ? soonUnits() : [];
+    el.unitSoon.classList.toggle('hide', !soon.length);
+    if (soon.length){
+      el.unitSoon.textContent = 'Already in, waiting on the week: '
+        + soon.map(function(u){ return 'unit ' + u.unit + ' opens ' + opensWhen(u); }).join(', ')
+        + '.';
+    }
     paintResume();
     paintTimes();
     paintNight();
@@ -5205,8 +5452,44 @@
      looking the unit up, and hiding a finished week from the practice chips
      must never take a grown-up's record of it away with it. Same lesson as
      the print list that was gated on the subject picker. */
+  /* ⭐ A WEEK CAN BE IN THE DATA BEFORE IT IS HIS TO PRACTISE (2026-09-03).
+     Andrew photographed five sheets in one sitting, "because sometimes he
+     forgets his book and I don't know the words", but the school hands them
+     out one a week: list 3 that day, list 4 the Thursday after, one a week
+     from there. So `opens` is the day a week starts counting, and until then
+     it is off the chips and out of every deck, exactly as `off` is. The two
+     are the same door from opposite sides: `off` is a week that is finished,
+     `opens` is one that has not started, and the data sits untouched either
+     way, marks, pages and all.
+     ⚠️ IT IS A HIDE, NOT A LOCK. The words are in the page source and always
+     will be; the only thing being prevented is picking next week's chip by
+     mistake and writing the wrong twenty words all evening.
+     ⚠️ Read at NOON, the same rule a stored page is read back under: a bare
+     2026-09-10 parses as UTC and would open the evening before on a clock
+     behind it. Noon local is also what "Thursday afternoon" means. */
+  function opensAt(u){
+    return u && u.opens ? new Date(u.opens + 'T12:00:00') : null;
+  }
+  function notYet(u){
+    var d = opensAt(u);
+    return !!d && d.getTime() > Date.now();
+  }
   function liveUnits(){
-    return myUnits().filter(function(u){ return !u.off; });
+    return myUnits().filter(function(u){ return !u.off && !notYet(u); });
+  }
+  /* The weeks still to come, soonest first. They go ON THE HOME SCREEN for
+     the same reason the study guide names the pages it is missing: a week
+     nobody can see reads as a week nobody put in, and Andrew would go looking
+     for a list that is already sitting there waiting for its Thursday. */
+  function soonUnits(){
+    return myUnits().filter(function(u){ return !u.off && notYet(u); })
+                    .sort(function(a, b){ return opensAt(a) - opensAt(b); });
+  }
+  /* DAYS and MONTHS are already here, in the right order, for the worksheet
+     questions. Same lists, so no second copy. */
+  function opensWhen(u){
+    var d = opensAt(u);
+    return d ? DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] : '';
   }
   /* How many times each word gets written this week. The list can arrive
      carrying one (Bailey's sheet asks for two), but the stepper on the home
@@ -5311,9 +5594,33 @@
         });
       }
     }
-    var halves = uniq((u.compounds || []).map(function(pr){ return pr[1]; }));
-    (u.compounds || []).forEach(function(pr){
+    /* 🔴 A SHEET CAN RUN OUT OF SECOND HALVES, AND THAT IS A COIN FLIP.
+       Unit 4 has three compounds and two of them end in fly, so the distinct
+       endings collapse to light and fly and "moon + ?" came out as a two-way
+       choice. A 50/50 is not practice, it is a guess he gets right half the
+       time and learns nothing from.
+       So when the endings run short the FIRST halves off the same sheet fill
+       in: moon + ? offers light, fly, fire, butter. Every wrong answer is
+       still a word on his own list, nothing is invented, and a sheet with
+       four or more endings behaves exactly as it always did.
+       ⚠️ A first half is only safe as a wrong answer if it does not actually
+       finish this word. Checked against the sheet rather than assumed: if
+       pr[0] + candidate is one of the week's words, it is a second right
+       answer, which is the trap the rule breakers taught us. */
+    var comps = u.compounds || [];
+    var halves = uniq(comps.map(function(pr){ return pr[1]; }));
+    var firsts = uniq(comps.map(function(pr){ return pr[0]; }));
+    comps.forEach(function(pr){
       var pool = halves.filter(function(h){ return h !== pr[1]; }); shuffle(pool);
+      if (pool.length < 3){
+        var pad = firsts.filter(function(f){
+          // not its own two halves, or the card offers "moon + moon"
+          if (f === pr[0] || f === pr[1] || pool.indexOf(f) !== -1) return false;
+          return plain.indexOf(pr[0] + f) === -1;
+        });
+        shuffle(pad);
+        pool = pool.concat(pad);
+      }
       var opts = pool.slice(0, 3).concat([pr[1]]); shuffle(opts);
       out.push({ k: 'c', a: pr[0], w: pr[1], opts: opts, u: u.id });
     });
@@ -7533,9 +7840,7 @@
        the whole play screen and dropped the round back to 1 × 1. */
     if (c && c.k === 'qt') return c.w;
     if (isTeach(c)) return SENTENCE_KINDS[c.kind].example;
-    if (c && c.k === 'm') return c.kind === 'day'
-      ? 'Which one names a day of the week?'
-      : 'Which one names a month?';
+    if (c && c.k === 'm') return namedAsk(c.kind);
     if (c && c.k === 'x') return c.ask || 'Which word breaks the rule?';
     if (c && c.k === 'c') return c.a + ' + ?';
     if (isVerse(c)) return picking() ? c.t : c.r;
