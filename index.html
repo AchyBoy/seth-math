@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.73">
+<meta name="x-cards-version" content="4.74">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10030,12 +10030,13 @@
     var show = state.subject === 'spelling' && !groupKit() && !!plan;
     el.nightBlock.classList.toggle('hide', !show);
     if (!show) return;
-    var gap = testGap();
-    var when = gap === 0 ? 'today' : gap === 1 ? 'tomorrow' : '';
-    el.testFlag.classList.toggle('hide', !when);
-    if (when) el.testFlag.textContent = '🔴 Spelling test ' + when;
-    el.nightBtn.textContent = when
-      ? '📝 His test is ' + when + '. Start it'
+    var kind = testTonight();
+    el.testFlag.classList.toggle('hide', !kind);
+    if (kind) el.testFlag.textContent = kind === 'trial'
+      ? '🔴 Trial test tomorrow'
+      : '🔴 Spelling test tomorrow';
+    el.nightBtn.textContent = kind === 'trial' ? '📝 His trial test is tomorrow. Start it'
+      : kind === 'real' ? '📝 His test is tomorrow. Start it'
       : '📝 Get me ready for the test';
     /* ⚠️ Only say it is already set if it IS. It arms once a day and every
        control stays live afterwards, so a note that keeps claiming the test
@@ -10043,9 +10044,12 @@
        him something he can see is untrue. */
     var ready = state.write === TEST_WRITE && state.hand && state.timer === 'off'
       && state.autoMark && plan.times === RED_TIMES;
-    el.nightNote.textContent = (!when ? ''
-      : ready ? 'Everything is already set the way the test goes. '
-      : 'A setting has been changed since. This puts it all back the way the test goes. ')
+    /* ⚠️ Said on the Wednesday, because it changes whether tomorrow happens at
+       all and it is the whole reason the trial is worth practising for. */
+    var skip = kind === 'real' ? 'He can skip tomorrow if he made 100 on the trial today. ' : '';
+    el.nightNote.textContent = (!kind ? ''
+      : skip + (ready ? 'Everything is already set the way the test goes. '
+        : 'A setting has been changed since. This puts it all back the way the test goes. '))
       + (plan.work === 0
       ? 'Tap what the red pen marked on his paper, just below, and this sets the rest up '
         + 'and starts. Nothing tapped yet, so it would deal all ' + plan.all + ' words once, '
@@ -10057,12 +10061,19 @@
         + testWriteWords() + ', written by hand, no timer. The app does the marking and he cannot '
         + 'switch it off. Nothing to set up.');
   }
-  /* ⭐ THE TEST IS ALWAYS ON A THURSDAY (Andrew, 2 September 2026), so the app
-     stops waiting to be told. From the Wednesday it puts ITSELF into the shape
-     the test takes, rather than leaving a green button to be found: spelling,
-     his week, the word on screen to copy, written by hand, no timer, the
-     marking on, the words his teacher marked three times each and the rest of
-     the list once.
+  /* ⭐ THERE ARE TWO TESTS A WEEK, AND THE PRACTICE IS THE NIGHT BEFORE EACH
+     (Andrew, 3 September 2026). The TRIAL is on the Wednesday, and making 100
+     on it means he does not sit the real one on the Thursday at all. So the app
+     arms itself on the TUESDAY and on the WEDNESDAY, and says which of the two
+     it is getting him ready for. It puts ITSELF into the shape the test takes
+     rather than leaving a green button to be found: spelling, his week, the
+     word on screen to copy, written by hand, no timer, the marking on, the
+     words his teacher marked three times each and the rest of the list once.
+
+     ⚠️ THE NIGHT BEFORE ONLY, not the morning of. It used to arm on the
+     Thursday as well, back when Thursday was the only test anybody had
+     mentioned. Both tests are sat during the school day and there is nothing
+     useful to set up once he has gone.
 
      ⚠️ IT ARMS ONCE A DAY AND NEVER AGAIN, which is the whole reason it is
      safe. Anything it sets is still a setting: turn the repeat count down or
@@ -10074,9 +10085,9 @@
      dropped into a spelling test is the same mistake as a locked button a
      child can keep pressing. It sets the table, he still presses go.
 
-     A day per child, because the only test day anybody has told me about is
-     Seth's. Bailey's is one line when it is known. */
-  var TEST_DAY = { Seth: 4 };                    // 0 Sunday .. 4 Thursday
+     A child at a time, because the only days anybody has told me about are
+     Seth's. Bailey's are one line when they are known. */
+  var TEST_DAY = { Seth: { trial: 3, real: 4 } };   // 0 Sunday .. 3 Wednesday, 4 Thursday
   /* ⭐ AND COPY IT, NOT SAY IT, FOR NOW (Andrew, 2 September: "for his test we
      just do the copy, not the speak it for now"). Both ways in read this, the
      arming and the green button, and so does the note that describes them, so
@@ -10087,18 +10098,22 @@
       : TEST_WRITE === 'peek' ? 'shown for a moment and then hidden'
       : 'with the word on screen to copy';
   }
-  function testDayFor(name){
+  function testDaysFor(name){
     var keys = Object.keys(TEST_DAY);
     for (var i = 0; i < keys.length; i++) if (sameWho(keys[i], name)) return TEST_DAY[keys[i]];
-    return -1;
+    return null;
   }
-  /* 0 = the test is today, 1 = tomorrow, -1 = nobody with a test day signed in */
-  function testGap(){
-    var d = testDayFor(me.name);
-    if (d < 0) return -1;
-    return (d - new Date().getDay() + 7) % 7;
+  /* Which test he is being got ready for TONIGHT: 'trial', 'real', or '' on
+     every other day of the week. Tomorrow is the only question it asks. */
+  function testTonight(){
+    var days = testDaysFor(me.name);
+    if (!days) return '';
+    var tomorrow = (new Date().getDay() + 1) % 7;
+    if (tomorrow === days.trial) return 'trial';
+    if (tomorrow === days.real) return 'real';
+    return '';
   }
-  function testTime(){ var g = testGap(); return g === 0 || g === 1; }
+  function testTime(){ return !!testTonight(); }
   function armTestMode(){
     if (!testTime()) return;
     var picked = redUnits();
