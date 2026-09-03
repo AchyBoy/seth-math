@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.74">
+<meta name="x-cards-version" content="4.75">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -615,6 +615,10 @@
   .wgrade .yes{background:var(--green);box-shadow:0 4px 0 var(--green-dark)}
   .wgrade .no{background:var(--red);box-shadow:0 4px 0 #b93f38}
   .wgrade .gbtn:active{transform:translateY(3px)}
+  /* ⭐ The one asked when the checker says no and he does not agree. Amber, not
+     green: it is not "I was right", it is "go and ask somebody". */
+  .wgrade .flag{background:var(--amber);box-shadow:0 4px 0 #c07d16}
+  .wgrade .again{background:#8d8981;box-shadow:0 4px 0 #6f6c65}
   /* keyboard bits and Pencil bits are the same screen, one set at a time */
   body.hand .winput,body.hand .wrow{display:none}
   body.hand .ink,body.hand .inkrow{display:flex}
@@ -651,6 +655,15 @@
     border:2px solid var(--line);background:#fff;box-shadow:0 4px 0 #ded8cc}
   .ck .ckrow .yes{border-color:#2f8f4e;color:#2f8f4e}
   .ck .ckrow .no{border-color:var(--red);color:var(--red)}
+  /* The lesson made of the words he disagreed about. A row says the word, what
+     the checker read, and whether a grown-up has been yet. */
+  .flags{display:flex;flex-direction:column;gap:6px}
+  .fl{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+    border:2px solid var(--amber);background:#fff;border-radius:14px;padding:9px 12px}
+  .fl .flword{font-size:16px;font-weight:800}
+  .fl .flgot{font-size:14px;color:var(--muted)}
+  .fl .flwait{flex:1;text-align:right;font-size:12px;font-weight:700;color:var(--amber);white-space:nowrap}
+  .fl .flwait.done{color:var(--muted);font-weight:500}
   .rd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
     border:2px solid var(--line);background:#fff;border-radius:14px;padding:9px 12px}
   .rd .want{font-size:15px;font-weight:600}
@@ -1187,6 +1200,20 @@
     <p class="note" id="checkNote"></p>
   </div>
 
+  <!-- ⭐ The lesson made of the words he said the checker got wrong. Its own
+       thing, not a filter over anything: these are the words where he and the
+       machine disagreed, and the app does not get a second vote on them, so
+       the lesson it deals is marked by whoever is sitting with him. -->
+  <div class="block hide" id="flagBlock">
+    <p class="label">🚩 He said he got these right</p>
+    <div class="flags" id="flagList"></div>
+    <p class="note" id="flagNote"></p>
+    <div class="quick">
+      <button type="button" id="flagPractice">Write just these</button>
+      <button type="button" class="warn" id="flagClear">Clear the list</button>
+    </div>
+  </div>
+
   <!-- Only the disagreements, so an empty list means it has been agreeing. -->
   <div class="block hide" id="readsBlock">
     <p class="label">What the checker read</p>
@@ -1607,6 +1634,12 @@
     <div class="wgrade" id="inkGrade">
       <button type="button" class="gbtn yes" id="inkYes">I got it</button>
       <button type="button" class="gbtn no" id="inkNo">Missed it</button>
+    </div>
+    <!-- ⭐ Shown INSTEAD of "write it again" when the checker turns a word down,
+         so the child is asked before he is made to do it over. -->
+    <div class="wgrade" id="inkAsk">
+      <button type="button" class="gbtn again" id="askAgain">Write it again</button>
+      <button type="button" class="gbtn flag" id="askGrown">🚩 I got it right</button>
     </div>
   </div>
 
@@ -2906,7 +2939,7 @@
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
     units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
-    dealt: false, roundId: '', answers: [], marked: null, testing: false,
+    dealt: false, roundId: '', answers: [], marked: null, testing: false, manual: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -2930,6 +2963,8 @@
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'modeBlock','unitsBlock','unitChips','unitNote','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
+   'flagBlock','flagList','flagNote','flagPractice','flagClear',
+   'inkAsk','askAgain','askGrown',
    'redStep','redVal','redUp','redDown','nightBlock','nightBtn','nightNote','testFlag',
    'resumeBlock','resumeBtn','resumeNote','resumeDrop',
    'lessonBlock','lessonChips','lessonNote','teachOpts',
@@ -3671,6 +3706,7 @@
     paintRed();
     paintReads();
     paintChecks();
+    paintFlags();
     paintPages();
     el.writeNote.textContent = WRITE_NOTE[state.write] || '';
     var vocab = 0;
@@ -3917,6 +3953,7 @@
     checks = [];
     fetchChecks();
     loadRed();
+    loadFlagged();     // per child, same rule as the pages and the reads
     loadSaved();
     if (hasSheet()) buildSheet();
     /* after loadRed and the chips, or it arms against the last child's week */
@@ -8791,7 +8828,7 @@
     else state.queue.push(state.queue.shift());
   }
 
-  function startRun(rounds, isPractice, testing){
+  function startRun(rounds, isPractice, testing, manual){
     unlock();
     /* ⭐ A TEST RUN LOCKS THE MARKING ON (Andrew's call). The switch on the pad
        exists so a grown-up can shut the checker up when it starts turning down
@@ -8799,6 +8836,10 @@
        turning it off means marking his own paper. Every other way in leaves
        this false, so the lock cannot leak into ordinary practice. */
     state.testing = !!testing;
+    /* ⭐ A MANUAL RUN IS NEVER READ BY THE CHECKER. Only the flagged lesson
+       starts one today. Like the test lock it lives on the RUN, so ordinary
+       practice keeps its 🤖 switch and nothing here can leak into it. */
+    state.manual = !!manual;
     dropSaved();      // a new round is not the old one, whatever was pending
     if (!groupKit()) state.dealt = false;
     primeCheer();
@@ -9210,7 +9251,8 @@
   function paintAiBtn(){
     // gone rather than dead: a locked button a child can keep tapping is worse
     // than no button, and the way out is to stop the round and change it at home
-    el.inkAi.classList.toggle('hide', !me.token || markLocked() || isTrace(card()));
+    el.inkAi.classList.toggle('hide',
+      !me.token || markLocked() || state.manual || isTrace(card()));
     el.inkAi.classList.toggle('dim', !state.autoMark);
     el.inkAi.textContent = state.autoMark ? '\uD83E\uDD16 Reading on' : '\uD83E\uDD16 Reading off';
   }
@@ -9359,6 +9401,7 @@
     document.body.classList.toggle('hand', penFor(c));
     document.body.classList.toggle('tracing', pen);
     el.inkGrade.classList.remove('on');
+    el.inkAsk.classList.remove('on');
     el.inkRow.classList.remove('hide');
     if (penFor(c)){
       checking = false;
@@ -10349,6 +10392,79 @@
     saveReads();
   }
 
+  /* ================= the lesson he asked a grown-up about =================
+     ⭐ Andrew, 3 September: "ai messes up sometimes, so if he thinks he got it
+     right, before rejecting and making him do it again, have a pop up that
+     says ai thinks you got it wrong, confirm with parent? ... make a separate
+     and flagged lesson with the words he did it on".
+
+     ⚠️ WHY THIS IS NOT THE SAME LIST as the one above. That list is every word
+     the checker turned down, and it is the GROWN-UP's job queue: it holds the
+     ink and it empties as verdicts are given. This is the words HE disagreed
+     about, it is his to practise, and it stays put after a verdict so the two
+     of them can go back over them. One is a queue, the other is a lesson.
+
+     ⚠️ AND THE APP DOES NOT MARK THIS LESSON. Andrew again, in the same
+     breath: "on this lesson, the asked a parent lesson, no ai. Just manual
+     approve". The whole reason a word is in here is that the machine and the
+     child disagreed, so giving the machine the deciding vote on the rerun is
+     the one thing it must not do. `state.manual` is a property of the RUN,
+     same as the test lock, so it cannot leak into ordinary practice. */
+  var FLAGGED = 'seth-cards-flagged-v1';
+  var FLAG_CAP = 40;
+  var flagged = [];
+  function flaggedKey(){
+    return FLAGGED + (me.name ? ':' + me.name.toLowerCase() : ':guest');
+  }
+  function loadFlagged(){
+    flagged = [];
+    try {
+      var raw = JSON.parse(localStorage.getItem(flaggedKey()));
+      if (Array.isArray(raw)) flagged = raw;
+    } catch(e){}
+  }
+  function saveFlagged(){
+    try { localStorage.setItem(flaggedKey(), JSON.stringify(flagged)); } catch(e){}
+  }
+  /* The check row id is kept so the lesson can say whether a grown-up has been
+     yet, rather than keeping a second copy of the verdict that could disagree
+     with the queue it came from. */
+  function flagWord(c, read, id){
+    for (var i = 0; i < flagged.length; i++){
+      if (flagged[i].w === c.w){ flagged[i].got = read || ''; flagged[i].day = today();
+                                 flagged[i].id = id || flagged[i].id; saveFlagged(); return; }
+    }
+    flagged.unshift({ w: c.w, got: read || '', u: c.u || 0, day: today(), id: id || '' });
+    if (flagged.length > FLAG_CAP) flagged.length = FLAG_CAP;
+    saveFlagged();
+  }
+  function flagWaiting(row){
+    if (!row.id) return true;
+    for (var i = 0; i < checks.length; i++) if (checks[i].id === row.id) return true;
+    return false;
+  }
+  function paintFlags(){
+    var show = !groupKit() && flagged.length > 0;
+    el.flagBlock.classList.toggle('hide', !show);
+    if (!show) return;
+    el.flagList.innerHTML = '';
+    flagged.slice(0, 12).forEach(function(row){
+      var wait = flagWaiting(row);
+      var d = document.createElement('div');
+      d.className = 'fl';
+      d.innerHTML = '<span class="flword">' + esc(row.w) + '</span>'
+        + '<span class="flgot">read as \u201C' + esc(row.got || '?') + '\u201D</span>'
+        + '<span class="flwait' + (wait ? '' : ' done') + '">'
+        + (wait ? 'waiting on a grown-up' : 'a grown-up has looked') + '</span>';
+      el.flagList.appendChild(d);
+    });
+    el.flagNote.textContent = 'He said the checker had these wrong. Look at his writing up in '
+      + 'Check these with a grown-up and say. This lesson deals just these words, and the app '
+      + 'does not read them: whoever is sitting with him marks each one, because the machine '
+      + 'has already had its say on them.';
+    el.flagPractice.textContent = 'Write just these (' + flagged.length + ')';
+  }
+
   /* ================= words waiting on a grown-up =================
      ⭐ Andrew's design, 2026-08-28, after five ways of sharpening the checker
      all failed: "or at the end have adult verify? just the letters ai is not
@@ -10874,6 +10990,19 @@
   function drawTrace(g, word, top, base, mid){
     traceLayout(g, word, { top: top, base: base, mid: mid, band: base - top }, false);
   }
+  /* ⭐ ANOTHER GO KEEPS WHAT HE WROTE (Andrew, 3 September: "on the done
+     button, if he gets it wrong, don't erase what he did, usually he can just
+     fix the one spot"). Wiping the pad meant writing a whole word out again to
+     change one letter, with the rubber sitting right there for the bit that is
+     actually wrong.
+     ⚠️ EXCEPT when the word has just come up under the pen to be written over.
+     That is a different job and his own attempt would be lying across it. */
+  function inkAnotherGo(c){
+    if (traceable(c)){ inkReset(); return; }
+    ink.cur = null; ink.drawing = false; ink.rubbing = false; ink.rubAt = null;
+    inkTool('pen');
+    inkPaint();
+  }
   function inkReset(){
     ink.strokes = []; ink.cur = null; ink.drawing = false;
     ink.past = []; ink.rubbing = false; ink.rubAt = null;
@@ -11126,6 +11255,12 @@
      whether it had been skipped, refused, or had failed - which cost a round
      of guessing at it. A silent fallback and a broken feature look identical. */
   function askTheChecker(c){
+    /* ⭐ NOT ON THE FLAGGED LESSON. These are the words he and the checker
+       already disagreed about, so it does not get to settle them on the rerun:
+       a person marks every one. */
+    if (state.manual){
+      inkReveal('The checker has already had its say on this one. A grown-up marks this go.'); return;
+    }
     if (!state.autoMark && !markLocked()){
       inkReveal('You have it set to marking it yourself'); return;
     }
@@ -11233,12 +11368,73 @@
          which is good for the letter shapes either way, but the miss it just
          cost him is now provisional until somebody has looked at the ink. */
       queueCheck(c, d.read || '');
-      inkReveal(d.read
-        ? 'That reads as \u201C' + d.read + '\u201D. Have a good look and write it again.'
-        : 'It did not think so. Write it again for me.', true);
+      askAboutIt(c, d.read || '');
     });
   }
   var checking = false;
+  var pendingRead = '';
+  /* ⭐ ASKED BEFORE HE IS MADE TO DO IT AGAIN (Andrew, 3 September: "ai messes
+     up sometimes, so if he thinks he got it right, before rejecting and making
+     him do it again, have a pop up"). The checker is wrong about his
+     handwriting often enough that "write it again" as the only way on is the
+     app insisting on its own mistake.
+
+     🔴 IT IS NOT THE OLD FREE PASS, which was taken out in August because he
+     was failing the first go and passing himself on the second. "I got it
+     right" does not mark it right and does not make it go away: the word is
+     already on the grown-up's queue with his writing attached, and it goes
+     onto a flagged lesson he sits again with somebody marking. What it saves
+     him is writing out a word he wrote correctly, which is the part that was
+     actually unfair. */
+  function askAboutIt(c, read){
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    showWord(true);
+    el.wClue.classList.add('hide');
+    setWHint((read
+      ? 'The checker thinks that says \u201C' + read + '\u201D, and it gets handwriting '
+        + 'wrong about a third of the time. '
+      : 'The checker did not think that was right, and it gets handwriting wrong about a '
+        + 'third of the time. ')
+      + 'Do you think you got it right?', 'bad');
+    el.inkGrade.classList.remove('on');
+    el.inkRow.classList.add('hide');
+    el.inkAsk.classList.add('on');
+    pendingRead = read || '';
+  }
+  el.askAgain.addEventListener('click', function(){
+    unlock(); sfx.tap();
+    var c = card();
+    if (!c || state.answered) return;
+    el.inkAsk.classList.remove('on');
+    el.inkRow.classList.remove('hide');
+    inkReveal(pendingRead
+      ? 'That reads as \u201C' + pendingRead + '\u201D. Have a good look and fix it.'
+      : 'It did not think so. Have another look for me.', true);
+  });
+  el.askGrown.addEventListener('click', function(){
+    unlock(); sfx.tap();
+    var c = card();
+    if (!c || state.answered) return;
+    el.inkAsk.classList.remove('on');
+    el.inkRow.classList.remove('hide');
+    /* The id is built the same way queueCheck built it a moment ago, so the
+       lesson can ask the queue whether a grown-up has been rather than keeping
+       a second copy of the verdict that could drift from it. */
+    var pg = currentPage(c.u || 0);
+    flagWord(c, pendingRead, pg.id + '|' + inkKey(c));
+    /* ⚠️ Nothing is marked against him, which is what the queue promises: no
+       miss on the record, and his writing goes onto the page unmarked. The
+       card LEAVES rather than going to the back of the line, because the whole
+       point of the flag is that he does not write this one again tonight. */
+    keepInk(c, false);
+    state.answered = true;
+    clearCard(false); chaseNudge(false);
+    setWHint('\uD83D\uDEA9 Saved for a grown-up to look at. Carry on.', '');
+    paintFlags();
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, 1500);
+  });
 
   /* The spelling comes up and he checks his own writing against it.
      ⭐ `noPass` takes the Did you get it? buttons away and makes him write it
@@ -11283,8 +11479,9 @@
       setWHint((why || 'Could not read that one. Have another go for me.')
              + (traceable(c) ? ' The word is on the line now, write over it.' : ''), 'bad');
       el.inkGrade.classList.remove('on');
+      el.inkAsk.classList.remove('on');
       el.inkRow.classList.remove('hide');
-      inkReset();
+      inkAnotherGo(c);
       el.inkDone.textContent = 'Done';
       el.inkDone.disabled = false;
       return;
@@ -11312,6 +11509,7 @@
     stopTimer(); chasePause(); hushVoice();
     el.track.classList.add('hidden');
     el.inkGrade.classList.remove('on');
+    el.inkAsk.classList.remove('on');
     /* ⚠️ NOT THE CHECKER. It reads what the writing SAYS, and a handwriting card
        is asking how it was written, which no transcription can answer: a badly
        formed God still reads as God. Marked here, off the strokes. */
@@ -11391,6 +11589,7 @@
     var c = card();
     if (!c || !isWord(c) || state.answered || state.caught) return;
     el.inkGrade.classList.remove('on');
+    el.inkAsk.classList.remove('on');
     if (ok){
       sfx.right();
       state.answered = true;
@@ -11429,7 +11628,7 @@
     el.inkRow.classList.remove('hide');
     el.inkDone.textContent = 'Done';
     el.inkDone.disabled = false;
-    inkReset();
+    inkAnotherGo(c);
     showWord(true);
     var cm = card();
     /* On a grammar card the second miss gives the reason, same rule as spelling
@@ -11917,6 +12116,27 @@
     startRun([{ label: 'The ones the teacher marked', table: 0, cards: cards }], true);
   });
 
+  /* ⚠️ MANUAL, and that is the fourth argument. Practice too, so it can never
+     take a record: a round nobody is scoring is exactly what this is. */
+  el.flagPractice.addEventListener('click', function(){
+    var cards = [];
+    flagged.forEach(function(row){
+      var c = spellByWord(row.w);
+      if (c) cards.push(c);
+    });
+    if (!cards.length){
+      toast('Those words are not on a list he has any more');
+      return;
+    }
+    shuffle(cards);
+    unlock();
+    startRun([{ label: 'The ones he said were right', table: 0, cards: cards }],
+             true, false, true);
+  });
+  el.flagClear.addEventListener('click', function(){
+    flagged = []; saveFlagged(); sfx.tap(); paintHome();
+  });
+
   el.clearReads.addEventListener('click', function(){
     reads = []; saveReads(); sfx.tap(); paintHome();
   });
@@ -12305,6 +12525,7 @@
   loadPages();
   loadReads();
   loadRed();
+  loadFlagged();
   loadSaved();
   loadRecord();
   buildChips();
