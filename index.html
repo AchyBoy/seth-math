@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.76">
+<meta name="x-cards-version" content="4.77">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -465,6 +465,10 @@
   /* Under the word, in the same card, big enough to read across the room and
      plainly not the word itself. It is what he has to copy, so it is not the
      grey aside .wclue is. */
+  /* A phrase where a word usually goes. "grassland with few trees" at 48px
+     runs to three lines and pushes the pad under the fold, so the face steps
+     down a size and is given a sane measure to wrap on. */
+  body.copymean .wword{font-size:clamp(24px,5.6vw,34px);max-width:22ch;margin:0 auto}
   .wmean{font-size:clamp(19px,4.2vw,24px);font-weight:600;color:var(--blue);
     text-align:center;line-height:1.3;max-width:34ch}
   .wmean.hide{display:none}
@@ -623,6 +627,15 @@
   body.hand .winput,body.hand .wrow{display:none}
   body.hand .ink,body.hand .inkrow{display:flex}
   body:not(.hand) .ink,body:not(.hand) .inkrow,body:not(.hand) .wgrade{display:none}
+  /* 🔴 EXCEPT WHEN IT IS TURNED ON, and this was a dead end. The rule above
+     clears the pad and its controls away when he is typing rather than
+     writing, which is right for the pad but the mark row is not a pad control:
+     it is the only way to answer a card the checker could not mark. Typed, on
+     a vocabulary card, with "he marks himself" set, `#grade` was hidden by
+     body.write and `#inkGrade` by the rule above, so "You have it set to
+     marking it yourself" appeared over no buttons at all and the round could
+     only be quit. Found while stepping a round card by card. */
+  body:not(.hand) .wgrade.on{display:flex}
   body.hand .inkrow.hide{display:none}
   .ink{display:none}
 
@@ -3962,10 +3975,11 @@
     el.defNote.textContent = !vocab
       ? 'This week has no vocabulary words, so there are no meanings to write.'
       : state.defs
-        ? 'Each of the ' + vocab + ' vocabulary words is one card: he writes the word and '
-          + 'then what it means, on the one line, the way it goes on the sheet. It is '
-          + 'marked for sense AND spelling, because his teacher marks both: he lost the '
-          + 'mark on proclaim for writing "to declam".'
+        ? 'Each of the ' + vocab + ' vocabulary words gets two screens: he writes the '
+          + 'word, then the meaning comes up on its own and he copies it. It is marked '
+          + 'for sense AND spelling, because his teacher marks both: he lost the mark on '
+          + 'proclaim for writing "to declam". The printed page still has a line for the '
+          + 'word and a line for what it means, the way it goes on the sheet.'
         : 'The vocabulary words are dealt as ordinary spellings, with no meanings. He is '
           + 'still tested on writing what they mean.';
     setOn(el.defOpts, 'data-def', state.defs ? '1' : '0');
@@ -5538,17 +5552,26 @@
         u.words.forEach(function(row){
           if (wordTimes(u, row[0]) >= n) out.push({ k: 'w', w: row[0], s: row[1] || '', u: u.id, n: n });
         });
-        /* ⭐ A VOCABULARY WORD IS ONE CARD, NOT TWO (Andrew, 2026-08-27). It
-           dealt a spelling card and then a separate meaning card, so the word
-           came round twice. His sheet asks for one thing: write the word and
-           what it means, on the one line. So the meaning card IS the card, and
-           the spelling is marked inside the answer rather than on its own.
-           With the meanings switched off it goes back to being an ordinary
-           spelling word. The count is the same either way: a word the red pen
-           marked is one he is shaky on, and the meaning came off the same line. */
+        /* ⭐ TWO SCREENS, THE WORD THEN WHAT IT MEANS (Andrew, 2026-09-03: "he
+           struggles writing all that on one line, so I thought maybe one
+           screen with the word, next screen the meaning. It shows the meaning
+           just like the word and he just copies it").
+
+           🔴 THIS IS NOT THE AUGUST TWO-CARD SHAPE COMING BACK, and the
+           difference is the whole reason it is safe. On 27 August a vocabulary
+           word dealt a spelling card AND a meaning card that asked him to
+           write THE WORD again from its meaning, so the word came round twice
+           and that is what was wrong with it. Here the word is asked once and
+           the second screen asks for something else entirely: the meaning is
+           on screen and he copies it. Nothing is asked twice.
+
+           They are dealt as a pair and `pairUp` keeps them together through
+           the shuffle, because "next screen" is the ask. With the meanings
+           switched off there is just the word, exactly as before. */
         (u.vocab || []).forEach(function(row){
           if (wordTimes(u, row[0]) < n) return;
-          out.push({ k: state.defs ? 'd' : 'w', w: row[0], m: row[1] || '', u: u.id, n: n });
+          out.push({ k: 'w', w: row[0], m: row[1] || '', u: u.id, n: n });
+          if (state.defs) out.push({ k: 'd', w: row[0], m: row[1] || '', u: u.id, n: n });
         });
       })(n);
     }
@@ -5750,6 +5773,31 @@
     return [{ label: '', table: 0, cards: out }];
   }
 
+  /* 🔴 A MEANING CARD MUST LAND RIGHT AFTER ITS WORD. Andrew asked for "one
+     screen with the word, next screen the meaning", and the shuffle would
+     otherwise scatter the two to opposite ends of the round. So the deck is
+     shuffled as it always was and then the pairs are pulled back together:
+     every 'd' card is lifted out and reinserted directly behind the 'w' card
+     for the same word and the same go.
+     ⚠️ Same word AND same `n`. Written twice, brittle deals w1 d1 w2 d2, and
+     matching on the word alone would file both meanings behind the first go.
+     A meaning whose word is somehow not in the deck keeps its own place rather
+     than being dropped, since a lost card is worse than one out of order. */
+  function pairUp(cards){
+    var out = [], defs = [];
+    cards.forEach(function(c){
+      if (c && c.k === 'd') defs.push(c); else out.push(c);
+    });
+    defs.forEach(function(d){
+      var at = -1;
+      for (var i = 0; i < out.length; i++){
+        var c = out[i];
+        if (c && c.k === 'w' && c.w === d.w && c.u === d.u && (c.n || 1) === (d.n || 1)){ at = i; break; }
+      }
+      if (at === -1) out.push(d); else out.splice(at + 1, 0, d);
+    });
+    return out;
+  }
   function buildSpellRounds(){
     var picked = state.units.slice().sort(function(a, b){ return a - b; });
     if (state.shuffle && state.timer === 'chase') shuffle(picked);
@@ -5758,13 +5806,13 @@
       var u = unitById(n); if (!u) return;
       var cards = unitCards(u);
       if (state.shuffle) shuffle(cards);
-      rounds.push({ label: 'Unit ' + u.unit, table: u.unit, cards: cards });
+      rounds.push({ label: 'Unit ' + u.unit, table: u.unit, cards: pairUp(cards) });
     });
     if (timerKind() !== 'chase'){
       var all = [];
       rounds.forEach(function(r){ all = all.concat(r.cards); });
       if (state.shuffle) shuffle(all);
-      return [{ label: '', table: 0, cards: all }];
+      return [{ label: '', table: 0, cards: pairUp(all) }];
     }
     return rounds;
   }
@@ -7778,8 +7826,13 @@
      on screen as the prompt, so this is not a memory test; what it stops being
      is a copying exercise on one line and a meaning on another. Everything
      that has to name the whole answer reads this. */
+  /* ⭐ THE MEANING ALONE (2026-09-03). It used to be "brittle — easily broken",
+     because one card asked for both on one line. The word has its own screen
+     now, so what this card wants is the meaning and nothing else. Everything
+     that reveals or compares an answer reads this, so it is the one place the
+     split had to be stated. */
   function defWanted(c){
-    return c.w + (c.m ? ' \u2014 ' + c.m : '');
+    return c.m || c.w;
   }
   /* 'st' asks which kind of sentence it is, 'sm' which mark it ends with.
      Both are tapped, so they ride the same choice machinery as the worksheet
@@ -9603,7 +9656,11 @@
     el.wInput.className = 'winput';
     el.wMark.innerHTML = '';
     // on a grammar card the sentence is shown and the ANSWER is what he writes
-    el.wText.textContent = sen ? c.t : c.w;
+    /* ⭐ AND ON A MEANING CARD THE MEANING IS THE THING ON SCREEN, "just like
+       the word", because copying it is the whole job. The word it belongs to
+       goes on the small grey line above, where it is context rather than
+       something else to write out. */
+    el.wText.textContent = sen ? c.t : def ? defWanted(c) : c.w;
     paintAiBtn();
     // ⚠️ per WORD, not per week. With one count for the whole list this read
     // unitTimes and a marked word on its second go said "go 2 of 1".
@@ -9632,9 +9689,14 @@
        ⚠️ `meaning` is its own class rather than `defining`, which is also on
        for sentence cards: a sentence answer is "Dec." and must not get a pad
        sized for a phrase. */
-    el.wMean.textContent = def ? (c.m || '') : '';
-    el.wMean.classList.toggle('hide', !(def && c.m));
+    /* ⚠️ EMPTY ON A DEFINITION CARD NOW, and not because the meaning went back
+       into hiding: it moved UP to be the face. Leaving it here as well printed
+       the same phrase twice on one screen. `body.meaning` still governs the
+       pad height, which a phrase still needs. */
+    el.wMean.textContent = '';
+    el.wMean.classList.add('hide');
     document.body.classList.toggle('meaning', def);
+    document.body.classList.toggle('copymean', def);
     el.wCheck.textContent = 'Check it';
     setWHint('');
     document.body.classList.toggle('listening', mode === 'listen');
@@ -9655,8 +9717,10 @@
          them. Typed, there is one field and it is still one line. */
       /* Kept short: three lines of red instruction on a phone pushed the pad
          and the Done button under the fold. */
-      : def ? (penFor(c) ? 'Write ' + c.w + ', then what it means underneath'
-                         : 'Write ' + c.w + ', then what it means')
+      /* ⭐ COPY IT, one job on one screen. It used to read "Write brittle, then
+         what it means underneath", which is the sentence Andrew watched him
+         struggle with. The word was written on the screen before this one. */
+      : def ? 'Copy what it means'
       /* ⚠️ SAY THE CAPITAL OUT LOUD when the word carries one. His teacher wrote
          "Capitalize!" beside three names on one quiz, so the instruction names
          the thing he is being marked on rather than leaving him to remember. */
@@ -9693,7 +9757,9 @@
     el.helpBtn.classList.toggle('hide', !sen);
     el.helpBtn.textContent = '\uD83E\uDD14 How do I work it out?';
 
-    var clue = def ? ''
+    /* On a meaning card the word is the clue: it says what is being defined
+       without giving away a single letter of what he has to copy. */
+    var clue = def ? 'what ' + c.w + ' means'
       : c.k === 'st' ? kinds.map(function(k){
             return k + ' = it ' + SENTENCE_KINDS[k].d + '.';
           }).join('   ')
@@ -9802,8 +9868,8 @@
        the server so it costs nothing and works with no signal: it is an exact
        comparison and there is nothing for a model to weigh up. */
     if (got.replace(/[^A-Za-z']/g, '').toLowerCase() === c.w.toLowerCase()){
-      missWrite(got, 'That is the word, and it is spelled right. Now write what it MEANS '
-                   + 'after it. If the word was cold, you would write cold, chilly.');
+      missWrite(got, 'That is the word itself. This one wants what it MEANS, which is '
+                   + 'on the screen above the box. Copy that.');
       return;
     }
     if (!me.token || (!state.autoMark && !markLocked())){
@@ -9816,7 +9882,8 @@
     el.wCheck.textContent = 'Reading…';
     el.wCheck.disabled = true;
     apiCall('/handwriting', { method: 'POST',
-      body: { token: me.token, word: c.w, meaning: c.m || '', text: got } }).then(function(res){
+      body: { token: me.token, word: c.w, meaning: c.m || '', half: 'meaning',
+              text: got } }).then(function(res){
       checking = false;
       el.wCheck.textContent = 'Check it';
       el.wCheck.disabled = false;
@@ -10157,13 +10224,22 @@
     var id = unit + ':' + today(), i;
     for (i = 0; i < pages.length; i++) if (pages[i].id === id) return pages[i];
     /* ⚠️ `defs` is stamped for the same reason `slots` is: the page has to
-       print as the day it was written, not as the settings are now. A
-       vocabulary word is ONE row when the meanings are on, the word and what
-       it means together, and an ordinary spelling row when they are off. A
-       page from before this carries no `defs` at all and prints exactly as it
-       always did, both rows. */
+       print as the day it was written, not as the settings are now. It now has
+       FOUR values and every one of them is a page shape somebody has on paper:
+         undefined  before 27 August. A spelling row AND a meaning row, and the
+                    two were separate cards
+         true       27 August to 3 September. ONE row per vocabulary word, the
+                    word and its meaning written together on it
+         'split'    from 3 September. A spelling row and a meaning row again,
+                    because the word and the meaning are two screens again
+         false      the meanings are switched off. Spelling rows only
+       ⚠️ `undefined` and `'split'` print the same two rows but are NOT the
+       same value, and must not be collapsed: undefined means nobody knows what
+       was planned so a meaning row only prints where there is ink, and 'split'
+       means the row was dealt and prints empty if he never reached it. */
     var made = { id: id, unit: unit, day: today(), at: Date.now(),
-                 times: unitTimes(unitById(unit)), defs: !!state.defs,
+                 times: unitTimes(unitById(unit)),
+                 defs: state.defs ? 'split' : false,
                  slots: planFor(unitById(unit)), words: {} };
     pages.unshift(made);
     // a term of pages is a lot of ink in a 5MB drawer, so the oldest go
@@ -10243,7 +10319,7 @@
     if (isClock(c)) return 'Show ' + clockWords(c);
     if (isSent(c)) return c.t;
     if (isAsk(c)) return c.m;
-    if (isDef(c)) return c.w + ', and what it means';
+    if (isDef(c)) return 'what ' + c.w + ' means';
     return c.w || '';
   }
   function inkKey(c){
@@ -10346,6 +10422,20 @@
     var have = redFor(u);
     return unitWords(u).filter(function(w){ return have.indexOf(w) !== -1; });
   }
+  /* 🔴 THIS NUMBER HAS NOW BEEN WRONG IN BOTH DIRECTIONS, so it gets one
+     helper and every description of the deck reads it. The meanings were
+     counted, then on 27 August a vocabulary word became ONE card and counting
+     them again double counted every one, and on 3 September the word and its
+     meaning went back to being two screens and not counting them left the note
+     short of the button. `goes` is how many times the word is written under
+     whichever plan is being described, because a word written three times has
+     three meanings behind it. */
+  function meaningCards(u, goes){
+    if (!state.defs) return 0;
+    var n = 0;
+    (u.vocab || []).forEach(function(r){ n += goes(r[0]); });
+    return n;
+  }
   /* What the button is about to do, said before it is tapped. It reads the
      same helpers the deck is built from, or it drifts away from the truth the
      moment anything else changes. */
@@ -10360,11 +10450,11 @@
     var t = redTimes(picked[picked.length - 1]);
     picked.forEach(function(u){
       var w2 = needsWork(u);
-      /* ⚠️ NO SEPARATE COUNT FOR THE MEANINGS ANY MORE. unitWords already has
-         the vocabulary in it, and a vocabulary word is now ONE card whether it
-         carries its meaning or not, so adding them again counted every one of
-         them twice. */
-      unitWords(u).forEach(function(w){ cards += w2.indexOf(w) !== -1 ? t : 1; });
+      /* unitWords already has the vocabulary in it, which covers the screen he
+         writes the WORD on. meaningCards adds the screen after it. */
+      var goes = function(w){ return w2.indexOf(w) !== -1 ? t : 1; };
+      unitWords(u).forEach(function(w){ cards += goes(w); });
+      cards += meaningCards(u, goes);
       /* ⚠️ The worksheet questions are dealt on a test night too, this note
          just never counted them, so it read two or three cards short of the
          deck it was about to start. Same rule as the meanings: anything that
@@ -10404,7 +10494,7 @@
         + testWriteWords() + ', written by hand, no timer.'
       : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
-        + (state.defs ? ', the vocabulary words with their meanings' : '')
+        + (state.defs ? ', and each vocabulary word is followed by a screen to copy what it means' : '')
         + '. ' + plan.cards + ' cards, '
         + testWriteWords() + ', written by hand, no timer. The app does the marking and he cannot '
         + 'switch it off. Nothing to set up.');
@@ -10552,13 +10642,15 @@
        deck is built from. */
     var cards = 0, rest = 0;
     picked.forEach(function(uu){
-      unitWords(uu).forEach(function(w){ cards += wordTimes(uu, w); });
+      var goes = function(w){ return wordTimes(uu, w); };
+      unitWords(uu).forEach(function(w){ cards += goes(w); });
+      cards += meaningCards(uu, goes);
       if (state.extras) cards += taskCards(uu).length;
       rest += unitWords(uu).length - redFor(uu).length;
     });
     el.redNote.textContent = n + (n === 1 ? ' word' : ' words') + ' marked, written '
       + timesWord(t) + ' each, and the other ' + rest + ' once'
-      + (state.defs ? ', and each vocabulary word carries its meaning' : '')
+      + (state.defs ? ', and each vocabulary word is followed by a screen to copy what it means' : '')
       + '. Start deals ' + cards
       + ' cards. Write just these deals only the marked ones, unscored.';
   }
@@ -11134,8 +11226,14 @@
         g.beginPath(); g.moveTo(12, mid); g.lineTo(ink.w - 12, mid); g.stroke();
         g.setLineDash([]);
         /* Which line is which, said on the line itself. Two blank rules do not
-           tell him the meaning goes on the second one, and the red instruction
-           above the pad is out of sight by the time his hand is down.
+           tell him what goes where, and the red instruction above the pad is
+           out of sight by the time his hand is down.
+           🔴 BOTH RULES BELONG TO THE MEANING NOW (2026-09-03). They used to
+           read "the word" and "what it means", which was right while one card
+           asked for both. The word has its own screen now, so the first rule
+           saying "the word" would send him to write the very thing the split
+           was meant to stop him rewriting. Two rules, one phrase, and the
+           second is where it carries on to.
            ⚠️ On screen only, exactly like the traced word: inkPNG builds a
            fresh canvas from ink.strokes and inkSVG prints the strokes as
            paths, so neither the checker nor his teacher's sheet ever sees it. */
@@ -11143,7 +11241,7 @@
           g.fillStyle = '#c9c4b8';
           g.font = '600 12px system-ui,-apple-system,"Segoe UI",sans-serif';
           g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-          g.fillText(i === 0 ? 'the word' : 'what it means', 14, top - 6);
+          g.fillText(i === 0 ? 'what it means' : 'carry on here if you need to', 14, top - 6);
         }
       });
       // under his ink, over the rules, so a stroke he lays down always reads on top
@@ -11606,6 +11704,8 @@
     apiCall('/handwriting', { method: 'POST',
       body: { token: me.token, word: c.w, image: img,
               meaning: isDef(c) ? (c.m || '') : '',
+              // the picture holds the meaning alone, so the reader is told so
+              half: isDef(c) ? 'meaning' : '',
               shape: c.k === 'sm' ? 'mark' : c.k === 'st' ? 'kind'
                    : isSum(c) ? (c.op === '÷' ? 'quot' : 'digits') : '',
               choices: c.k === 'st' && lu ? lu.choices : [] } }).then(function(res){
@@ -12001,8 +12101,16 @@
        the meanings on or off next week cannot rewrite a page already printed.
        Undefined on every page written before the two became one card, and
        that case has to keep both rows or last week's page loses its lines. */
-    var oneCard = pg ? pg.defs === true : !!state.defs;
-    var both = pg ? pg.defs === undefined : false;
+    /* One name per shape, so nothing downstream has to remember which of the
+       four values means what. See currentPage for the full list. */
+    var shape = pg ? (pg.defs === undefined ? 'both'
+                    : pg.defs === true ? 'one'
+                    : pg.defs === 'split' ? 'split' : 'none')
+                   : (state.defs ? 'split' : 'none');
+    var oneCard = shape === 'one';
+    var both = shape === 'both';
+    // the meaning row was dealt as a card, so it prints whether he reached it or not
+    var plannedDefs = shape === 'one' || shape === 'split';
     var vocab = (u.vocab || []).map(function(r){ return r[0]; });
     var rows = unitWords(u).filter(function(w){
       // a vocabulary word has no spelling row of its own once it carries its
@@ -12026,7 +12134,7 @@
          still prints as an empty slot. On an older page it only shows where
          there is ink, exactly as before. */
       if (!pg) return true;
-      if (oneCard) return true;
+      if (plannedDefs) return true;
       return row.keys.some(function(k){ return pg.words && pg.words[k]; });
     });
     return rows.concat(defs);
