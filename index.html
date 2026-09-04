@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.77">
+<meta name="x-cards-version" content="4.78">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10857,8 +10857,9 @@
     });
     el.flagNote.textContent = 'He said the checker had these wrong. Look at his writing up in '
       + 'Check these with a grown-up and say. This lesson deals just these words, and the app '
-      + 'does not read them: whoever is sitting with him marks each one, because the machine '
-      + 'has already had its say on them.';
+      + 'does not read them: the machine has already had its say on them, so he marks each go '
+      + 'himself and every word he finishes goes back up to Check these with his writing, for '
+      + 'you to look at when you have a minute.';
     el.flagPractice.textContent = 'Write just these (' + flagged.length + ')';
   }
 
@@ -10877,16 +10878,22 @@
      It holds no ink itself, only which page and which key, and the ink comes
      back through the same fetch that printing uses. */
   var checks = [];
-  function queueCheck(c, got){
+  /* ⭐ `kind` SAYS WHO PUT IT HERE, and it is what a verdict acts on.
+     'ai'   the checker turned the word down. A miss is already against him.
+     'self' a go on the flagged lesson, where the checker never gets asked and
+            he marked himself right. Nothing is against him yet.
+     Left off, it is 'ai', which is what every row was before 3 September. */
+  function queueCheck(c, got, kind){
     if (!me.token || !isWord(c)) return;
     var pg = currentPage(c.u || 0), key = inkKey(c);
     var id = pg.id + '|' + key;
-    for (var i = 0; i < checks.length; i++) if (checks[i].id === id){ checks[i].got = got; break; }
+    var k = kind === 'self' ? 'self' : 'ai';
+    for (var i = 0; i < checks.length; i++) if (checks[i].id === id){ checks[i].got = got; checks[i].kind = k; break; }
     if (i === checks.length){
-      checks.unshift({ id: id, page_id: pg.id, ink_key: key, word: c.w, got: got });
+      checks.unshift({ id: id, page_id: pg.id, ink_key: key, word: c.w, got: got, kind: k });
     }
     apiCall('/check', { method: 'POST', body: { token: me.token, id: id, pageId: pg.id,
-                                                inkKey: key, word: c.w, got: got } });
+                                                inkKey: key, word: c.w, got: got, kind: k } });
     paintChecks();
   }
   function fetchChecks(){
@@ -10898,11 +10905,25 @@
       paintChecks();
     });
   }
-  /* ⭐ THE VERDICT UNDOES THE MISS. "He had it right" means the checker was
-     wrong, so the miss comes off the record he practises from, and off the
-     page so it does not print as a fault either. The record already travels
-     through /misses, which is how a verdict given on the phone reaches the
-     iPad he is writing on. */
+  /* ⭐ THE VERDICT IS THE LAST WORD, AND THE RECORD IS MADE TO MATCH IT. It
+     used to be written the other way round, as "right undoes the miss", which
+     was true while every row in here came from the checker turning a word
+     down: a miss was already against him, so a yes took it off and a no left
+     it alone and there was nothing else to do.
+
+     🔴 THAT STOPPED BEING ENOUGH ON 3 SEPTEMBER, when the flagged lesson
+     started queueing the words he marked HIMSELF right. Nothing is against him
+     on one of those, so a no from Andrew had nothing to leave alone: the row
+     left the queue, he was told his answer was wrong, and his record still
+     said he had it right. A control that looks like it decides something and
+     decides nothing is worse than no control.
+
+     So it is stated the way it should always have been said: after a verdict
+     the record agrees with the verdict. Right means no miss stands, wrong
+     means one does. On a checker row that is exactly the old behaviour, since
+     the miss it would add is already there.
+     The record travels through /misses, which is how a verdict given on the
+     phone reaches the iPad he is writing on. */
   function resolveCheck(id, right){
     var row = null, i;
     for (i = 0; i < checks.length; i++) if (checks[i].id === id) row = checks[i];
@@ -10912,20 +10933,38 @@
       apiCall('/check/resolve', { method:'POST',
         body:{ token: me.token, id: id, verdict: right ? 'right' : 'wrong' } });
     }
+    var key = 'w:' + row.word;
+    var pg = null;
+    for (i = 0; i < pages.length; i++) if (pages[i].id === row.page_id) pg = pages[i];
+    var slot = pg && pg.words ? pg.words[row.ink_key] : null;
     if (right){
-      var key = 'w:' + row.word;
       if (record[key] && record[key].m > 0){
         record[key].m--;
         if (!record[key].m && !record[key].h) delete record[key];
-        saveRecord();   // this already pushes /misses, which is how a
-      }               // verdict given on the phone reaches the iPad
+        saveRecord();
+      }
       // and off the printed page, where a missed word is marked as one
-      var pg = null;
-      for (i = 0; i < pages.length; i++) if (pages[i].id === row.page_id) pg = pages[i];
-      if (pg && pg.words && pg.words[row.ink_key] && pg.words[row.ink_key].missed){
-        pg.words[row.ink_key].missed = false;
-        savePages();
-        pushPage(pg);
+      if (slot && slot.missed){ slot.missed = false; savePages(); pushPage(pg); }
+    } else {
+      /* ⚠️ THE PAGE IS WHAT SAYS WHETHER HE ALREADY TOOK THE MISS. A checker
+         row is already marked here, so this adds nothing and cannot double
+         count; a word he passed himself is not, so this is where the miss
+         finally lands. Asking the page rather than the kind means an old row
+         from before `kind` existed behaves correctly too.
+         🔴 AND THE KIND IS THE FALLBACK WHEN THERE IS NO PAGE TO ASK. Andrew
+         answers these on his PHONE, where the pages are stubs and the writing
+         is fetched per row; the fetch runs as each row draws, so the slot is
+         normally there by the time he taps, but a fetch that failed would
+         otherwise turn "he got it wrong" into a button that does nothing at
+         all. 'self' means he passed himself and nothing is against him yet;
+         anything else came off a checker's no and already cost him the miss. */
+      var already = slot ? !!slot.missed : row.kind !== 'self';
+      if (!already){
+        var r = record[key] || (record[key] = { m: 0, h: 0 });
+        r.m++;
+        if (r.h > 0) r.h--;      // the go it was counted right for was not one
+        saveRecord();
+        if (slot){ slot.missed = true; savePages(); pushPage(pg); }
       }
     }
     sfx.tap();
@@ -10952,16 +10991,34 @@
     var show = !groupKit() && !!me.token && checks.length > 0;
     el.checkBlock.classList.toggle('hide', !show);
     if (!show) return;
-    el.checkNote.textContent = 'The checker turned these down and it is wrong about his '
-      + 'handwriting about a third of the time, so nothing is marked against him until you '
-      + 'have looked. His writing is below each one, exactly as he drew it.';
+    /* Two kinds of row live here now and they need different sentences, so the
+       note says what is in the list rather than describing only the checker's.
+       ⚠️ Counted, not assumed: on an evening with none of one kind, saying
+       there are some reads as a bug in the list. */
+    var mine = 0;
+    checks.forEach(function(r){ if (r.kind === 'self') mine++; });
+    el.checkNote.textContent = (mine < checks.length
+        ? 'The checker turned some of these down, and it is wrong about his handwriting '
+          + 'about a third of the time, so nothing is marked against him until you have '
+          + 'looked. '
+        : '')
+      + (mine
+        ? (mine === checks.length ? 'These are' : 'The rest are')
+          + ' from the flagged lesson, where the app does no marking at all: he wrote each '
+          + 'one and passed it himself, and yours is the only mark on it. '
+        : '')
+      + 'His writing is below each one, exactly as he drew it. Whichever way you say, '
+      + 'his record is made to agree with you.';
     el.checkList.innerHTML = '';
     checks.slice(0, 12).forEach(function(row){
       var box = document.createElement('div');
       box.className = 'ck';
+      var said = row.kind === 'self'
+        ? 'he marked this right himself, ' + esc(row.got || 'on the flagged lesson')
+        : 'the checker read it as \u201C' + esc(row.got || '?') + '\u201D';
       box.innerHTML =
         '<div class="ckhead"><span class="ckword">' + esc(row.word) + '</span>'
-        + '<span class="ckgot">the checker read it as \u201C' + esc(row.got || '?') + '\u201D</span></div>'
+        + '<span class="ckgot">' + said + '</span></div>'
         + '<div class="ckink">looking for his writing\u2026</div>'
         + '<div class="ckrow">'
         + '<button type="button" class="yes" data-ok="1">He had it right</button>'
@@ -12012,6 +12069,26 @@
          every kind of lesson, so the guard is what has to go rather than the
          subjects it was keeping out. */
       keepInk(c, state.tries > 0);
+      /* ⭐ THE FLAGGED LESSON GOES TO A GROWN-UP TOO (Andrew, 3 September:
+         "this time though, there's no ai involved and no I got it flag for me
+         to check, I would like that").
+
+         The flagged lesson deliberately never asks the checker, because the
+         machine already had its say on these words and lost. The design said a
+         person marks every go, and the person turned out not to be sitting
+         there: Seth wrote them again on his own, marked himself, and there was
+         nothing left for Andrew to look at. The queue is what "sitting with
+         him" looks like when nobody can sit with him, so every word he
+         finishes on this lesson goes on it with his ink.
+
+         ⚠️ AFTER keepInk, never before. The queue row is a POINTER at a page
+         and a key inside it, so the page has to hold the writing first or a
+         grown-up opens the row to an empty box.
+         ⚠️ Only the go he ACCEPTS is queued. A miss he owns up to sends him
+         round again and the go that finally lands is the one worth looking at,
+         which is also what keeps it to one row a word, the same as the upsert
+         on the server. */
+      if (state.manual) queueCheck(c, state.tries === 0 ? 'first go' : 'after ' + (state.tries + 1) + ' goes', 'self');
       /* ⚠️ A telling card's page row needs the DIAL as well as his writing, or
          the sheet reads "half past three" with nothing to say what he was
          looking at. The dial is the question, so it is stored beside the ink. */
