@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.82">
+<meta name="x-cards-version" content="4.83">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2377,7 +2377,6 @@
          spelled right and marked for the capital, the same mark October got
          in August, so they are in here for that. Tapping a chip on the home
          screen overrides this. */
-      markedAt: '2026-09-02',
       marked: [
         'choice', 'rejoice', 'moisture',
         'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
@@ -2455,11 +2454,6 @@
          ⚠️ 1 and 13 are creased across in the photo and I could not read
          whether they were marked. They are left out; tapping the chip on the
          home screen overrides this either way. */
-      /* ⚠️ THE DAY THE PHOTO WAS READ, and every `marked` written from here on
-         needs one. Without it a device that has ever tapped a chip for this
-         week keeps its own frozen list for ever and these words do nothing.
-         See redFor. */
-      markedAt: '2026-09-09',
       marked: [
         'strawberry', 'disciple', 'autumn', 'summer', 'miracle', 'drizzle',
         'struggle', 'valuable', 'brittle'
@@ -10416,19 +10410,28 @@
      word on 7 September, which is a whole test ago, and that tap outranked the
      paper that came home after it.
 
-     So a week's `marked` now carries `markedAt`, the day the photo was read,
-     and a stored list is only obeyed if it was touched on or after that day.
-     Taps made since the photo still win, which is the part that mattered:
-     "cleared on purpose" has to survive a reload. An entry from before this
-     change has no stamp at all and loses to any dated photo, which is exactly
-     right, because none of them was made with this week's paper in hand. */
-  function redTouched(id){ return (redpen.at || {})[id] || ''; }
-  function redTouch(id){ (redpen.at || (redpen.at = {}))[id] = today(); }
+     ⚠️ THE FIX CARRIES NO DATE AND NOTHING HAS TO BE REMEMBERED WHEN A NEW
+     PHOTO IS READ. The first go at this hung it on a `markedAt` field I had to
+     write beside every new `marked`, which is the same silent failure again
+     wearing a hat: forget the stamp once and the week goes quiet exactly as it
+     did here, with nothing on any screen to say so.
+
+     So the store remembers WHICH marked list the person was looking at when
+     they touched it, and the question is asked directly: is the week's list
+     still the one they saw? A different list is a new paper and wins. The same
+     list means their taps are the newer word and they win, which is the part
+     that mattered, since "cleared on purpose" has to survive a reload.
+
+     ⚠️ A week with no `marked` at all never overrides anything, or an old
+     entry with no snapshot beside it would read as a photo that emptied his
+     taps. Only a week that HAS marks can speak over them. */
+  function markedSig(u){ return ((u && u.marked) || []).join('|'); }
+  function redSaw(u){ if (u) (redpen.seen || (redpen.seen = {}))[u.id] = markedSig(u); }
   function redFor(u){
     if (!u) return [];
-    var own = redpen[u.id];
-    if (!own) return u.marked || [];
-    if (u.markedAt && redTouched(u.id) < u.markedAt) return u.marked || [];
+    var own = redpen[u.id], mk = u.marked || [];
+    if (!own) return mk;
+    if (mk.length && (redpen.seen || {})[u.id] !== markedSig(u)) return mk;
     return own;
   }
   function redUnits(){ return state.units.map(unitById).filter(Boolean); }
@@ -10660,7 +10663,7 @@
     if (!picked.length) return;
     picked.forEach(function(u){
       var work = needsWork(u);
-      if (work.length){ redpen[u.id] = work; redTouch(u.id); } else delete redpen[u.id];
+      if (work.length){ redpen[u.id] = work; redSaw(u); } else delete redpen[u.id];
       state.times[u.id] = 1;                   // the rest of the list, once
       /* ⚠️ AND THE MARKED WORDS BACK TO THREE. Andrew's rule for a test night,
          said again on 2 September: a word he missed is written three times.
@@ -12703,7 +12706,7 @@
     var list = redpen[id] || (redpen[id] = redFor(unitById(id)).slice());
     var i = list.indexOf(w);
     if (i === -1) list.push(w); else list.splice(i, 1);
-    redTouch(id);            // his tap is now newer than the photo, and stays
+    redSaw(unitById(id));    // the list he is looking at, so his tap is the newer word
     /* ⚠️ paintNight TOO, and it was missing. Tapping a word the red pen caught
        repainted its own block and nothing else, so the sentence over Get me
        ready for the test still read "Nothing tapped yet" with words plainly
@@ -12714,7 +12717,7 @@
   });
   el.redClear.addEventListener('click', function(){
     // emptied, not forgotten, or the photo's marks come straight back
-    redUnits().forEach(function(u){ redpen[u.id] = []; redTouch(u.id); });
+    redUnits().forEach(function(u){ redpen[u.id] = []; redSaw(u); });
     sfx.tap(); saveRed(); paintRed(); paintNight();
   });
   /* Only the marked words, in whichever way is already chosen, and no score.
