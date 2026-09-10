@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.85">
+<meta name="x-cards-version" content="4.86">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12826,7 +12826,11 @@
   }
   el.waitBar.addEventListener('click', function(){
     unlock(); sfx.tap();
-    el.checkBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    /* 🔴 NOT `smooth`. It was, and the banner did nothing at all: a smooth
+       scrollIntoView is silently a no-op in more places than it looks, and a
+       button at the top of the screen that appears to be broken is worse than
+       no button. Caught by clicking it as a user rather than by reading it. */
+    el.checkBlock.scrollIntoView({ block: 'start' });
   });
   el.redChips.addEventListener('click', function(ev){
     var b = ev.target.closest('.wchip'); if (!b) return;
