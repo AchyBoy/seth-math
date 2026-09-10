@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.00">
+<meta name="x-cards-version" content="5.01">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3505,8 +3505,23 @@
     try { window.speechSynthesis.cancel(); } catch(e){}
   }
   // word, sentence, word again, which is how a spelling test is actually given
+  /* 🔴 A MEANING CARD HAS TO SAY THAT IS WHAT IT WANTS (Andrew, 2026-09-10:
+     "it's hard to tell what is the word to write"). It said the identical line
+     to the word card that came before it, "prairie. grassland with few trees.
+     prairie.", twice in a row for two different jobs. On the first he writes
+     prairie and on the second he writes grassland with few trees, and with
+     nothing on screen in dictation there was no way to tell them apart.
+
+     The word card keeps the shape his teacher uses, word, then the sentence or
+     the meaning, then the word again, which is what makes the word obvious.
+     The meaning card names the job first and then gives the phrase twice. */
   function sayCard(c, bare){
     if (!c) return false;
+    if (isDef(c)){
+      var mean = c.m || '';
+      return speak(bare ? mean : ('Now what ' + c.w + ' means. ' + mean + ' ... ' + mean + '.'),
+                   bare ? 0.6 : 0.68);   // slower: it is a phrase, not a word
+    }
     var line = c.m ? (c.w + '. ' + c.m + '. ' + c.w + '.') : (c.s ? (c.w + '. ' + c.s + ' ... ' + c.w + '.') : c.w);
     return speak(bare ? c.w : line, bare ? 0.7 : 0.78);
   }
@@ -10198,7 +10213,8 @@
       /* ⭐ COPY IT, one job on one screen. It used to read "Write brittle, then
          what it means underneath", which is the sentence Andrew watched him
          struggle with. The word was written on the screen before this one. */
-      : def ? 'Copy what it means'
+      /* ⚠️ And there is nothing to COPY when it is read out to him. */
+      : def ? (mode === 'copy' ? 'Copy what it means' : 'Write what it means')
       /* ⚠️ SAY THE CAPITAL OUT LOUD when the word carries one. His teacher wrote
          "Capitalize!" beside three names on one quiz, so the instruction names
          the thing he is being marked on rather than leaving him to remember. */
