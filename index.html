@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.94">
+<meta name="x-cards-version" content="4.95">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10990,18 +10990,28 @@
      turned it to listen it would have stayed there into a brand new list,
      which is dictation on words he has not met.
 
-     So the night decides, by the day the writing happens on:
-       Thu Fri Sat Sun  copy    the list has just come home, he is meeting it
-       Mon Tue          peek    a moment to look, then write it from memory
-       Wed              listen  read aloud, nothing on screen, like the test
+     🔴 AND IT IS LISTEN EVERY NIGHT (Andrew, 2026-09-10: "I thought you had
+     said to only have him do the audio thing"). He was right and the ladder
+     I put here first, copy early in the week and dictation only at the end,
+     was hedging against the diagnosis rather than acting on it.
 
-     ⚠️ Set ONCE a day, the same way the test night arms itself, so switching
-     it by hand on the How to practice row still holds for the rest of the
-     evening. Tuesday and Wednesday land on peek and listen either way, which
-     is what the trial and the real test asked for before this. */
-  var NIGHT_WRITE = { 0: 'copy', 1: 'peek', 2: 'peek', 3: 'listen',
-                      4: 'copy', 5: 'copy', 6: 'copy' };
-  function nightWrite(){ return NIGHT_WRITE[new Date().getDay()] || 'copy'; }
+     The evidence is his own ink. On the app, with the word on screen, he
+     wrote strawberry, disciple, struggle and drizzle with every letter in
+     them. Cold on the test two days earlier the same four came out strawbry,
+     disiple, srugle, drisle. **Copying does not teach him to spell**, so a
+     night of it is a night spent practising handwriting while the test comes
+     closer.
+
+     ⚠️ The first night of a new list is the obvious objection: he has not met
+     these words. The answer is that missing one is now the lesson. The word is
+     shown after his goes, split into syllables and read out that way, which is
+     a better teaching moment than copying a word he was never asked to try.
+     And if he is drowning, Peek is one tap on the How to practice row.
+
+     ⚠️ Set ONCE a day, the same way the test night arms itself, so a change
+     made by hand still holds for the rest of the evening and tomorrow starts
+     from the night's own answer again. */
+  function nightWrite(){ return 'listen'; }
   function testWrite(){ return nightWrite(); }
   /* Arms the night's mode once, and leaves every later change alone. */
   function armTonight(){
