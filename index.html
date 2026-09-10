@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.91">
+<meta name="x-cards-version" content="4.92">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10775,22 +10775,34 @@
   var RED_WEIGHT = 3;
   function foldRedIntoRecord(){
     if (!me.name) return;
-    var done = redpen.folded || (redpen.folded = {});
-    var addedWord = false, addedFold = false;
+    var added = false;
     SPELLING.forEach(function(u){
       if (!sameWho(u.who, me.name)) return;
-      var seen = done[u.id] || (done[u.id] = []);
       redFor(u).forEach(function(w){
-        if (seen.indexOf(w) !== -1) return;
         var r = record['w:' + w] || (record['w:' + w] = { m: 0, h: 0 });
-        r.m += RED_WEIGHT;
-        r.h = 0;
-        seen.push(w);
-        addedWord = true; addedFold = true;
+        /* 🔴 THE MARK THAT SAYS IT IS DONE LIVES ON THE RECORD, not beside it.
+           The first cut kept it in `redpen`, which is localStorage, so the
+           record came down from the server already folded and every device
+           that had never folded it folded it again: opening the page on his
+           phone would have added another 3 to every marked word, and again on
+           the next device. The record travels through /misses, so the flag has
+           to travel with it. An unknown field on a jsonb row survives the
+           round trip untouched. */
+        if (r.red) return;
+        /* ⚠️ AND THE ONES v4.88 TO v4.91 ALREADY FOLDED, which carry no flag
+           because the flag was in the wrong place. `h` cleared with `m` at or
+           over the weight is the fold's own signature and nothing else makes
+           it, so those are stamped and left alone rather than added to again.
+           It is why his `plain` reads 10 and not 7: two devices folded it
+           before the flag travelled. The order among the marked words is the
+           same either way, so the numbers are left as they are. */
+        var alreadyFolded = r.h === 0 && r.m >= RED_WEIGHT;
+        if (!alreadyFolded){ r.m += RED_WEIGHT; r.h = 0; }
+        r.red = 1;
+        added = true;
       });
     });
-    if (addedFold) saveRed();
-    if (addedWord) saveRecord();
+    if (added) saveRecord();
   }
   function redUnits(){ return state.units.map(unitById).filter(Boolean); }
   // the list words then the vocabulary, in the order they sit on the sheet,
