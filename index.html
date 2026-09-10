@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.92">
+<meta name="x-cards-version" content="4.93">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13540,7 +13540,11 @@
   loadFlagged();
   loadSaved();
   loadRecord();
-  foldRedIntoRecord();   // after loadRed and loadRecord, it needs both
+  /* ⚠️ NOT WHILE A SIGNED IN CHILD'S REAL RECORD IS STILL IN THE AIR. On a
+     device that has never held it, this would fold a week's marks onto an
+     empty record and push twenty five entries over the hundred and seventy he
+     actually has. adoptRecord folds it the moment the real one lands. */
+  if (!(me.token && !Object.keys(record).length)) foldRedIntoRecord();
   buildChips();
   buildPairs();
   setPicking(true);  // a child opening the app lands on the subjects, not the wall
