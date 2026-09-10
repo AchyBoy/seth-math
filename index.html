@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.96">
+<meta name="x-cards-version" content="4.98">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1147,7 +1147,7 @@
        fault three of his tests showed would catch him, put in front of him
        BEFORE the test rather than after it. -->
   <div class="block hide" id="watchBlock">
-    <p class="label">The ones to watch on this list</p>
+    <p class="label">🏆 The A+ 100 Maker</p>
     <div class="misses" id="watchList"></div>
     <div class="row"><button type="button" id="watchBtn">Write just these</button></div>
     <p class="note" id="watchNote"></p>
@@ -2587,7 +2587,8 @@
         ['appear',  'to be seen'],
         ['prairie', 'grassland with few trees']
       ],
-      /* ⭐ THE ONES TO WATCH, and they are a PREDICTION, not a mark. Andrew,
+      /* ⭐ THE A+ 100 MAKER (Andrew named it, 2026-09-10), and it is a
+         PREDICTION, not a mark. Andrew,
          2026-09-10: "make him a custom lesson for this list that focuses on
          words you think he will struggle with."
 
@@ -2663,6 +2664,23 @@
         ['observe',   'to watch carefully'],
         ['relative',  'a family member']
       ],
+      /* The ones to watch. This whole list is the silent e after v, which is a letter
+         with no sound, his exact fault. The four at the bottom are that rule; the
+         six above it are quiet syllables and letters that are simply not there
+         when you say the word. See `watch` on list 4 for why this is not `marked`. */
+      watch: [
+        ['science',    'sci says s. The c is there and you never hear it'],
+        ['friendship', 'friend has an i in it that says nothing'],
+        ['arithmetic', 'a-rith-me-tic, four beats, and the middle two are quiet'],
+        ['language',   'lan-guage, and the u after the g makes no sound of its own'],
+        ['adjective',  'ad-jec-tive, three beats, and a silent e on the end'],
+        ['relative',   'rel-a-tive, and the a in the middle is the one you drop'],
+        ['above',      'a-bove, and the e on the end says nothing'],
+        ['olive',      'o-live, and the e on the end says nothing'],
+        ['captive',    'cap-tive, and the e on the end says nothing'],
+        ['observe',    'ob-serve, and the e on the end says nothing']
+      ],
+
       compounds: [
         ['play','ground'], ['skate','board'], ['cross','walk'], ['friend','ship']
       ]
@@ -2694,6 +2712,21 @@
         ['harvest', 'the gathering of crops'],
         ['weather', 'the condition of the air']
       ],
+      /* The ones to watch. knives is the pick of them: a letter on the front with no
+         sound is the exact thing three of his tests say he leaves out. */
+      watch: [
+        ['knives',     'a k on the front that says nothing at all'],
+        ['thieves',    'ie together, and last time a letter fell out of the pair'],
+        ['yourselves', 'your-selves, two whole words long'],
+        ['giraffes',   'two f’s, and it is the one that breaks the ves rule'],
+        ['wolves',     'wol-ves, and it does not sound the way it is written'],
+        ['scarves',    'scar-ves, and the ves is not what you hear'],
+        ['bountiful',  'boun-ti-ful, three beats, and the middle one is quiet'],
+        ['weather',    'wea-ther, and the a in there says nothing'],
+        ['orchard',    'or-chard, and the ch is two letters for one sound'],
+        ['loaves',     'oa together, and only one of them is doing anything']
+      ],
+
       compounds: [
         ['foot','ball'], ['hay','ride'], ['scare','crow'], ['rain','coat']
       ],
@@ -2741,6 +2774,21 @@
         ['advantage', 'a help or benefit'],
         ['trudge',    'to walk slowly and heavily']
       ],
+      /* The ones to watch. The dge words are the week’s rule and they are a silent d,
+         which is his fault exactly; knowledge carries a silent k on top of it. */
+      watch: [
+        ['knowledge',   'a silent k, know-ledge, and a d you do not hear'],
+        ['wheelbarrow', 'wh on the front and two r’s in the middle'],
+        ['weathervane', 'three beats and an a in wea that says nothing'],
+        ['advantage',   'ad-van-tage, and the middle beat is the quiet one'],
+        ['fringe',      'nge on the end, and the n is easy to lose'],
+        ['plunge',      'nge on the end, and the n is easy to lose'],
+        ['smudge',      'dge for one sound, and the d is the letter he drops'],
+        ['badge',       'dge for one sound, and the d is the letter he drops'],
+        ['trudge',      'dge for one sound, and the d is the letter he drops'],
+        ['judge',       'dge for one sound, and the d is the letter he drops']
+      ],
+
       compounds: [
         ['wheel','barrow'], ['sun','shine'], ['bee','hive'], ['farm','house'],
         ['wind','mill'], ['hay','stack'], ['weather','vane'],
@@ -4009,17 +4057,18 @@
       el.watchList.appendChild(b);
     });
     el.watchBtn.textContent = 'Write just these (' + u.watch.length + ')';
-    el.watchNote.textContent = 'Not what the red pen marked, these are the words on this '
-      + 'list that the same mistake three of his tests showed would catch him: a letter he '
-      + 'hears once but has to write twice, or a syllable he does not say. Tap one to see why. '
-      + 'It is practice, so nothing here is scored.';
+    el.watchNote.textContent = 'The words on this list most likely to cost him the 100, '
+      + 'picked off the one mistake every one of his tests shows: a letter he hears once but '
+      + 'has to write twice, or a syllable he does not say. Not what the red pen marked, '
+      + 'these have not caught him yet. Tap one to see why it might. Practice only, nothing '
+      + 'here is scored.';
   }
   el.watchBtn.addEventListener('click', function(){
     var u = watchUnit(); if (!u) return;
     var cards = u.watch.map(function(row){ return spellByWord(row[0]); }).filter(Boolean);
     if (!cards.length) return;
     shuffle(cards);
-    startRun([{ label: 'The ones to watch', cards: cards }], true);
+    startRun([{ label: 'The A+ 100 Maker', cards: cards }], true);
   });
   function paintTrouble(){
     var worst = troubleList(8);
