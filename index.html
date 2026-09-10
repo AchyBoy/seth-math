@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.01">
+<meta name="x-cards-version" content="5.02">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3470,16 +3470,49 @@
      for game noises: the word being read out is the QUESTION, so it still
      speaks when the effects are off. */
   var canSpeak = ('speechSynthesis' in window), speechPrimed = false;
+  /* 🔴 QUALITY BEFORE NAME (Andrew, 2026-09-10: "the automated is kinda, not
+     so great"). Apple ships a compact Samantha in the box and offers Enhanced
+     and Premium downloads for free in Settings, and **they all answer to the
+     same `name`**. Matching on the name alone took whichever happened to load
+     first, which is the robotic one, even on a device where a good one was
+     sitting installed beside it. The only thing that tells them apart is the
+     `voiceURI`, which carries `enhanced`, `premium` or `siri` in it.
+
+     ⚠️ Scored rather than short circuited, so an Enhanced Karen beats a
+     compact Samantha, but among equals the old order still decides. */
+  function voiceRank(v){
+    var u = ((v && v.voiceURI) || '').toLowerCase() + ' ' + ((v && v.name) || '').toLowerCase();
+    if (u.indexOf('premium') !== -1 || u.indexOf('siri') !== -1) return 3;
+    if (u.indexOf('enhanced') !== -1) return 2;
+    if (u.indexOf('compact') !== -1) return 0;
+    return 1;
+  }
   function pickVoice(){
     var vs = [];
     try { vs = window.speechSynthesis.getVoices() || []; } catch(e){ return null; }
     var want = ['Samantha', 'Karen', 'Moira', 'Daniel', 'Google US English'];
-    var i, j;
+    var best = null, bestScore = -1, i, j, sc;
     for (i = 0; i < want.length; i++){
-      for (j = 0; j < vs.length; j++) if (vs[j].name === want[i]) return vs[j];
+      for (j = 0; j < vs.length; j++){
+        if (vs[j].name !== want[i]) continue;
+        sc = voiceRank(vs[j]) * 10 + (want.length - i);
+        if (sc > bestScore){ bestScore = sc; best = vs[j]; }
+      }
     }
-    for (j = 0; j < vs.length; j++) if ((vs[j].lang || '').slice(0, 2) === 'en') return vs[j];
-    return null;
+    if (best) return best;
+    for (j = 0; j < vs.length; j++){
+      if ((vs[j].lang || '').slice(0, 2) !== 'en') continue;
+      sc = voiceRank(vs[j]);
+      if (sc > bestScore){ bestScore = sc; best = vs[j]; }
+    }
+    return best;
+  }
+  // so a grown-up can tell at a glance whether the good voice actually took
+  function voiceName(){
+    var v = pickVoice();
+    if (!v) return '';
+    var tag = voiceRank(v);
+    return v.name + (tag >= 2 ? ' (the good one)' : tag === 0 ? ' (the basic one)' : '');
   }
   function primeSpeech(){
     if (!canSpeak || speechPrimed) return;
@@ -4342,7 +4375,11 @@
     paintChecks();
     paintFlags();
     paintPages();
-    el.writeNote.textContent = WRITE_NOTE[state.write] || '';
+    /* ⚠️ Named here because a downloaded voice is invisible otherwise: the
+       Settings switch is on another screen and nothing in the app ever said
+       which one it had ended up with. */
+    el.writeNote.textContent = (WRITE_NOTE[state.write] || '')
+      + (state.write === 'listen' && voiceName() ? ' Reading in ' + voiceName() + '.' : '');
     var vocab = 0;
     state.units.map(unitById).filter(Boolean)
       .forEach(function(u){ vocab += (u.vocab || []).length; });
