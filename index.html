@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.95">
+<meta name="x-cards-version" content="4.96">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1141,6 +1141,16 @@
     <pre id="trailText" style="white-space:pre-wrap;font:500 11px/1.4 ui-monospace,Menlo,monospace;
       background:#fdeceb;border:2px solid #e0524a;border-radius:14px;padding:10px;overflow-x:auto"></pre>
     <div class="quick"><button type="button" class="warn" id="trailClear">Clear this</button></div>
+  </div>
+
+  <!-- Not the red pen. These are the words on this week's list that the same
+       fault three of his tests showed would catch him, put in front of him
+       BEFORE the test rather than after it. -->
+  <div class="block hide" id="watchBlock">
+    <p class="label">The ones to watch on this list</p>
+    <div class="misses" id="watchList"></div>
+    <div class="row"><button type="button" id="watchBtn">Write just these</button></div>
+    <p class="note" id="watchNote"></p>
   </div>
 
   <div class="block hide" id="troubleBlock">
@@ -2577,6 +2587,34 @@
         ['appear',  'to be seen'],
         ['prairie', 'grassland with few trees']
       ],
+      /* ⭐ THE ONES TO WATCH, and they are a PREDICTION, not a mark. Andrew,
+         2026-09-10: "make him a custom lesson for this list that focuses on
+         words you think he will struggle with."
+
+         🔴 DELIBERATELY NOT `marked`. That field is the red pen and nothing
+         else, Andrew's rule from 26 August: the words that earn the extra goes
+         are whatever his teacher wrote on his paper, full stop. A guess of
+         mine sitting in there would look exactly like a teacher's mark, would
+         earn three goes it has not earned, and would be folded into his record
+         as a miss he never made. `watch` has its own list, its own button and
+         touches neither.
+
+         Chosen off the same fault three tests showed: he writes the sounds he
+         hears and nothing else. Six of these double a letter he hears once,
+         three have a syllable he does not say, and prairie is six letters
+         doing the work of three sounds. */
+      watch: [
+        ['balloon',  'two l\u2019s and two o\u2019s, and you only hear one of each'],
+        ['splatter', 'two t\u2019s, and you only hear one'],
+        ['slippery', 'two p\u2019s, and a middle bit you do not say: slip-per-y'],
+        ['scribble', 'two b\u2019s, and you only hear one'],
+        ['appear',   'two p\u2019s, and you only hear one'],
+        ['Hawaii',   'two i\u2019s on the end, and a capital H'],
+        ['macaroni', 'four beats, mac-a-ro-ni, and the middle two are easy to lose'],
+        ['safari',   'sa-fa-ri, three beats, and the middle one is quiet'],
+        ['timpani',  'tim-pa-ni, three beats, and the middle one is quiet'],
+        ['prairie',  'six letters doing the work of three sounds']
+      ],
       /* ⚠️ Only two halves once the duplicates go (light, fly), so these come
          out as a two-way choice rather than the usual four. His own sheet has
          three compounds and two of them end in fly; padding the choices from
@@ -3309,7 +3347,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -3944,6 +3982,45 @@
     }
   }
 
+  /* The week he is on, only when it is one week and only when somebody has
+     looked at that list and written down what to watch for. */
+  function watchUnit(){
+    if (state.subject !== 'spelling' || state.units.length !== 1) return null;
+    var u = unitById(state.units[0]);
+    return (u && (u.watch || []).length) ? u : null;
+  }
+  function paintWatch(){
+    var u = watchUnit();
+    el.watchBlock.classList.toggle('hide', !u);
+    if (!u) return;
+    el.watchList.innerHTML = '';
+    u.watch.forEach(function(row){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'miss tappable';
+      b.addEventListener('click', function(ev){
+        ev.currentTarget.classList.toggle('open'); sfx.tap();
+      });
+      /* The syllables come off the same splitter the pad uses, so what he is
+         told here and what the phone says to him cannot drift apart. */
+      var parts = sylParts({ w: row[0], u: u.id, k: 'w' });
+      b.innerHTML = '<span class="mkey">' + esc(row[0]) + '</span>'
+        + '<span class="ans">' + esc(parts.join('\u00b7')) + ' \u2014 ' + esc(row[1]) + '</span>';
+      el.watchList.appendChild(b);
+    });
+    el.watchBtn.textContent = 'Write just these (' + u.watch.length + ')';
+    el.watchNote.textContent = 'Not what the red pen marked, these are the words on this '
+      + 'list that the same mistake three of his tests showed would catch him: a letter he '
+      + 'hears once but has to write twice, or a syllable he does not say. Tap one to see why. '
+      + 'It is practice, so nothing here is scored.';
+  }
+  el.watchBtn.addEventListener('click', function(){
+    var u = watchUnit(); if (!u) return;
+    var cards = u.watch.map(function(row){ return spellByWord(row[0]); }).filter(Boolean);
+    if (!cards.length) return;
+    shuffle(cards);
+    startRun([{ label: 'The ones to watch', cards: cards }], true);
+  });
   function paintTrouble(){
     var worst = troubleList(8);
     el.troubleBlock.classList.toggle('hide', worst.length === 0);
@@ -4288,6 +4365,7 @@
          : blends ? 'Pick at least one set' : 'Pick at least one table')
       : 'Start ' + count + ' cards';
     paintPick();
+    paintWatch();
     paintTrouble();
   }
 
