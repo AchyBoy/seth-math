@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.89">
+<meta name="x-cards-version" content="4.90">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -691,24 +691,29 @@
      picking  the subject buttons and nothing else
      picked   one subject: study the list he is on, and what came of it
      lists    plus the pickers and the settings, which is the wall he had */
-  body.picking .block:not(#subjBlock){display:none !important}
-  body.picking #startBtn,body.picking #studyNote,body.picking #pickHead,
-  body.picking #studyNowBtn,body.picking #moreBtn{display:none !important}
-  body.picked #subjBlock{display:none !important}
-  body.picked:not(.lists) #tablesBlock,body.picked:not(.lists) #setsBlock,
-  body.picked:not(.lists) #unitsBlock,body.picked:not(.lists) #topicsBlock,
-  body.picked:not(.lists) #lessonBlock,body.picked:not(.lists) #mathBlock,
-  body.picked:not(.lists) #studyBlock,body.picked:not(.lists) #proofBlock,
-  body.picked:not(.lists) #penBlock,body.picked:not(.lists) #redpenBlock,
-  body.picked:not(.lists) #redBlock,body.picked:not(.lists) #timesBlock,
-  body.picked:not(.lists) #modeBlock,body.picked:not(.lists) #orderBlock,
-  body.picked:not(.lists) #timerBlock,body.picked:not(.lists) #secsBlock,
-  body.picked:not(.lists) #chaseBlock,body.picked:not(.lists) #writeBlock,
-  body.picked:not(.lists) #scoreBlock,body.picked:not(.lists) #startBtn{display:none !important}
+  /* 🔴 SCOPED TO #home, EVERY ONE OF THEM. The first cut said `.block` and the
+     sign in screen uses that class too, so a signed out child got a screen
+     with a heading and nothing under it. Caught by opening the live page
+     signed out rather than by reading the rule. */
+  body.picking #home .block:not(#subjBlock){display:none !important}
+  body.picking #home #startBtn,body.picking #home #studyNote,
+  body.picking #home #pickHead,body.picking #home #studyNowBtn,
+  body.picking #home #moreBtn{display:none !important}
+  body.picked #home #subjBlock{display:none !important}
+  body.picked:not(.lists) #home #tablesBlock,body.picked:not(.lists) #home #setsBlock,
+  body.picked:not(.lists) #home #unitsBlock,body.picked:not(.lists) #home #topicsBlock,
+  body.picked:not(.lists) #home #lessonBlock,body.picked:not(.lists) #home #mathBlock,
+  body.picked:not(.lists) #home #studyBlock,body.picked:not(.lists) #home #proofBlock,
+  body.picked:not(.lists) #home #penBlock,body.picked:not(.lists) #home #redpenBlock,
+  body.picked:not(.lists) #home #redBlock,body.picked:not(.lists) #home #timesBlock,
+  body.picked:not(.lists) #home #modeBlock,body.picked:not(.lists) #home #orderBlock,
+  body.picked:not(.lists) #home #timerBlock,body.picked:not(.lists) #home #secsBlock,
+  body.picked:not(.lists) #home #chaseBlock,body.picked:not(.lists) #home #writeBlock,
+  body.picked:not(.lists) #home #scoreBlock,body.picked:not(.lists) #home #startBtn{display:none !important}
   /* The subject list, as buttons big enough to hit rather than a field of pills */
-  body.picking #subjBlock .label{display:none}
-  body.picking #subjectOpts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  body.picking #subjectOpts .opt{width:auto;text-align:left;padding:18px 16px;
+  body.picking #home #subjBlock .label{display:none}
+  body.picking #home #subjectOpts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  body.picking #home #subjectOpts .opt{width:auto;text-align:left;padding:18px 16px;
     font-size:17px;border-radius:18px}
   #pickHead{display:flex;align-items:center;gap:10px;margin:2px 0 14px}
   #pickHead .back{border:2px solid var(--line);background:#fff;border-radius:12px;
