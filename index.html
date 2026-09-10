@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
-<meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.84">
+<meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
+<meta name="x-cards-version" content="4.85">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -677,6 +677,9 @@
   .fl .flgot{font-size:14px;color:var(--muted)}
   .fl .flwait{flex:1;text-align:right;font-size:12px;font-weight:700;color:var(--amber);white-space:nowrap}
   .fl .flwait.done{color:var(--muted);font-weight:500}
+  .waitbar{display:block;width:100%;margin:0 0 12px;border:2px solid var(--amber);
+    background:#fff8ec;color:#8a5a12;border-radius:16px;padding:13px 16px;
+    font:inherit;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
   .fl .flwait.bad{color:var(--red);font-weight:700}
   .fl .flwait.good{color:var(--muted);font-weight:500}
   .rd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
@@ -1013,12 +1016,21 @@
 <!-- ================= home ================= -->
 <div class="screen on" id="home">
   <div class="head">
-    <h1 class="title">Multiplication<br><span>Flash Cards</span></h1>
+    <h1 class="title">Seth’s<br><span>Flash Cards</span></h1>
     <button type="button" class="spk" id="spkHome" aria-label="Sound">🔊</button>
   </div>
   <button type="button" class="whoami" id="whoBtn">
     <span id="whoLabel">Sign in to save your scores</span><span class="chev">›</span>
   </button>
+
+  <!-- ⭐ WHAT IS WAITING, AT THE TOP. The queue itself sits a thousand pixels
+       down, under the whole subject picker and the twelve tables, so a grown-up
+       opening the app had to scroll past the child's screen to find the one
+       thing they came for, and mostly did not. This says so where it is seen
+       and takes them straight there. Hidden when there is nothing, because the
+       child opens this screen too and every night's first sight of it should
+       not be a grown-up's job list. -->
+  <button type="button" class="waitbar hide" id="waitBar"></button>
 
   <button type="button" class="purse hide" id="purseBtn">
     🪙 <b id="coinCount">0</b> coins
@@ -3227,7 +3239,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -11219,6 +11231,11 @@
   }
   function paintChecks(){
     var show = !groupKit() && !!me.token && checks.length > 0;
+    /* ⚠️ Painted from the same `show`, so the banner and the block can never
+       disagree about whether there is anything to do. */
+    el.waitBar.classList.toggle('hide', !show);
+    if (show) el.waitBar.textContent = '\uD83D\uDD8A\uFE0F ' + checks.length
+      + (checks.length === 1 ? ' word is' : ' words are') + ' waiting for a grown-up to look';
     el.checkBlock.classList.toggle('hide', !show);
     if (!show) return;
     /* Two kinds of row live here now and they need different sentences, so the
@@ -12807,6 +12824,10 @@
     var d = new Date((day || today()) + 'T12:00:00');
     return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   }
+  el.waitBar.addEventListener('click', function(){
+    unlock(); sfx.tap();
+    el.checkBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   el.redChips.addEventListener('click', function(ev){
     var b = ev.target.closest('.wchip'); if (!b) return;
     var id = parseInt(b.getAttribute('data-unit'), 10), w = b.getAttribute('data-word');
