@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.90">
+<meta name="x-cards-version" content="4.91">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3286,7 +3286,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    offered: 0, units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false, manual: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -3740,6 +3740,7 @@
             || s.subject === 'proof' || s.subject === 'history'
             || s.subject === 'science' || s.subject === 'trace'
             || s.subject === 'redpen' || s.subject === 'math') state.subject = s.subject;
+        if (typeof s.offered === 'number') state.offered = s.offered;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
         if (Array.isArray(s.chapters) && s.chapters.length) state.chapters = s.chapters;
@@ -3775,6 +3776,7 @@
       chapters: state.chapters, study: state.study, penLessons: state.penLessons, maths: state.maths,
         units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
         armedFor: state.armedFor,
+        offered: state.offered,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
@@ -4329,12 +4331,28 @@
   /* The one button he uses. It is the Start button, said in his words and put
      where he can reach it, so everything about how the round is dealt, marked
      and recorded goes on happening in exactly one place. */
+  /* Which list, in the words on his sheet. "Study current list" told nobody
+     anything: Andrew could not tell from the button whether it was pointed at
+     this week or last, which is exactly how a stale week went unnoticed. */
+  function currentListName(){
+    if (state.subject !== 'spelling') return '';
+    var picked = state.units.map(unitById).filter(Boolean);
+    if (picked.length === 1) return 'List ' + picked[0].unit;
+    return picked.length ? picked.length + ' lists' : '';
+  }
   function paintPick(){
     el.pickNow.textContent = subjectName();
     var ready = !el.startBtn.disabled;
+    var name = currentListName();
+    /* His homework is the week's list, so on the week's list that is what the
+       button is called. On any other list it is named outright, so the two can
+       never be mistaken for each other. */
+    var title = !name ? 'Study current list'
+      : onNewestWeek() ? 'This week\u2019s homework' : name;
+    var under = (name && title !== name ? name + ' \u00b7 ' : '') + el.startBtn.textContent;
     el.studyNowBtn.disabled = !ready;
     el.studyNowBtn.innerHTML = ready
-      ? 'Study current list<small>' + esc(el.startBtn.textContent) + '</small>'
+      ? esc(title) + '<small>' + esc(under) + '</small>'
       : esc(el.startBtn.textContent);
     el.moreBtn.textContent = showLists
       ? 'Hide the lists and settings'
@@ -5795,7 +5813,32 @@
   /* The chosen week has to be one this child actually has, or a setting left
      behind by the last child to hold the iPad hands them somebody else's list.
      Same trap as the missed record, which was device wide once. */
+  /* newest LAST, by the number printed on the sheet rather than array order */
+  function newestUnit(){
+    var live = liveUnits().slice().sort(function(a, b){ return a.unit - b.unit; });
+    return live.length ? live[live.length - 1] : null;
+  }
+  function onNewestWeek(){
+    var n = newestUnit();
+    return !!(n && state.units.length === 1 && state.units[0] === n.id);
+  }
+  /* 🔴 A NEW WEEK HAS TO BECOME THE WEEK HE IS ON. A list opens on its own
+     Thursday and nothing ever moved him onto it, so the morning after his test
+     he opened the app still pointed at last week's list, still carrying last
+     week's test-night plan, and the button offered him 54 cards of a list he
+     had already been tested on. His homework is this week's list.
+
+     ⚠️ It advances ONCE per week that opens, remembered in `offered`, so
+     choosing an older list by hand still sticks until a newer one arrives. */
+  function offerNewestWeek(){
+    var n = newestUnit();
+    if (!n || state.offered === n.id) return;
+    state.offered = n.id;
+    state.units = [n.id];
+    saveSettings();
+  }
   function fixUnits(){
+    offerNewestWeek();
     var mine = liveUnits();
     state.units = state.units.filter(function(id){
       return mine.some(function(u){ return u.id === id; });
