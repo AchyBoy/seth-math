@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.88">
+<meta name="x-cards-version" content="4.89">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -683,6 +683,45 @@
      and he is the one who has to want to sit down and do this. One pip per
      card, filled as he earns it, so every right answer visibly adds to
      something he can see growing. */
+  /* ⭐ ONE THING AT A TIME (Andrew, 2026-09-10: "it's super clunky, buttons and
+     options everywhere"). Every block still lives exactly where it did and
+     every paint function still runs; this only decides what is ON SCREEN.
+     Nothing about how a round is dealt, marked or recorded changes.
+
+     picking  the subject buttons and nothing else
+     picked   one subject: study the list he is on, and what came of it
+     lists    plus the pickers and the settings, which is the wall he had */
+  body.picking .block:not(#subjBlock){display:none !important}
+  body.picking #startBtn,body.picking #studyNote,body.picking #pickHead,
+  body.picking #studyNowBtn,body.picking #moreBtn{display:none !important}
+  body.picked #subjBlock{display:none !important}
+  body.picked:not(.lists) #tablesBlock,body.picked:not(.lists) #setsBlock,
+  body.picked:not(.lists) #unitsBlock,body.picked:not(.lists) #topicsBlock,
+  body.picked:not(.lists) #lessonBlock,body.picked:not(.lists) #mathBlock,
+  body.picked:not(.lists) #studyBlock,body.picked:not(.lists) #proofBlock,
+  body.picked:not(.lists) #penBlock,body.picked:not(.lists) #redpenBlock,
+  body.picked:not(.lists) #redBlock,body.picked:not(.lists) #timesBlock,
+  body.picked:not(.lists) #modeBlock,body.picked:not(.lists) #orderBlock,
+  body.picked:not(.lists) #timerBlock,body.picked:not(.lists) #secsBlock,
+  body.picked:not(.lists) #chaseBlock,body.picked:not(.lists) #writeBlock,
+  body.picked:not(.lists) #scoreBlock,body.picked:not(.lists) #startBtn{display:none !important}
+  /* The subject list, as buttons big enough to hit rather than a field of pills */
+  body.picking #subjBlock .label{display:none}
+  body.picking #subjectOpts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  body.picking #subjectOpts .opt{width:auto;text-align:left;padding:18px 16px;
+    font-size:17px;border-radius:18px}
+  #pickHead{display:flex;align-items:center;gap:10px;margin:2px 0 14px}
+  #pickHead .back{border:2px solid var(--line);background:#fff;border-radius:12px;
+    padding:7px 12px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+  #pickHead .now{font-size:20px;font-weight:800}
+  #studyNowBtn{display:block;width:100%;border:none;border-radius:20px;
+    background:var(--blue,#2f6bff);color:#fff;font:inherit;font-size:19px;
+    font-weight:800;padding:20px 16px;margin:0 0 10px;cursor:pointer}
+  #studyNowBtn:disabled{background:#c9cdd6;cursor:default}
+  #studyNowBtn small{display:block;font-size:13px;font-weight:600;opacity:.9;margin-top:3px}
+  #moreBtn{display:block;width:100%;border:2px solid var(--line);background:#fff;
+    border-radius:16px;font:inherit;font-size:15px;font-weight:700;padding:13px 16px;
+    margin:0 0 18px;cursor:pointer}
   .pips{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;
     margin:0 auto 10px;max-width:520px;min-height:14px}
   .pips.hide{display:none}
@@ -1054,6 +1093,13 @@
     <span class="grow"><span id="shopWord">Shop</span><span class="dot hide" id="waitDot"></span></span>
     <span class="chev">›</span>
   </button>
+
+  <div id="pickHead">
+    <button type="button" class="back" id="pickBack">‹ Subjects</button>
+    <span class="now" id="pickNow"></span>
+  </div>
+  <button type="button" id="studyNowBtn"></button>
+  <button type="button" id="moreBtn">Study any list, or change how it works</button>
 
   <div class="block hide" id="resumeBlock">
     <button type="button" class="night" id="resumeBtn">↩︎ Carry on where he left off</button>
@@ -3258,7 +3304,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -4233,6 +4279,7 @@
          : spell ? 'Pick at least one week' : verses ? 'Pick at least one subject'
          : blends ? 'Pick at least one set' : 'Pick at least one table')
       : 'Start ' + count + ' cards';
+    paintPick();
     paintTrouble();
   }
 
@@ -4250,11 +4297,53 @@
     trail = []; sfx.tap(); paintTrail();
   });
 
+  /* ⚠️ The subject is still set exactly as it was and still saved. The only
+     new thing is that choosing one moves off the list of subjects. */
   el.subjectOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
     state.subject = b.getAttribute('data-subject');
+    setPicking(false);
     sfx.tap(); paintHome(); saveSettings(); refreshBoard();
+    window.scrollTo(0, 0);
   });
+  /* ⚠️ Deliberately NOT saved with the settings. Which subject he is on is
+     worth remembering between nights; which screen he had open is not, and a
+     child who opens the app should land on the list of subjects. */
+  var picking = true, showLists = false;
+  function setPicking(on){
+    picking = !!on;
+    if (picking) showLists = false;
+    document.body.classList.toggle('picking', picking);
+    document.body.classList.toggle('picked', !picking);
+    document.body.classList.toggle('lists', !picking && showLists);
+  }
+  function subjectName(){
+    var b = el.subjectOpts.querySelector('[data-subject="' + state.subject + '"]');
+    return b ? b.textContent.trim() : '';
+  }
+  /* The one button he uses. It is the Start button, said in his words and put
+     where he can reach it, so everything about how the round is dealt, marked
+     and recorded goes on happening in exactly one place. */
+  function paintPick(){
+    el.pickNow.textContent = subjectName();
+    var ready = !el.startBtn.disabled;
+    el.studyNowBtn.disabled = !ready;
+    el.studyNowBtn.innerHTML = ready
+      ? 'Study current list<small>' + esc(el.startBtn.textContent) + '</small>'
+      : esc(el.startBtn.textContent);
+    el.moreBtn.textContent = showLists
+      ? 'Hide the lists and settings'
+      : 'Study any list, or change how it works';
+  }
+  el.pickBack.addEventListener('click', function(){
+    setPicking(true); sfx.tap(); paintHome(); window.scrollTo(0, 0);
+  });
+  el.moreBtn.addEventListener('click', function(){
+    showLists = !showLists;
+    document.body.classList.toggle('lists', showLists);
+    sfx.tap(); paintPick();
+  });
+  el.studyNowBtn.addEventListener('click', function(){ el.startBtn.click(); });
   el.allSetsBtn.addEventListener('click', function(){
     state.sets = [];
     for (var k = 1; k <= soundSets(); k++) state.sets.push(k);
@@ -13394,6 +13483,7 @@
   foldRedIntoRecord();   // after loadRed and loadRecord, it needs both
   buildChips();
   buildPairs();
+  setPicking(true);  // a child opening the app lands on the subjects, not the wall
   armTestMode();     // buildChips settled which week is ticked
   paintHome();
   if (!me.token){ show('who'); showAuthPin('login', ''); }   // nothing before signing in
