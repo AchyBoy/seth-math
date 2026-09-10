@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Multiplication Flash Cards</title>
+<title>Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.80">
+<meta name="x-cards-version" content="4.81">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -677,6 +677,8 @@
   .fl .flgot{font-size:14px;color:var(--muted)}
   .fl .flwait{flex:1;text-align:right;font-size:12px;font-weight:700;color:var(--amber);white-space:nowrap}
   .fl .flwait.done{color:var(--muted);font-weight:500}
+  .fl .flwait.bad{color:var(--red);font-weight:700}
+  .fl .flwait.good{color:var(--muted);font-weight:500}
   .rd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
     border:2px solid var(--line);background:#fff;border-radius:14px;padding:9px 12px}
   .rd .want{font-size:15px;font-weight:600}
@@ -10508,7 +10510,7 @@
        control stays live afterwards, so a note that keeps claiming the test
        shape after somebody has switched to Copy it would be the app telling
        him something he can see is untrue. */
-    var ready = state.write === TEST_WRITE && state.hand && state.timer === 'off'
+    var ready = state.write === testWrite(kind) && state.hand && state.timer === 'off'
       && state.autoMark && plan.times === RED_TIMES;
     /* ⚠️ Said on the Wednesday, because it changes whether tomorrow happens at
        all and it is the whole reason the trial is worth practising for. */
@@ -10558,10 +10560,34 @@
      just do the copy, not the speak it for now"). Both ways in read this, the
      arming and the green button, and so does the note that describes them, so
      moving a test night back to listen is this one line. */
-  var TEST_WRITE = 'copy';
-  function testWriteWords(){
-    return TEST_WRITE === 'listen' ? 'read aloud'
-      : TEST_WRITE === 'peek' ? 'shown for a moment and then hidden'
+  /* ⭐ AND THE HELP COMES OFF AS THE TEST GETS CLOSER (2026-09-10). Both
+     nights were 'copy', Andrew's call on 2 September: "for his test we just do
+     the copy, not the speak it for now". Three marked tests later that is the
+     one thing to change.
+
+     He missed 5, then 11, then 9, and the rule was different every week while
+     the mistake never was. starway and plan for the ai. wensday and Thrsday
+     for the days. mircl, strawbry, sumer, srugle for unit 3. Every word he has
+     lost a mark on is a word with a letter or a syllable in it he cannot HEAR,
+     and every word he gets right is one spelled the way it sounds. He writes
+     the sounds and nothing else.
+
+     🔴 COPYING CANNOT CATCH ANY OF THAT, because the letter he would have left
+     out is sitting on the screen in front of him. His test is dictation, so
+     the night before the real one is dictation: the phone reads the word, uses
+     it in a sentence and reads it again, which is how his teacher gives it,
+     and he writes it with nothing to look at. The trial night keeps a look at
+     the word, briefly, because that is the night he is still learning them.
+
+     ⚠️ Both are one tap back to Copy it on the How to practice row, and the
+     note under the green button says which one tonight is, so a voice that
+     misbehaves on the iPad is never the end of the evening. */
+  var TEST_WRITE = { trial: 'peek', real: 'listen' };
+  function testWrite(kind){ return TEST_WRITE[kind || testTonight()] || 'copy'; }
+  function testWriteWords(kind){
+    var w = testWrite(kind);
+    return w === 'listen' ? 'read out to him with nothing on screen'
+      : w === 'peek' ? 'shown for a moment and then hidden'
       : 'with the word on screen to copy';
   }
   function testDaysFor(name){
@@ -10589,7 +10615,7 @@
     state.armedFor = stamp;
     state.subject = 'spelling';
     state.timer = 'off';
-    state.write = TEST_WRITE;
+    state.write = testWrite();
     state.hand = true;
     state.shuffle = true;
     state.mode = 'flip';
@@ -10618,7 +10644,7 @@
     });
     saveRed();
     state.timer = 'off';                       // he asked for no timer, first
-    state.write = TEST_WRITE;                  // the word on screen, and he copies it
+    state.write = testWrite();                 // read aloud on the real night, a peek on the trial
     state.hand = true;                         // and by hand, like the real thing
     state.shuffle = true;
     state.mode = 'flip';                       // never the archer on a spelling night
@@ -10863,6 +10889,19 @@
     if (flagged.length > FLAG_CAP) flagged.length = FLAG_CAP;
     saveFlagged();
   }
+  /* ⭐ WHAT THE GROWN-UP DECIDED, and it comes off the server rather than a
+     copy made here (Andrew, 2026-09-09: "I say he got it wrong or something
+     wrong. It only says a grown-up looked. I don't know what words I didn't
+     approve"). The chip had two states, waiting and looked, so the moment he
+     answered one it looked exactly like every other answered one and his own
+     review was write-only.
+
+     ⚠️ The verdicts are read back from /checks, NOT remembered when the button
+     is tapped. He answers these on his phone and the list he wants to read is
+     on the iPad, so a copy written where the tap happened would never reach
+     the screen that needed it. */
+  var judged = {};
+  function flagVerdict(row){ return row.id ? judged[row.id] || '' : ''; }
   function flagWaiting(row){
     if (!row.id) return true;
     for (var i = 0; i < checks.length; i++) if (checks[i].id === row.id) return true;
@@ -10875,12 +10914,17 @@
     el.flagList.innerHTML = '';
     flagged.slice(0, 12).forEach(function(row){
       var wait = flagWaiting(row);
+      var verdict = wait ? '' : flagVerdict(row);
+      var said = wait ? 'waiting on a grown-up'
+        : verdict === 'wrong' ? 'you marked this wrong'
+        : verdict === 'right' ? 'you said it was right'
+        : 'a grown-up has looked';
+      var tone = wait ? '' : verdict === 'wrong' ? ' bad' : verdict === 'right' ? ' good' : ' done';
       var d = document.createElement('div');
       d.className = 'fl';
       d.innerHTML = '<span class="flword">' + esc(row.w) + '</span>'
         + '<span class="flgot">read as \u201C' + esc(row.got || '?') + '\u201D</span>'
-        + '<span class="flwait' + (wait ? '' : ' done') + '">'
-        + (wait ? 'waiting on a grown-up' : 'a grown-up has looked') + '</span>';
+        + '<span class="flwait' + tone + '">' + said + '</span>';
       el.flagList.appendChild(d);
     });
     el.flagNote.textContent = 'He said the checker had these wrong. Look at his writing up in '
@@ -10949,7 +10993,17 @@
       var list = res && res.ok && res.data ? res.data.checks : null;
       if (!list) return;
       checks = list;
+      /* The answered ones come back in their own field so the queue stays the
+         queue: paintChecks shows the block on checks.length, and folding the
+         resolved rows into it would put a list of settled words in front of
+         him every time he opened the app. */
+      var done = res.data.judged;
+      if (Array.isArray(done)){
+        judged = {};
+        done.forEach(function(r){ if (r && r.id) judged[r.id] = r.verdict || ''; });
+      }
       paintChecks();
+      paintFlags();
     });
   }
   /* ⭐ THE VERDICT IS THE LAST WORD, AND THE RECORD IS MADE TO MATCH IT. It
