@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.93">
+<meta name="x-cards-version" content="4.94">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3286,7 +3286,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    offered: 0, units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    offered: 0, wroteFor: '', units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
     dealt: false, roundId: '', answers: [], marked: null, testing: false, manual: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -3741,6 +3741,7 @@
             || s.subject === 'science' || s.subject === 'trace'
             || s.subject === 'redpen' || s.subject === 'math') state.subject = s.subject;
         if (typeof s.offered === 'number') state.offered = s.offered;
+        if (typeof s.wroteFor === 'string') state.wroteFor = s.wroteFor;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
         if (Array.isArray(s.chapters) && s.chapters.length) state.chapters = s.chapters;
@@ -3776,7 +3777,7 @@
       chapters: state.chapters, study: state.study, penLessons: state.penLessons, maths: state.maths,
         units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
         armedFor: state.armedFor,
-        offered: state.offered,
+        offered: state.offered, wroteFor: state.wroteFor,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
         autoMark: state.autoMark,
         mode: state.mode, shuffle: state.shuffle,
@@ -10981,8 +10982,35 @@
      ⚠️ Both are one tap back to Copy it on the How to practice row, and the
      note under the green button says which one tonight is, so a voice that
      misbehaves on the iPad is never the end of the evening. */
-  var TEST_WRITE = { trial: 'peek', real: 'listen' };
-  function testWrite(kind){ return TEST_WRITE[kind || testTonight()] || 'copy'; }
+  /* 🔴 AND IT HAS TO COME OFF ACROSS THE WHOLE WEEK, not on one night.
+     v4.81 only chose the mode on a test night, so six nights in seven he wrote
+     with the word on screen and the seventh was the only time he was ever
+     asked to produce one cold. The night after his test he got copy again and
+     Andrew caught it. Worse, nothing ever set it BACK: once a Wednesday had
+     turned it to listen it would have stayed there into a brand new list,
+     which is dictation on words he has not met.
+
+     So the night decides, by the day the writing happens on:
+       Thu Fri Sat Sun  copy    the list has just come home, he is meeting it
+       Mon Tue          peek    a moment to look, then write it from memory
+       Wed              listen  read aloud, nothing on screen, like the test
+
+     ⚠️ Set ONCE a day, the same way the test night arms itself, so switching
+     it by hand on the How to practice row still holds for the rest of the
+     evening. Tuesday and Wednesday land on peek and listen either way, which
+     is what the trial and the real test asked for before this. */
+  var NIGHT_WRITE = { 0: 'copy', 1: 'peek', 2: 'peek', 3: 'listen',
+                      4: 'copy', 5: 'copy', 6: 'copy' };
+  function nightWrite(){ return NIGHT_WRITE[new Date().getDay()] || 'copy'; }
+  function testWrite(){ return nightWrite(); }
+  /* Arms the night's mode once, and leaves every later change alone. */
+  function armTonight(){
+    var stamp = (me.name || '') + ':w:' + today();
+    if (state.wroteFor === stamp) return;
+    state.wroteFor = stamp;
+    state.write = nightWrite();
+    saveSettings();
+  }
   function testWriteWords(kind){
     var w = testWrite(kind);
     return w === 'listen' ? 'read out to him with nothing on screen'
@@ -13548,6 +13576,7 @@
   buildChips();
   buildPairs();
   setPicking(true);  // a child opening the app lands on the subjects, not the wall
+  armTonight();      // what tonight is for, before anything reads state.write
   armTestMode();     // buildChips settled which week is ticked
   paintHome();
   if (!me.token){ show('who'); showAuthPin('login', ''); }   // nothing before signing in
