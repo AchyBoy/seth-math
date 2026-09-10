@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiplication Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.79">
+<meta name="x-cards-version" content="4.80">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10916,6 +10916,25 @@
     var pg = currentPage(c.u || 0), key = inkKey(c);
     var id = pg.id + '|' + key;
     var k = kind === 'self' ? 'self' : 'ai';
+    /* 🔴 THE INK GOES ON THE PAGE HERE, not when the card finishes. Found
+       2026-09-10, from an empty row 15 on Seth's printed sheet: `summer` had a
+       check row with his writing attached and the page had no ink for it at
+       all, so the sheet drew a numbered line with nothing on it and the review
+       list pointed at a key that did not exist.
+
+       The checker's no queues this row BEFORE he answers the "do you think you
+       got it right?" prompt, deliberately, so the miss is provisional until a
+       grown-up looks. But every path that SAVED the ink was on the far side of
+       that prompt: writing it again, or tapping I got it right. A card left
+       sitting on the prompt took his writing with it, and the row outlived the
+       thing it was evidence of.
+
+       ⚠️ Only when nothing is on the page for this key yet. The flagged lesson
+       queues its own row AFTER keepInk has run, and a blind save here would
+       put `missed` back on a word he has just been marked right for. The card
+       finishing overwrites this with the final version either way, so the
+       worst this can do is keep a go he then improved on. */
+    if (!(pg.words || {})[key]) keepInk(c, true);
     for (var i = 0; i < checks.length; i++) if (checks[i].id === id){ checks[i].got = got; checks[i].kind = k; break; }
     if (i === checks.length){
       checks.unshift({ id: id, page_id: pg.id, ink_key: key, word: c.w, got: got, kind: k });
