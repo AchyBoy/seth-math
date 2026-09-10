@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.87">
+<meta name="x-cards-version" content="4.88">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3559,13 +3559,32 @@
       loadRecord();                 // nothing on the server yet, offer up ours
       if (me.token && Object.keys(record).length) saveRecord();
     }
+    /* ⚠️ Here too, not only at start up: this is the moment the record for a
+       child who has just signed in exists at all, and a week's marks read on
+       another device have to reach it. */
+    foldRedIntoRecord();
     paintHome();
   }
-  function noteResult(key, correct){
+  /* 🔴 A COPY IS NOT EVIDENCE HE CAN SPELL IT. `noCredit` is a right answer
+     that proves nothing, and it goes on the record as nothing at all rather
+     than as a success.
+
+     Found 2026-09-10 in his own numbers. Of the nine words his teacher marked
+     wrong on the 9 September test, FIVE were sitting on this record at zero
+     misses and four successes: strawberry, disciple, autumn, miracle,
+     struggle. The app was more confident about the words he actually fails
+     than about any others, because in copy mode the word is on screen and he
+     copies it perfectly every time. Four copies were also enough to cancel a
+     real miss, since a hit is worth half a miss, so the record was quietly
+     arguing with the red pen and winning. */
+  function noteResult(key, correct, noCredit){
+    if (correct && noCredit) return;
     var r = record[key] || (record[key] = {m: 0, h: 0});
     if (correct) r.h++; else r.m++;
     saveRecord();
   }
+  // the word was on the screen in front of him the whole time he wrote it
+  function copiedIt(c){ return !!(c && isWord(c) && state.write === 'copy'); }
   // worst first: most misses, and a recent miss outranks an old one that has since been learned
   function troubleList(limit){
     var out = [];
@@ -9625,8 +9644,8 @@
   /* hold keeps the card exactly where it is: spelling counts the miss and
      then makes him write it again, so the queue must not move underneath. */
   function bump(correct, hold){
-    var key = cardKey(card());
-    if (key) noteResult(key, correct);
+    var here = card(), key = cardKey(here);
+    if (key) noteResult(key, correct, copiedIt(here));
 
     if (correct){
       state.right++; state.roundRight++; state.streak++;
@@ -10598,6 +10617,43 @@
     if (!own) return mk;
     if (mk.length && (redpen.seen || {})[u.id] !== markedSig(u)) return mk;
     return own;
+  }
+  /* 🔴 A TEACHER'S RED MARK HAS TO OUTLIVE THE WEEK IT WAS MADE IN.
+     `redpen` is keyed by unit, so when a week is put away its marks go with
+     it and nothing ever puts those words in front of him again. The durable
+     record, the one that feeds Keeps missing these and Practice just these,
+     is keyed by WORD and survives everything, and it syncs between his iPad
+     and Andrew's phone. So the marks are folded into it.
+
+     ⚠️ Weight 3, which is Andrew's own rule for a marked word: it is written
+     three times. And `h` is cleared with it, because a red mark on a cold
+     test is the better evidence: whatever the app thought it saw him get
+     right, he could not produce the word when it mattered. Without that the
+     copy-mode successes cancel the mark and the word stays buried, which is
+     exactly where five of last week's nine were sitting.
+
+     ⚠️ Folded per WORD, not per list, so tapping a tenth chip next week folds
+     only the tenth. Un-tapping never un-folds: a mark that was made was made,
+     and thrashing his practice list off a mis-tap would be worse. */
+  var RED_WEIGHT = 3;
+  function foldRedIntoRecord(){
+    if (!me.name) return;
+    var done = redpen.folded || (redpen.folded = {});
+    var addedWord = false, addedFold = false;
+    SPELLING.forEach(function(u){
+      if (!sameWho(u.who, me.name)) return;
+      var seen = done[u.id] || (done[u.id] = []);
+      redFor(u).forEach(function(w){
+        if (seen.indexOf(w) !== -1) return;
+        var r = record['w:' + w] || (record['w:' + w] = { m: 0, h: 0 });
+        r.m += RED_WEIGHT;
+        r.h = 0;
+        seen.push(w);
+        addedWord = true; addedFold = true;
+      });
+    });
+    if (addedFold) saveRed();
+    if (addedWord) saveRecord();
   }
   function redUnits(){ return state.units.map(unitById).filter(Boolean); }
   // the list words then the vocabulary, in the order they sit on the sheet,
@@ -13335,6 +13391,7 @@
   loadFlagged();
   loadSaved();
   loadRecord();
+  foldRedIntoRecord();   // after loadRed and loadRecord, it needs both
   buildChips();
   buildPairs();
   armTestMode();     // buildChips settled which week is ticked
