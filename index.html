@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.86">
+<meta name="x-cards-version" content="4.87">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -677,6 +677,23 @@
   .fl .flgot{font-size:14px;color:var(--muted)}
   .fl .flwait{flex:1;text-align:right;font-size:12px;font-weight:700;color:var(--amber);white-space:nowrap}
   .fl .flwait.done{color:var(--muted);font-weight:500}
+  /* ⭐ SOMETHING THAT FILLS UP. Getting one right did nothing at all: the card
+     changed and a 12px grey tick went up by one. Three in a row got a small
+     dark pill. For an eight year old that is not a reward, it is an absence,
+     and he is the one who has to want to sit down and do this. One pip per
+     card, filled as he earns it, so every right answer visibly adds to
+     something he can see growing. */
+  .pips{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;
+    margin:0 auto 10px;max-width:520px;min-height:14px}
+  .pips.hide{display:none}
+  .pip{width:13px;height:13px;border-radius:50%;background:#e6e2d9;
+    transition:transform .18s ease, background .18s ease}
+  .pip.hit{background:var(--green,#2f9e5f);transform:scale(1.18)}
+  .pip.miss{background:var(--red)}
+  .pip.now{box-shadow:0 0 0 3px rgba(47,158,95,.25)}
+  @keyframes gotit{0%{transform:scale(1)}38%{transform:scale(1.035)}100%{transform:scale(1)}}
+  .card.gotit{animation:gotit .42s ease}
+  .card.gotit .face{box-shadow:0 0 0 4px rgba(47,158,95,.45)}
   .waitbar{display:block;width:100%;margin:0 0 12px;border:2px solid var(--amber);
     background:#fff8ec;color:#8a5a12;border-radius:16px;padding:13px 16px;
     font:inherit;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
@@ -1553,6 +1570,8 @@
       <button type="button" class="quit" id="quitBtn">Done</button>
     </span>
   </div>
+
+  <div class="pips hide" id="pips"></div>
 
   <div class="track hidden" id="track"><div class="fill" id="fill"></div></div>
 
@@ -3239,7 +3258,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -9378,6 +9397,32 @@
   function paintScore(){
     el.score.innerHTML = (state.right || state.wrong)
       ? '<b>✓ ' + state.right + '</b><i>✗ ' + state.wrong + '</i>' : '';
+    paintPips();
+  }
+  /* ⚠️ Only when the row is short enough to read. A hundred and forty four
+     cards of dots is a wall, not a reward, and the tick counter already says
+     the number on a round that long. */
+  var PIPS_MAX = 30;
+  function paintPips(){
+    var total = state.total || 0, done = state.right + state.wrong;
+    var show = total > 0 && total <= PIPS_MAX;
+    el.pips.classList.toggle('hide', !show);
+    if (!show){ el.pips.innerHTML = ''; return; }
+    if (el.pips.childNodes.length !== total){
+      var html = '';
+      for (var i = 0; i < total; i++) html += '<span class="pip"></span>';
+      el.pips.innerHTML = html;
+    }
+    /* Filled in the order they were earned rather than by card, because the
+       deck is a queue: a missed word comes round again and the row would jump
+       about if a pip belonged to a particular word. */
+    var kids = el.pips.childNodes;
+    for (var j = 0; j < kids.length; j++){
+      kids[j].className = 'pip'
+        + (j < state.right ? ' hit' : '')
+        + (j >= total - state.wrong && state.wrong ? ' miss' : '')
+        + (j === done - 1 ? ' now' : '');
+    }
   }
 
   function paintProof(c){
@@ -9586,6 +9631,14 @@
     if (correct){
       state.right++; state.roundRight++; state.streak++;
       if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+      /* ⭐ AND THE CARD ITSELF SAYS SO. Removed on the way in as well as out,
+         or two right answers close together only animate the first. */
+      if (el.card){
+        el.card.classList.remove('gotit');
+        void el.card.offsetWidth;
+        el.card.classList.add('gotit');
+        setTimeout(function(){ el.card.classList.remove('gotit'); }, 460);
+      }
     } else {
       state.wrong++; state.roundWrong++; state.streak = 0;
       if (key && state.missed.indexOf(key) === -1) state.missed.push(key);
