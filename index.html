@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Multiplication flash cards, 1 through 12. Outrun the cat, one table at a time.">
-<meta name="x-cards-version" content="4.83">
+<meta name="x-cards-version" content="4.84">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3336,6 +3336,99 @@
     if (!c) return false;
     var line = c.m ? (c.w + '. ' + c.m + '. ' + c.w + '.') : (c.s ? (c.w + '. ' + c.s + ' ... ' + c.w + '.') : c.w);
     return speak(bare ? c.w : line, bare ? 0.7 : 0.78);
+  }
+  /* ================= saying it the way it is SPELLED =================
+     ⭐ Andrew, 2026-09-10, off three marked tests. He writes the sounds he
+     hears and nothing else, so every mark he loses is a letter or a syllable
+     that carries no sound of its own: mircl, strawbry, sumer, srugle, wensday.
+     The standard fix for a phonetic speller is to say the word the way it is
+     WRITTEN while practising it, Wed-nes-day and sum-mer, so the silent parts
+     have something he can hear.
+
+     🔴 THE INVARIANT IS THAT NOTHING MOVES. The split only ever chooses where
+     to cut, so the chunks always rebuild the word exactly, letter for letter.
+     A cut in an odd place makes a word sound a bit strange; it can never show
+     him a spelling that is not the real one. That is what makes it safe to run
+     on words nobody has checked by hand.
+
+     ⚠️ It is help he ASKS for, not help he is given. The reading he gets on a
+     dictation night is the one his teacher gives, word, sentence, word. This
+     one is on the third press of the speaker and on the screen where he has
+     just been shown the answer, which are both moments where the spelling is
+     already in front of him.
+
+     FWD pairs can begin a syllable and travel forward to the next vowel; BACK
+     pairs never start an English syllable and stay with the one behind, which
+     is the difference between lan-guage and la-nguage. */
+  var SYL_FWD = ['ch','sh','th','ph','wh','qu','gh'];
+  var SYL_BACK = ['ck','ng'];
+  var SYL_ONSET = ['bl','br','cl','cr','dr','fl','fr','gl','gr','pl','pr','tr'];
+  function sylV(ch){ return 'aeiouy'.indexOf(ch) !== -1; }
+  function sylCut(str){
+    var low = str.toLowerCase(), tail = '';
+    /* A silent ending is held back while the cuts are worked out and put on
+       the last chunk afterwards, or above comes out a-bo-ve and knives kni-ves. */
+    if (/[^aeiou]es$/.test(low) && !/(s|z|x|ch|sh)es$/.test(low)){ tail = str.slice(-2); str = str.slice(0, -2); }
+    else if (/[^aeioul]e$/.test(low)){ tail = str.slice(-1); str = str.slice(0, -1); }
+    low = str.toLowerCase();
+    if (low.length < 4) return [str + tail];
+    var cuts = {}, v = [], i, j;
+    for (i = 0; i < low.length; i++) if (sylV(low[i])) v.push(i);
+    for (j = 0; j + 1 < v.length; j++){
+      var a = v[j], b = v[j + 1], run = b - a - 1;
+      if (run === 0) continue;                        // two vowels together, left alone
+      if (run === 1){ cuts[a + 1] = 1; continue; }    // the one consonant goes forward
+      var pair = low.slice(a + 1, a + 3), endPair = low.slice(b - 2, b);
+      if (run === 2 && SYL_BACK.indexOf(pair) !== -1){ cuts[a + 2] = 1; continue; }
+      /* Two consonants that can START a word go forward together, or proclaim
+         comes out proc-laim. A pair that cannot, like the doubles this child
+         keeps collapsing, splits down the middle: sum-mer, splat-ter. */
+      if (run === 2 && (SYL_FWD.indexOf(pair) !== -1 || SYL_ONSET.indexOf(pair) !== -1)){ cuts[a + 1] = 1; continue; }
+      if (run === 2){ cuts[a + 2] = 1; continue; }
+      if (SYL_FWD.indexOf(endPair) !== -1){ cuts[b - 2] = 1; continue; }
+      cuts[a + 3 <= b ? a + 3 : a + 2] = 1;
+    }
+    // a final -le takes the consonant in front of it: driz-zle, strug-gle, ta-ble
+    if (/[^aeiou]le$/.test(low)){
+      var at = low.length - 3;
+      if (at > 0){ Object.keys(cuts).forEach(function(k){ if (+k > at) delete cuts[k]; }); cuts[at] = 1; }
+    }
+    var parts = [], last = 0;
+    Object.keys(cuts).map(Number).sort(function(x, y){ return x - y; }).forEach(function(cut){
+      if (cut > last && cut < str.length){ parts.push(str.slice(last, cut)); last = cut; }
+    });
+    parts.push(str.slice(last) + tail);
+    var out = [];      // never leave a chunk with no vowel in it
+    parts.forEach(function(t){
+      if (out.length && !/[aeiouy]/i.test(t)) out[out.length - 1] += t;
+      else out.push(t);
+    });
+    if (out.length > 1 && !/[aeiouy]/i.test(out[0])){ out[1] = out[0] + out[1]; out.shift(); }
+    return out;
+  }
+  /* ⚠️ The week's own compounds entry first, so milkshake is milk and shake
+     before either half is looked at. Guessing at a compound is the one thing
+     the rules above are bad at, and the answer is already in the unit. */
+  function sylHalves(c){
+    var u = unitById(c && c.u), list = (u && u.compounds) || [], i;
+    for (i = 0; i < list.length; i++){
+      if ((list[i][0] + list[i][1]).toLowerCase() === String(c.w || '').toLowerCase()) return list[i];
+    }
+    return null;
+  }
+  function sylParts(c){
+    if (!c || !c.w) return [];
+    var halves = sylHalves(c);
+    if (halves){
+      var a = String(c.w).slice(0, halves[0].length), b = String(c.w).slice(halves[0].length);
+      return sylCut(a).concat(sylCut(b));
+    }
+    return sylCut(String(c.w));
+  }
+  function saySpelled(c){
+    var parts = sylParts(c);
+    if (!parts.length) return false;
+    return speak(parts.join(', '), 0.55);   // the commas are the pauses
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
@@ -10105,12 +10198,19 @@
   el.wInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' || ev.keyCode === 13){ ev.preventDefault(); unlock(); checkWrite(); }
   });
-  // pressing it again gives the bare word, slowly, rather than the sentence over
+  /* Three presses, and the third is the one that teaches. First the sentence
+     over again, then the bare word slowly, then the word said the way it is
+     WRITTEN. ⚠️ Third rather than first on purpose: on a dictation night the
+     reading he is given has to be the one his teacher gives, so the spelling
+     way is help he goes and asks for. */
   el.wSay.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
     sayAgain++;
-    sayCard(c, sayAgain % 2 === 1);
+    var turn = sayAgain % 3;
+    if (turn === 1) sayCard(c, true);
+    else if (turn === 2 && !isDef(c) && sylParts(c).length > 1) saySpelled(c);
+    else sayCard(c);
     focusWrite();
   });
   el.wPeek.addEventListener('click', function(){
@@ -12054,7 +12154,15 @@
          third go. At three it gave up on the very go the letters appeared on,
          so he never got to write over them once. */
       if (state.tries >= GIVE_UP_AT){
-        setWHint('It is ' + c.w + '. Have a good look, then carry on.', 'bad');
+        /* ⭐ AND HE IS TOLD IT THE WAY IT IS WRITTEN. This is the one moment
+           in the round where the spelling is already on screen, so saying
+           mir-a-cle here cannot give anything away, and the syllable he left
+           out is the whole reason he is looking at this line. */
+        var say = isDef(c) ? [] : sylParts(c);
+        setWHint('It is ' + (say.length > 1 ? say.join('\u00b7') : c.w) + '. '
+          + (say.length > 1 ? 'Say it the way it is written, ' + say.join(' - ') + '.'
+                            : 'Have a good look, then carry on.'), 'bad');
+        if (say.length > 1) saySpelled(c);
         if (state.tries === 3) bump(false);
         else { clearCard(false); chaseNudge(false); }
         state.answered = true;
