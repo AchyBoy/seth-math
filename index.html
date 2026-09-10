@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="4.99">
+<meta name="x-cards-version" content="5.00">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -724,6 +724,12 @@
     font-weight:800;padding:20px 16px;margin:0 0 10px;cursor:pointer}
   #studyNowBtn:disabled{background:#c9cdd6;cursor:default}
   #studyNowBtn small{display:block;font-size:13px;font-weight:600;opacity:.9;margin-top:3px}
+  /* Its own button, and named, because it IS the lesson rather than a link to
+     one. Gold rather than blue so it never reads as the homework. */
+  #watchBtn{display:block;width:100%;border:none;border-radius:20px;
+    background:#e0a021;color:#fff;font:inherit;font-size:19px;font-weight:800;
+    padding:18px 16px;margin:0 0 12px;cursor:pointer}
+  #watchBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
   #moreBtn{display:block;width:100%;border:2px solid var(--line);background:#fff;
     border-radius:16px;font:inherit;font-size:15px;font-weight:700;padding:13px 16px;
     margin:0 0 18px;cursor:pointer}
@@ -1147,9 +1153,8 @@
        fault three of his tests showed would catch him, put in front of him
        BEFORE the test rather than after it. -->
   <div class="block hide" id="watchBlock">
-    <p class="label">🏆 The A+ 100 Maker</p>
+    <button type="button" id="watchBtn"></button>
     <div class="misses" id="watchList"></div>
-    <div class="quick"><button type="button" id="watchBtn">Write just these</button></div>
     <p class="note" id="watchNote"></p>
   </div>
 
@@ -4056,7 +4061,8 @@
         + '<span class="ans">' + esc(parts.join('\u00b7')) + ' \u2014 ' + esc(row[1]) + '</span>';
       el.watchList.appendChild(b);
     });
-    el.watchBtn.textContent = 'Write just these (' + u.watch.length + ')';
+    el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
+      + u.watch.length + ' words on list ' + u.unit + ' most likely to cost him the 100</small>';
     el.watchNote.textContent = 'The words on this list most likely to cost him the 100, '
       + 'picked off the one mistake every one of his tests shows: a letter he hears once but '
       + 'has to write twice, or a syllable he does not say. Not what the red pen marked, '
