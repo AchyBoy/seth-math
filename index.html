@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.11">
+<meta name="x-cards-version" content="5.12">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4102,7 +4102,22 @@
     var u = unitById(state.units[0]);
     return (u && (u.watch || []).length) ? u : null;
   }
+  /* 🔴 ARITHMETIC NEEDS THE SAME BUTTON. The three sets built off his Lesson
+     19 paper were invisible: the picker that ticks them lives behind "Study
+     any list", and `state.maths` had been saved before they existed, so Study
+     current list went on dealing the old three. A focus set the child cannot
+     reach is not a focus set.
+
+     ⚠️ `from` is what marks a unit as aimed at a real marked paper rather than
+     made up, which mathSummary already relies on, so it is the right thing to
+     gather here and needs nothing new in the data. */
+  function focusMaths(){
+    if (state.subject !== 'math') return [];
+    return myMath().filter(function(u){ return !!u.from; });
+  }
   function paintWatch(){
+    var maths = focusMaths();
+    if (maths.length){ paintMathFocus(maths); return; }
     var u = watchUnit();
     el.watchBlock.classList.toggle('hide', !u);
     if (!u) return;
@@ -4129,7 +4144,41 @@
       + 'these have not caught him yet. Tap one to see why it might. Practice only, nothing '
       + 'here is scored.';
   }
+  /* The same block, wearing the sums. A chip a tap opens says what the set is
+     and which question on his paper it came off, so a grown-up can see why it
+     is in there without going and finding the sheet. */
+  function paintMathFocus(list){
+    var n = 0;
+    el.watchBlock.classList.remove('hide');
+    el.watchList.innerHTML = '';
+    list.forEach(function(u){
+      n += (u.count || 10);
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'miss tappable';
+      b.addEventListener('click', function(ev){
+        ev.currentTarget.classList.toggle('open'); sfx.tap();
+      });
+      b.innerHTML = '<span class="mkey">' + esc(u.title) + '</span>'
+        + '<span class="ans">' + esc(u.what) + '  \u2014  ' + esc(u.from) + '</span>';
+      el.watchList.appendChild(b);
+    });
+    el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
+      + n + ' cards, off the questions his teacher marked</small>';
+    el.watchNote.textContent = 'Every one of these is built from a question he actually got '
+      + 'wrong on a marked paper, and each card says how to do it rather than only whether he '
+      + 'got it. Tap one to see where it came from. Practice only, nothing here is scored.';
+  }
   el.watchBtn.addEventListener('click', function(){
+    var maths = focusMaths();
+    if (maths.length){
+      var sums = [];
+      maths.forEach(function(u){ sums = sums.concat(mathCards(u)); });
+      if (!sums.length) return;
+      shuffle(sums);
+      startRun([{ label: 'The A+ 100 Maker', cards: sums }], true);
+      return;
+    }
     var u = watchUnit(); if (!u) return;
     var cards = u.watch.map(function(row){ return spellByWord(row[0]); }).filter(Boolean);
     if (!cards.length) return;
