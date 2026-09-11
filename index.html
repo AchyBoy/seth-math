@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.17">
+<meta name="x-cards-version" content="5.18">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4115,14 +4115,55 @@
     if (state.subject !== 'math') return [];
     return myMath().filter(function(u){ return !!u.from; });
   }
+  /* ⭐ THE GOLD TEST CHANGES NIGHTLY (Andrew, 2026-09-10: "check against his
+     spelling list and focus on the words he misspelled, so his gold test will
+     change nightly depending on what he misses/gets right").
+
+     The week's own twenty are ranked by what the record says, the same honest
+     signal the arithmetic round uses, with a lift for the ones I picked out as
+     likely to catch him. A word he has never met sits above one he has already
+     got right twice.
+
+     ⚠️ TWO HE IS ACING COME ALONG ANYWAY, at the bottom, for the same reason
+     every arithmetic set keeps one: a word that drops off the list the moment
+     he gets it right is a word nobody ever checks again, and Andrew asked for
+     one or two to verify he has not slipped back. */
+  var WATCH_N = 10, WATCH_KEEP = 2;
+  function watchWords(u){
+    var pred = {};
+    (u.watch || []).forEach(function(row){ pred[row[0]] = row[1]; });
+    var scored = unitWords(u).map(function(w){
+      var r = record['w:' + w] || { m: 0, h: 0 };
+      return { w: w, why: pred[w] || '', seen: r.m + r.h,
+               s: r.m * 2 - r.h * 0.5 + (pred[w] ? 1.5 : 0) };
+    });
+    // worst first, and among equals the one he has been asked least often
+    scored.sort(function(a, b){ return b.s - a.s || a.seen - b.seen; });
+    var need = scored.slice(0, WATCH_N - WATCH_KEEP);
+    var rest = scored.slice(WATCH_N - WATCH_KEEP);
+    // the steadiest of what is left, so the check is on something he really has
+    rest.sort(function(a, b){ return a.s - b.s; });
+    return need.concat(rest.slice(0, WATCH_KEEP));
+  }
+  /* A word he keeps missing needs a reason on the chip too, and the syllables
+     are the reason for nearly all of them. */
+  function watchWhy(u, row){
+    if (row.why) return row.why;
+    var r = record['w:' + row.w] || { m: 0, h: 0 };
+    if (r.m > 0) return 'missed ' + r.m + (r.m === 1 ? ' time' : ' times')
+                      + '. Say it the way it is written.';
+    return row.seen ? 'he has this one. Just checking he still does.'
+                    : 'he has not met this one yet.';
+  }
   function paintWatch(){
     var maths = focusMaths();
     if (maths.length){ paintMathFocus(maths); return; }
     var u = watchUnit();
     el.watchBlock.classList.toggle('hide', !u);
     if (!u) return;
+    var picked = watchWords(u);
     el.watchList.innerHTML = '';
-    u.watch.forEach(function(row){
+    picked.forEach(function(row){
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'miss tappable';
@@ -4131,18 +4172,18 @@
       });
       /* The syllables come off the same splitter the pad uses, so what he is
          told here and what the phone says to him cannot drift apart. */
-      var parts = sylParts({ w: row[0], u: u.id, k: 'w' });
-      b.innerHTML = '<span class="mkey">' + esc(row[0]) + '</span>'
-        + '<span class="ans">' + esc(parts.join('\u00b7')) + ' \u2014 ' + esc(row[1]) + '</span>';
+      var parts = sylParts({ w: row.w, u: u.id, k: 'w' });
+      b.innerHTML = '<span class="mkey">' + esc(row.w) + '</span>'
+        + '<span class="ans">' + esc(parts.join('\u00b7')) + ' \u2014 '
+        + esc(watchWhy(u, row)) + '</span>';
       el.watchList.appendChild(b);
     });
     el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
-      + u.watch.length + ' words on list ' + u.unit + ' most likely to cost him the 100</small>';
-    el.watchNote.textContent = 'The words on this list most likely to cost him the 100, '
-      + 'picked off the one mistake every one of his tests shows: a letter he hears once but '
-      + 'has to write twice, or a syllable he does not say. Not what the red pen marked, '
-      + 'these have not caught him yet. Tap one to see why it might. Practice only, nothing '
-      + 'here is scored.';
+      + picked.length + ' words off list ' + u.unit + ', picked again tonight</small>';
+    el.watchNote.textContent = 'Ten off this week\u2019s list, picked again every night from '
+      + 'what he has actually been missing, with a lift for the ones most likely to catch him. '
+      + 'The last two are words he has already got right, in to check he has not slipped back. '
+      + 'Tap one to see why it is in. Practice only, nothing here is scored.';
   }
   /* The same block, wearing the sums. A chip a tap opens says what the set is
      and which question on his paper it came off, so a grown-up can see why it
@@ -4223,7 +4264,7 @@
       return;
     }
     var u = watchUnit(); if (!u) return;
-    var cards = u.watch.map(function(row){ return spellByWord(row[0]); }).filter(Boolean);
+    var cards = watchWords(u).map(function(row){ return spellByWord(row.w); }).filter(Boolean);
     if (!cards.length) return;
     shuffle(cards);
     startRun([{ label: 'The A+ 100 Maker', cards: cards }], true);
