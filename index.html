@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.04">
+<meta name="x-cards-version" content="5.05">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10432,7 +10432,7 @@
     }
     if (!me.token || (!state.autoMark && !markLocked())){
       defReveal(c, got, !me.token ? 'Not signed in, so mark this one yourself'
-                                  : 'You have it set to marking it yourself');
+                                  : 'Here it is. Did you get it right?');
       return;
     }
     checking = true;
@@ -12476,7 +12476,10 @@
       inkReveal('The checker has already had its say on this one. A grown-up marks this go.'); return;
     }
     if (!state.autoMark && !markLocked()){
-      inkReveal('You have it set to marking it yourself'); return;
+      /* ⚠️ It used to say "you have it set to marking it yourself", which was
+         written when this was the odd way round. It is now what happens on
+         every word, so it reads as the normal thing it is. */
+      inkReveal('Here it is. Did you get it right?'); return;
     }
     /* ⭐ EVERY GO IS READ (Andrew's call, 2026-08-26). It read the FIRST go only
        from v4.31, because back then a wrong no cost a miss on the record AND
