@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.12">
+<meta name="x-cards-version" content="5.13">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4147,6 +4147,16 @@
   /* The same block, wearing the sums. A chip a tap opens says what the set is
      and which question on his paper it came off, so a grown-up can see why it
      is in there without going and finding the sheet. */
+  /* ⚠️ A NIGHTLY TEST, NOT A MARATHON. Four sets at ten each is forty sums on
+     top of his spelling, which is too much for an eight year old on a school
+     night. An even slice off each keeps every fault in the round. */
+  var MATH_FOCUS_CAP = 20;
+  function mathFocusCards(list){
+    var per = Math.max(1, Math.ceil(MATH_FOCUS_CAP / list.length)), out = [];
+    list.forEach(function(u){ out = out.concat(mathCards(u).slice(0, per)); });
+    shuffle(out);
+    return out.slice(0, MATH_FOCUS_CAP);
+  }
   function paintMathFocus(list){
     var n = 0;
     el.watchBlock.classList.remove('hide');
@@ -4164,7 +4174,7 @@
       el.watchList.appendChild(b);
     });
     el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
-      + n + ' cards, off the questions his teacher marked</small>';
+      + Math.min(n, MATH_FOCUS_CAP) + ' cards, off the questions his teacher marked</small>';
     el.watchNote.textContent = 'Every one of these is built from a question he actually got '
       + 'wrong on a marked paper, and each card says how to do it rather than only whether he '
       + 'got it. Tap one to see where it came from. Practice only, nothing here is scored.';
@@ -4172,10 +4182,8 @@
   el.watchBtn.addEventListener('click', function(){
     var maths = focusMaths();
     if (maths.length){
-      var sums = [];
-      maths.forEach(function(u){ sums = sums.concat(mathCards(u)); });
+      var sums = mathFocusCards(maths);
       if (!sums.length) return;
-      shuffle(sums);
       startRun([{ label: 'The A+ 100 Maker', cards: sums }], true);
       return;
     }
