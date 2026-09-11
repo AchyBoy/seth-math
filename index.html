@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.06">
+<meta name="x-cards-version" content="5.07">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12053,11 +12053,21 @@
            ⚠️ On screen only, exactly like the traced word: inkPNG builds a
            fresh canvas from ink.strokes and inkSVG prints the strokes as
            paths, so neither the checker nor his teacher's sheet ever sees it. */
+        /* 🔴 INSIDE THE BAND, AND NUMBERED (2026-09-10). It was drawn at
+           `top - 6`, and the first band's top is 17, so its baseline sat
+           eleven pixels from the edge of the pad in 12px grey. Seth left line
+           one empty and wrote the meaning of prairie on line two, then ran out
+           of width at "grassland with" and stopped, which read as him giving up
+           on the answer until the pad was drawn out with its rules on it.
+
+           He was not confused about the word. He could not see which line to
+           start on. So they are numbered, they sit inside the band where he is
+           looking, and the first one says outright that it is the start. */
         if (bands.length > 1){
-          g.fillStyle = '#c9c4b8';
-          g.font = '600 12px system-ui,-apple-system,"Segoe UI",sans-serif';
+          g.fillStyle = '#b5ae9f';
+          g.font = '700 14px system-ui,-apple-system,"Segoe UI",sans-serif';
           g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-          g.fillText(i === 0 ? 'what it means' : 'carry on here if you need to', 14, top - 6);
+          g.fillText(i === 0 ? '1  start here' : '2  carry on here', 14, top + 15);
         }
       });
       // under his ink, over the rules, so a stroke he lays down always reads on top
