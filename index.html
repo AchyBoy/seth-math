@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.13">
+<meta name="x-cards-version" content="5.14">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4147,10 +4147,11 @@
   /* The same block, wearing the sums. A chip a tap opens says what the set is
      and which question on his paper it came off, so a grown-up can see why it
      is in there without going and finding the sheet. */
-  /* ⚠️ A NIGHTLY TEST, NOT A MARATHON. Four sets at ten each is forty sums on
-     top of his spelling, which is too much for an eight year old on a school
-     night. An even slice off each keeps every fault in the round. */
-  var MATH_FOCUS_CAP = 20;
+  /* ⚠️ TEN PROBLEMS, Andrew's number, 2026-09-10. Four sets at ten each is
+     forty sums on top of his spelling, which is a marathon and not a test on a
+     school night. An even slice off each keeps every fault in the round rather
+     than letting a shuffle drop one, so ten cards still cover all four. */
+  var MATH_FOCUS_CAP = 10;
   function mathFocusCards(list){
     var per = Math.max(1, Math.ceil(MATH_FOCUS_CAP / list.length)), out = [];
     list.forEach(function(u){ out = out.concat(mathCards(u).slice(0, per)); });
