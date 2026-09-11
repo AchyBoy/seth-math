@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.14">
+<meta name="x-cards-version" content="5.17">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4152,9 +4152,43 @@
      school night. An even slice off each keeps every fault in the round rather
      than letting a shuffle drop one, so ten cards still cover all four. */
   var MATH_FOCUS_CAP = 10;
+  /* ⭐ WEIGHTED BY HOW HE IS ACTUALLY DOING (Andrew, 2026-09-10: "focus on his
+     weaknesses more and the ones he aces make them less but keep one or 2 just
+     to verify he hasn't regressed").
+
+     The record already keeps a line per KIND, `m:sub` and the rest, and `bump`
+     only counts a card's FIRST go, so it is the honest signal: a second go on a
+     sum is copying, because the answer is on screen by then.
+
+     ⚠️ EVERY SET KEEPS AT LEAST ONE. That is the whole of "keep one or 2 to
+     verify he hasn't regressed", and it is also what stops a set he has aced
+     twice from disappearing and never being checked again. The rest of the
+     round is shared out by how badly it is going. */
+  function mathWeight(u){
+    var r = record['m:' + u.kind];
+    if (!r) return 2;                       // never met: worth a proper look
+    return Math.max(0.4, r.m * 2 - r.h * 0.5 + 0.4);
+  }
   function mathFocusCards(list){
-    var per = Math.max(1, Math.ceil(MATH_FOCUS_CAP / list.length)), out = [];
-    list.forEach(function(u){ out = out.concat(mathCards(u).slice(0, per)); });
+    var want = {}, left = MATH_FOCUS_CAP, total = 0, out = [];
+    list.forEach(function(u){ want[u.id] = 1; left--; total += mathWeight(u); });
+    /* 🔴 SHARE OUT WHAT IS LEFT, not the whole round. Dividing the full ten by
+       weight after already reserving one each meant the first two sets ate
+       everything: on four equal weights it came out 4, 4, 1, 1 instead of
+       3, 3, 2, 2. Caught by printing the plan rather than reading it.
+       Biggest share first, so the rounding lands on the weakest set rather
+       than on whichever happens to be last in the list. */
+    var spare = left;
+    list.slice().sort(function(a, b){ return mathWeight(b) - mathWeight(a); })
+        .forEach(function(u){
+      var take = Math.min(left, Math.round(spare * mathWeight(u) / total));
+      want[u.id] += take; left -= take;
+    });
+    if (left > 0 && list.length){
+      var top = list.slice().sort(function(a, b){ return mathWeight(b) - mathWeight(a); })[0];
+      want[top.id] += left;
+    }
+    list.forEach(function(u){ out = out.concat(mathCards(u).slice(0, want[u.id])); });
     shuffle(out);
     return out.slice(0, MATH_FOCUS_CAP);
   }
@@ -7477,11 +7511,16 @@
        605-247 were all marked and all three need a borrow. It is tied to the
        paper here rather than rewritten. */
     {
+      /* ⭐ MOVED ON TO CARRIES, 10 September. The first cut capped the answer at
+         two digits because that was every shape on his paper, and it was right
+         then. On the focus round that night he got 11×7 = 77 and wrote 18×4 =
+         22: the 3 out of 8×4 = 32 never reached the tens. The no-carry shape is
+         done and the carry is what is left, so the cap comes off and a carry is
+         required. */
       id: 304, who: 'Seth', kind: 'mul', title: 'Multiplying a two-digit number',
-      what: 'A two-digit number times 3 or more, with the answer still two digits, which '
-          + 'is the shape of every problem on his own page. Not by 2: that is the one he '
-          + 'already gets right.',
-      digits: 2, by: 1, mlo: 3, carry: false, pmax: 99, count: 10,
+      what: 'A two-digit number times 3 or more, always with a carry, because 18 \u00d7 4 '
+          + 'came out 22 and the carried 3 never reached the tens.',
+      digits: 2, by: 1, mlo: 3, count: 10,
       from: 'Lesson 19, questions 1 and 2'
     },
     {
@@ -7675,7 +7714,8 @@
     return askCard('308,643', numWords(308643), u, 'The part before the comma is 308.');
   }
   function askCard(answer, face, u, why){
-    return { k: 'q', w: answer, m: face, u: u.id, why: why, from: u.from || 'his paper' };
+    return { k: 'q', w: answer, m: face, u: u.id, kind: u.kind,
+             why: why, from: u.from || 'his paper' };
   }
   function commas(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   function pad3(n){ var t = String(n); while (t.length < 3) t = '0' + t; return t; }
@@ -8621,6 +8661,14 @@
        hundred things each missed once. What is worth knowing is that adding
        three numbers is where he comes unstuck, so that is what is kept. */
     if (isSum(c) || isClock(c)) return 'm:' + c.kind;
+    /* 🔴 THE GENERATED MATHS ONES GO BY KIND TOO, same reason as the sums. They
+       are ask cards by shape, so they were keyed `q:<answer>` and the record
+       filled with one-offs like `q:8` and `q:490,893`: a hundred things each
+       missed once, no signal about whether the missing box is where he comes
+       unstuck, and a nonsense line waiting to appear on Keeps missing these.
+       `c.kind` is only set on the generated ones, so a vocabulary term is
+       untouched. */
+    if (isAsk(c) && c.kind) return 'm:' + c.kind;
     if (isAsk(c)) return 'q:' + c.w;
     if (c && c.k === 'qa') return 'a:' + c.w;
     if (isWord(c)) return 'w:' + c.w;
