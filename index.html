@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.05">
+<meta name="x-cards-version" content="5.06">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3378,7 +3378,7 @@
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
     offered: 0, wroteFor: '', units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: false, aiOff: 0,
-    dealt: false, roundId: '', answers: [], marked: null, testing: false, manual: false,
+    dealt: false, roundId: '', sitting: 0, answers: [], marked: null, testing: false, manual: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
     queue: [], total: 0, cleared: 0,
@@ -9716,6 +9716,11 @@
     // the home screen's lifetime trouble spots, which is a different deck
     state.practiceRounds = isPractice ? state.rounds : null;
     if (!state.rounds.length || !state.rounds[0].cards.length) return;
+    /* ⭐ WHICH SITTING THIS IS. Two rounds a night on the same list is the
+       routine now, homework then the A+ 100 Maker, and both write to the same
+       page under the same keys, so the second silently replaced the first.
+       Not persisted: it only has to tell tonight's rounds apart. */
+    state.sitting = Date.now();
     state.roundIdx = 0;
     loadRound();
     breaking = false;
@@ -12745,9 +12750,17 @@
   });
 
   function keepInk(c, missed, strokes, w, h){
-    var pg = currentPage(c.u || 0);
-    pg.words[inkKey(c)] = { s: strokes || ink.strokes, w: w || ink.w, h: h || ink.h,
-                            missed: !!missed, label: inkLabel(c), at: Date.now() };
+    var pg = currentPage(c.u || 0), key = inkKey(c), had = pg.words[key];
+    /* ⚠️ AN EARLIER SITTING IS MOVED ASIDE, NOT OVERWRITTEN. He does his
+       homework and then the focus round on the same list, so without this the
+       second one replaced the first and a night's reading showed one attempt
+       at each word instead of two. Under a key nothing else reads, so the
+       printed sheet, the slots and the review are all untouched. */
+    if (had && had.sit && state.sitting && had.sit !== state.sitting
+        && !pg.words[key + '~' + had.sit]) pg.words[key + '~' + had.sit] = had;
+    pg.words[key] = { s: strokes || ink.strokes, w: w || ink.w, h: h || ink.h,
+                      missed: !!missed, label: inkLabel(c), at: Date.now(),
+                      sit: state.sitting || 0 };
     /* ⚠️ HOW MANY LINES IT WAS WRITTEN ACROSS, stamped, same reason the sum's
        geometry is: the sheet is built long after the pad has gone. A meaning is
        written on two rules now, so its ink is twice as tall, and a slot sized
@@ -12795,6 +12808,18 @@
        is failing rather than giving up on the page. */
     fillPage(pg, function(){ pushPage(pg); });
     buildSheet(pg);   // kept current, so Share > Print never catches it empty
+  }
+
+  /* Beside the word rather than instead of it, under a key nothing else reads.
+     `tryOf` says which word it belongs to, for anything reading the page later. */
+  function keepTry(c){
+    if (!c || !isWord(c) || !ink.strokes.length) return;
+    var pg = currentPage(c.u || 0), key = inkKey(c) + '~try';
+    if (pg.words[key]) return;
+    pg.words[key] = { s: ink.strokes, w: ink.w, h: ink.h, missed: true,
+                      label: inkLabel(c), at: Date.now(), sit: state.sitting || 0,
+                      tryOf: inkKey(c) };
+    savePages();
   }
 
   /* When it says something to him. Praise on all twenty stops meaning anything
@@ -12869,6 +12894,13 @@
       advanceId = setTimeout(step, 550);
       return;
     }
+    /* 🔴 WHAT HE WROTE BEFORE HE PUT IT RIGHT. keepInk only runs when a word
+       is FINISHED, so a wrong go left no trace at all: the page kept his
+       corrected spelling and a night's reading would show twenty words spelled
+       perfectly. That was survivable while the checker queued a row with the
+       ink attached; with the checker gone it is the whole record.
+       ⚠️ The FIRST wrong go only. Every go would treble the size of a page. */
+    keepTry(c);
     if (state.tries === 0) bump(false, true);       // one miss a word, however many goes
     state.tries++;
     sfx.wrong();
