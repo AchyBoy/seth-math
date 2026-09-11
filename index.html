@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.02">
+<meta name="x-cards-version" content="5.04">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3377,7 +3377,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    offered: 0, wroteFor: '', units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: true,
+    offered: 0, wroteFor: '', units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: false, aiOff: 0,
     dealt: false, roundId: '', answers: [], marked: null, testing: false, manual: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -3895,7 +3895,18 @@
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.defs === 'boolean') state.defs = s.defs;
         if (typeof s.hand === 'boolean') state.hand = s.hand;
-        if (typeof s.autoMark === 'boolean') state.autoMark = s.autoMark;
+        /* ⚠️ ONCE, ON EVERY DEVICE THAT ALREADY SAID YES. Changing the default
+           only reaches a phone that has never been used, and his iPad has
+           `autoMark: true` saved from before the checker was dropped. `aiOff`
+           marks that the switch has been thrown, so turning the reading back
+           on by hand still sticks afterwards. */
+        /* 🔴 The flag is carried forward in BOTH branches. Setting it only on
+           the way through would save a 0 back, the switch would be thrown
+           again on the next load, and the reading could never be turned back
+           on for good. */
+        state.aiOff = 1;
+        if (s.aiOff) { if (typeof s.autoMark === 'boolean') state.autoMark = s.autoMark; }
+        else state.autoMark = false;
         if (Array.isArray(s.tables) && s.tables.length) state.tables = s.tables;
         if (Array.isArray(s.sets) && s.sets.length) state.sets = s.sets;
         if (Array.isArray(s.topics) && s.topics.length) state.topics = s.topics;
@@ -3918,7 +3929,7 @@
         armedFor: state.armedFor,
         offered: state.offered, wroteFor: state.wroteFor,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
-        autoMark: state.autoMark,
+        autoMark: state.autoMark, aiOff: state.aiOff,
         mode: state.mode, shuffle: state.shuffle,
         timer: state.timer, secs: state.secs, pace: state.pace,
         pair: state.pair, sound: state.sound
@@ -10135,7 +10146,23 @@
      the ordinary way and turned the reading off from the pad. Grammar has no
      honest self-marking mode anyway. The answer is four letters long and
      objective, so "he marks himself" there is just him marking himself. */
-  function markLocked(){ return state.testing || sentenceNow(); }
+  /* 🔴 THE CHECKER NO LONGER DECIDES ANYTHING (Andrew, 2026-09-10: "on the ai
+     scoring, I think drop it, it's wrong half the time"). He was being kind.
+     Of the last sixty words it turned down, thirty were perfectly good
+     handwriting, and on the focus round tonight it queried four and was wrong
+     about three: Hawaii read as "plausabli", splatter as "Dsplatten",
+     slippery as "plikary", all three written correctly.
+
+     `autoMark` now starts OFF, which was already a supported path: the word is
+     revealed and he marks his own go, and every other part of the round, the
+     pips, the streak, the queue that re-deals a miss, works exactly as before.
+     A test night no longer forces the reading back on either.
+
+     ⚠️ The 🤖 button is still there, so it can be turned back on for a word or
+     an evening. And the sentence lesson still locks marking, because there the
+     app is comparing two strings rather than reading handwriting, which it
+     does not get wrong. */
+  function markLocked(){ return sentenceNow(); }
   function paintAiBtn(){
     // gone rather than dead: a locked button a child can keep tapping is worse
     // than no button, and the way out is to stop the round and change it at home
@@ -11097,7 +11124,7 @@
        shape after somebody has switched to Copy it would be the app telling
        him something he can see is untrue. */
     var ready = state.write === testWrite(kind) && state.hand && state.timer === 'off'
-      && state.autoMark && plan.times === RED_TIMES;
+      && plan.times === RED_TIMES;
     /* ⚠️ Said on the Wednesday, because it changes whether tomorrow happens at
        all and it is the whole reason the trial is worth practising for. */
     var skip = kind === 'real' ? 'He can skip tomorrow if he made 100 on the trial today. ' : '';
@@ -11112,8 +11139,8 @@
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
         + (state.defs ? ', and each vocabulary word is followed by a screen to copy what it means' : '')
         + '. ' + plan.cards + ' cards, '
-        + testWriteWords() + ', written by hand, no timer. The app does the marking and he cannot '
-        + 'switch it off. Nothing to set up.');
+        + testWriteWords() + ', written by hand, no timer. He marks his own goes and his '
+        + 'writing goes on the page for you to read. Nothing to set up.');
   }
   /* ⭐ THERE ARE TWO TESTS A WEEK, AND THE PRACTICE IS THE NIGHT BEFORE EACH
      (Andrew, 3 September 2026). The TRIAL is on the Wednesday, and making 100
@@ -11242,7 +11269,6 @@
     state.hand = true;
     state.shuffle = true;
     state.mode = 'flip';
-    state.autoMark = true;
     picked.forEach(function(u){
       state.times[u.id] = 1;                     // the rest of the list, once
       state.redTimes[u.id] = RED_TIMES;          // and the marked words three times
@@ -11271,7 +11297,6 @@
     state.hand = true;                         // and by hand, like the real thing
     state.shuffle = true;
     state.mode = 'flip';                       // never the archer on a spelling night
-    state.autoMark = true;                     // and he cannot turn the marking off
     saveSettings();
     paintHome();
     unlock();
