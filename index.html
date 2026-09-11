@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.09">
+<meta name="x-cards-version" content="5.11">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3812,7 +3812,8 @@
   function isMathKey(k){ return k.slice(0, 2) === 'm:'; }
   var MATH_NAMES = { add: 'Adding three numbers', sub: 'Taking away',
                      mul: 'Multiplying', div: 'Dividing', roman: 'Roman numerals',
-                     clock: 'Drawing the hands' };
+                     clock: 'Drawing the hands', missing: 'What goes in the box',
+                     words: 'Writing the number' };
   function isAskKey(k){ return k.slice(0, 2) === 'a:'; }
   function termByWord(w){
     for (var i = 0; i < STUDY.length; i++){
@@ -7426,6 +7427,18 @@
       from: 'Lesson 19, questions 1 and 2'
     },
     {
+      id: 305, who: 'Seth', kind: 'missing', title: 'What goes in the box',
+      what: 'A number missing out of a sum, like 7 + ___ = 15 or 3 \u00d7 ___ = 24. Every '
+          + 'card says how to turn it round to find it.',
+      count: 10, from: 'Lesson 19, questions 4 and 5'
+    },
+    {
+      id: 306, who: 'Seth', kind: 'words', title: 'Writing the number',
+      what: 'A number said in words to write in figures. Every one has a nought inside it, '
+          + 'because three hundred eight written as 38 is the mistake.',
+      count: 10, from: 'Lesson 19, question 6'
+    },
+    {
       id: 303, who: 'Seth', kind: 'clock', title: 'Draw the hands',
       what: 'A time to show on a clock face, hour hand then minute hand.',
       count: 10
@@ -7540,6 +7553,97 @@
     } else c.w = String(sumAnswer(c));
     return c;
   }
+  /* ================= the two off his Lesson 19 paper =================
+     Both are `k: 'q'` cards, the shape a vocabulary term already uses: a prompt
+     on the face, a short answer written on the pad, and nothing else. That is
+     deliberate. They are written on a LINE on his paper, not stacked in a
+     column, so borrowing the sum machinery would have meant new geometry for a
+     card that does not need any.
+
+     ⭐ AND THEY TEACH. `why` beside `from` is shown as the instruction above
+     the pad, so every card says how to turn the question round rather than
+     only whether he got it. He is eight, and on 5c he wrote 12 for 3 × __ = 24,
+     which is 24 ÷ 2: he is not inverting, he is reaching for a factor he can
+     see. Being told "how many 3s make 24" is the whole lesson. */
+  function makeMissing(u){
+    var pick = randInt(0, 3);
+    var a, b, total, face, why;
+    if (pick < 2){
+      a = randInt(2, 9); b = randInt(2, 9); total = a + b;
+      if (pick === 0){
+        face = a + ' + ___ = ' + total;
+        why = 'Take it away to find it: ' + total + ' \u2212 ' + a
+            + '. Or count up from ' + a + ' to ' + total + '.';
+        return askCard(String(b), face, u, why);
+      }
+      face = '___ + ' + b + ' = ' + total;
+      why = 'Take it away to find it: ' + total + ' \u2212 ' + b + '.';
+      return askCard(String(a), face, u, why);
+    }
+    a = randInt(2, 9); b = randInt(2, 9); total = a * b;
+    if (pick === 2){
+      face = a + ' \u00d7 ___ = ' + total;
+      why = 'How many ' + a + 's make ' + total + '? Count them in ' + a + 's.';
+      return askCard(String(b), face, u, why);
+    }
+    face = '___ \u00d7 ' + b + ' = ' + total;
+    why = 'How many ' + b + 's make ' + total + '? Count them in ' + b + 's.';
+    return askCard(String(a), face, u, why);
+  }
+  /* ⚠️ The zeros are the point. His two wrong ones were "three hundred eight
+     thousand, six hundred forty-three" and "nine hundred sixty-three thousand",
+     both with a nought sitting inside them, and 308 written as 38 is the whole
+     mistake. So every number generated here has a zero in it somewhere. */
+  function makeWords(u){
+    /* ⚠️ HALF OF THEM PUT THE NOUGHT INSIDE THE THOUSANDS, which is the hard
+       one: "three hundred EIGHT thousand" is 308 and he wrote 38. A flat
+       thousands number satisfies "has a zero in it" for free, so left to
+       itself the set filled up with easy ones like one hundred sixty
+       thousand. */
+    var wantIn = randInt(0, 1) === 0;
+    for (var tries = 0; tries < 400; tries++){
+      var top = randInt(100, 999), rest = randInt(0, 999);
+      if (randInt(0, 2) === 0) rest = 0;               // some are flat thousands
+      if (wantIn && String(top).indexOf('0') === -1) continue;
+      var n = top * 1000 + rest;
+      var digits = String(n);
+      if (digits.indexOf('0') === -1) continue;        // a zero inside, always
+      var shown = commas(n);
+      var why = rest === 0
+        ? 'Say the thousands, then fill the last three places with noughts.'
+        : 'The part before the comma is ' + top + '. Then ' + pad3(rest) + ' after it.';
+      return askCard(shown, numWords(n), u, why);
+    }
+    return askCard('308,643', numWords(308643), u, 'The part before the comma is 308.');
+  }
+  function askCard(answer, face, u, why){
+    return { k: 'q', w: answer, m: face, u: u.id, why: why, from: u.from || 'his paper' };
+  }
+  function commas(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function pad3(n){ var t = String(n); while (t.length < 3) t = '0' + t; return t; }
+  var NUM_ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen',
+    'eighteen', 'nineteen'];
+  var NUM_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy',
+    'eighty', 'ninety'];
+  function under1000(n){
+    var out = [];
+    if (n >= 100){ out.push(NUM_ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }
+    if (n >= 20){
+      var t = NUM_TENS[Math.floor(n / 10)], o = n % 10;
+      out.push(o ? t + '-' + NUM_ONES[o] : t);
+    } else if (n > 0) out.push(NUM_ONES[n]);
+    return out.join(' ');
+  }
+  /* ⚠️ A COMMA AFTER THE THOUSANDS, the way his book writes it: "three hundred
+     eight thousand, six hundred forty-three". The comma is the thing telling
+     him where the break is, so it is not tidied away. */
+  function numWords(n){
+    var top = Math.floor(n / 1000), rest = n % 1000;
+    if (!top) return under1000(rest);
+    return under1000(top) + ' thousand' + (rest ? ', ' + under1000(rest) : '');
+  }
+
   function makeAdd(u){
     var lo = Math.pow(10, u.digits - 1), hi = Math.pow(10, u.digits) - 1;
     for (var tries = 0; tries < 200; tries++){
@@ -7845,6 +7949,7 @@
     for (i = 0; i < (u.count || 10); i++){
       out.push(u.kind === 'add' ? makeAdd(u) : u.kind === 'sub' ? makeSub(u)
              : u.kind === 'mul' ? makeMul(u) : u.kind === 'div' ? makeDiv(u)
+             : u.kind === 'missing' ? makeMissing(u) : u.kind === 'words' ? makeWords(u)
              : u.kind === 'roman' ? makeRoman(u) : makeClock(u));
     }
     return out;
