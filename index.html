@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.21">
+<meta name="x-cards-version" content="5.22">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1193,7 +1193,15 @@
       <button type="button" class="opt" data-subject="blends">🔤 Blends</button>
       <button type="button" class="opt" data-subject="scripture">📖 Scriptures</button>
       <button type="button" class="opt" data-subject="spelling">✏️ Spelling</button>
-      <button type="button" class="opt" data-subject="sentence">📝 Sentences</button>
+      <!-- ⚠️ "Language", not "Sentences" (Andrew, 2026-09-11: "his language,
+           what subject do I select for that?"). It held only sentence types
+           when it was named; Quiz 2 added the subject and predicate line and
+           the run-ons, and the name stopped saying what was in it.
+           🔴 The KEY stays `sentence`. It is written into saved settings, the
+           page store and the server's SUBJECTS list, and renaming it would
+           orphan every one of them. `subjectName()` reads this button's text,
+           so the label is the only thing that had to change. -->
+      <button type="button" class="opt" data-subject="sentence">📝 Language</button>
       <button type="button" class="opt" data-subject="proof">🔍 Proofreading</button>
       <button type="button" class="opt" data-subject="history">🇺🇸 History</button>
       <button type="button" class="opt" data-subject="science">🔬 Science</button>
