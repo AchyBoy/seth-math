@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.24">
+<meta name="x-cards-version" content="5.25">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12868,8 +12868,16 @@
     /* ⚠️ Painted from the same `show`, so the banner and the block can never
        disagree about whether there is anything to do. */
     el.waitBar.classList.toggle('hide', !show);
-    if (show) el.waitBar.textContent = '\uD83D\uDD8A\uFE0F ' + checks.length
-      + (checks.length === 1 ? ' word is' : ' words are') + ' waiting for a grown-up to look';
+    /* ⚠️ NOT ALWAYS WORDS. This queue took only spelling when it was written
+       and it takes arithmetic now, so on an evening of sums it counted four
+       questions and called them words. Andrew, on the Arithmetic screen:
+       "looks like it's wanting to show words". Counted rather than assumed,
+       the same rule the note underneath already follows. */
+    var wordly = 0;
+    checks.forEach(function(r){ if (!/^m:|^\d|[×÷+−=]/.test(String(r.word || ''))) wordly++; });
+    var noun = wordly === checks.length ? 'word' : wordly ? 'thing' : 'answer';
+    if (show) el.waitBar.textContent = '\uD83D\uDD8A\uFE0F ' + checks.length + ' ' + noun
+      + (checks.length === 1 ? ' is' : 's are') + ' waiting for a grown-up to look';
     el.checkBlock.classList.toggle('hide', !show);
     if (!show) return;
     /* Two kinds of row live here now and they need different sentences, so the
