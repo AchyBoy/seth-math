@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.19">
+<meta name="x-cards-version" content="5.20">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1147,6 +1147,20 @@
     <pre id="trailText" style="white-space:pre-wrap;font:500 11px/1.4 ui-monospace,Menlo,monospace;
       background:#fdeceb;border:2px solid #e0524a;border-radius:14px;padding:10px;overflow-x:auto"></pre>
     <div class="quick"><button type="button" class="warn" id="trailClear">Clear this</button></div>
+  </div>
+
+  <!-- ⭐ THE ONES HE GOT WRONG LAST NIGHT, and nothing else (Andrew,
+       2026-09-11: "if he got some wrong, add those as a special lesson, just
+       above the a plus thing. Only the words he missed").
+
+       It sits ABOVE the A+ 100 Maker on purpose: the A+ round is ten words off
+       the whole week picked by what is LIKELY to catch him, and this is the
+       short list of what actually did. First thing on the screen, done in five
+       minutes, and it empties itself when there is nothing in it. -->
+  <div class="block hide" id="againBlock">
+    <button type="button" id="againBtn"></button>
+    <div class="misses" id="againList"></div>
+    <p class="note" id="againNote"></p>
   </div>
 
   <!-- Not the red pen. These are the words on this week's list that the same
@@ -3566,7 +3580,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','againBlock','againList','againBtn','againNote','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -4332,6 +4346,119 @@
     return row.seen ? 'he has this one. Just checking he still does.'
                     : 'he has not met this one yet.';
   }
+  /* =========================================================
+     ⭐ THE ONES HE GOT WRONG LAST NIGHT (Andrew, 2026-09-11).
+
+     The A+ 100 Maker is ten words off the whole week, picked by what is
+     LIKELY to catch him. This is the other half of that, and it is much
+     shorter: the words that actually DID. It reads the last spelling page he
+     wrote, so it needs nothing kept in step by hand and it empties itself
+     when there is nothing on it.
+
+     🔴 THE FIRST GO IS WHAT COUNTS, so a word is on this list if EITHER the
+     slot or its `~try` twin beside it came back marked. He wrote apear, then
+     appear: he missed it, and the second go being right is not the same as
+     not having missed it. That is the same rule `keepTry` exists for on the
+     arithmetic, where the answer is on screen by the time he writes again.
+
+     ⚠️ AND A WORD NOBODY COULD READ IS ON IT TOO (Andrew: "if you're not sure
+     then he either really missed it or wrote it too messy, handle that however
+     you think"). Both of those are fixed by writing it again, so the doubtful
+     ones go in rather than being argued about, and the note on the block says
+     so out loud rather than letting a maybe look like a verdict.
+     ========================================================= */
+  function lastMissPage(){
+    var mine = myPages();
+    for (var i = 0; i < mine.length; i++){
+      var own = pageUnit(mine[i].unit);
+      if (own && own.kind === 'spell') return mine[i];
+    }
+    return null;
+  }
+  function lastMissed(){
+    var pg = lastMissPage();
+    if (!pg) return { pg: null, rows: [] };
+    var words = pg.words || {}, by = {}, rows = [];
+    Object.keys(words).forEach(function(key){
+      // ⚠️ a meaning is filed under its own prefix and is not a spelling miss
+      if (key.indexOf('def:') === 0) return;
+      var slot = words[key]; if (!slot) return;
+      var w = key.split('~')[0];
+      var r = by[w] || (by[w] = { w: w, goes: 0, bad: 0, got: '', last: null });
+      r.goes++;
+      if (slot.missed) r.bad++;
+      if (!r.got && slot.got) r.got = slot.got;
+      if (key === w) r.last = slot;       // the base key is his LATEST go
+    });
+    Object.keys(by).forEach(function(w){
+      var r = by[w];
+      if (!r.bad) return;
+      var c = spellByWord(w);
+      if (!c) return;                     // off a list he no longer has
+      r.card = c;
+      /* ⚠️ OFF `bad`, NOT `goes`. Counting the goes said "wrong both times he
+         wrote it" about a word he wrote twice and only got wrong once, which
+         is a harder thing to say to a child than what actually happened. */
+      /* ⚠️ THE BASE SLOT DECIDES WHETHER HE FIXED IT, and the count of marked
+         slots only refines what to call it. An earlier sitting is COPIED aside
+         under `~try` and again under `~<epoch>`, so one wrong go can be two or
+         three marked slots: counting them said "wrong both times he wrote it"
+         about appear, which he wrote as apear and then got right. */
+      r.why = r.got ? 'the checker read “' + r.got + '”'
+        : (r.last && r.last.missed)
+          ? (r.bad > 1 ? 'wrong both times he wrote it.' : 'this one came back wrong.')
+          : 'wrong the first time, right on the second. One more to be sure.';
+      rows.push(r);
+    });
+    rows.sort(function(a, b){ return b.bad - a.bad || a.w.localeCompare(b.w); });
+    return { pg: pg, rows: rows };
+  }
+  /* His page is stamped with the day it was written, and "on 2026-09-11" is
+     not a thing anybody says to a child. */
+  function daySaid(day){
+    if (!day) return 'last time';
+    if (day === today()) return 'tonight';
+    var d = new Date(), y;
+    d.setDate(d.getDate() - 1);
+    y = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    return day === y ? 'yesterday' : 'on ' + day;
+  }
+  function pad2(n){ return (n < 10 ? '0' : '') + n; }
+  function paintAgain(){
+    if (!spellingNow()){ el.againBlock.classList.add('hide'); return; }
+    var found = lastMissed();
+    el.againBlock.classList.toggle('hide', !found.rows.length);
+    if (!found.rows.length) return;
+    el.againList.innerHTML = '';
+    found.rows.forEach(function(r){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'miss tappable';
+      b.addEventListener('click', function(ev){
+        ev.currentTarget.classList.toggle('open'); sfx.tap();
+      });
+      /* The syllables off the same splitter the pad uses, so what he is told
+         here and what the phone says to him cannot drift apart. */
+      var parts = sylParts({ w: r.w, u: r.card.u, k: 'w' });
+      b.innerHTML = '<span class="mkey">' + esc(r.w) + '</span>'
+        + '<span class="ans">' + esc(parts.join('·')) + ' — ' + esc(r.why) + '</span>';
+      el.againList.appendChild(b);
+    });
+    var n = found.rows.length;
+    el.againBtn.innerHTML = '✏️ Write these again<small>'
+      + n + (n === 1 ? ' word he got wrong ' : ' words he got wrong ')
+      + daySaid(found.pg.day) + '</small>';
+    el.againNote.textContent = 'Just the ones that came back wrong, so it is five minutes '
+      + 'rather than a whole list. One of them may only have been hard to read rather than '
+      + 'really wrong, and writing it again fixes either. It clears itself as he gets them.';
+  }
+  el.againBtn.addEventListener('click', function(){
+    var rows = lastMissed().rows;
+    if (!rows.length) return;
+    var cards = rows.map(function(r){ return r.card; });
+    shuffle(cards);
+    startRun([{ label: 'The ones he got wrong', cards: cards }], true);
+  });
   function paintWatch(){
     /* 🔴 GRAMMAR FIRST, and it does not go through a picker. The three Lesson
        19 sets are not lessons he can tick, and `state.lessons` was saved
@@ -4937,6 +5064,7 @@
          : blends ? 'Pick at least one set' : 'Pick at least one table')
       : 'Start ' + count + ' cards';
     paintPick();
+    paintAgain();
     paintWatch();
     paintTrouble();
   }
