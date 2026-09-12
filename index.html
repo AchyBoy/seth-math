@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.20">
+<meta name="x-cards-version" content="5.21">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1151,12 +1151,17 @@
 
   <!-- ⭐ THE ONES HE GOT WRONG LAST NIGHT, and nothing else (Andrew,
        2026-09-11: "if he got some wrong, add those as a special lesson, just
-       above the a plus thing. Only the words he missed").
+       above the a plus thing. Only the words he missed", and an hour later the
+       same for arithmetic).
 
-       It sits ABOVE the A+ 100 Maker on purpose: the A+ round is ten words off
-       the whole week picked by what is LIKELY to catch him, and this is the
-       short list of what actually did. First thing on the screen, done in five
-       minutes, and it empties itself when there is nothing in it. -->
+       It sits ABOVE the A+ 100 Maker on purpose: the A+ round is ten off the
+       whole week picked by what is LIKELY to catch him, and this is the short
+       list of what actually did. First thing on the screen, done in five
+       minutes, and it empties itself when there is nothing in it.
+
+       On spelling it is the words off his last page. On arithmetic it is the
+       SAME QUESTIONS rebuilt, not others like them, because the problem is
+       stored beside the ink for the printed sheet. -->
   <div class="block hide" id="againBlock">
     <button type="button" id="againBtn"></button>
     <div class="misses" id="againList"></div>
@@ -4367,51 +4372,104 @@
      ones go in rather than being argued about, and the note on the block says
      so out loud rather than letting a maybe look like a verdict.
      ========================================================= */
-  function lastMissPage(){
-    var mine = myPages();
+  /* ⚠️ MORE THAN ONE PAGE ON A MATHS NIGHT. A spelling week is one page and
+     every arithmetic UNIT is its own, so a ten card focus round writes six of
+     them. The night is what is wanted, not the page, so the newest one decides
+     the day and the rest of that day comes with it. */
+  function againMath(){ return state.subject === 'math'; }
+  function lastMissPages(){
+    var mine = myPages(), out = [], day = '';
     for (var i = 0; i < mine.length; i++){
-      var own = pageUnit(mine[i].unit);
-      if (own && own.kind === 'spell') return mine[i];
+      var pg = mine[i], own = pageUnit(pg.unit);
+      if (!own) continue;
+      var mine1 = againMath() ? !!mathById(pg.unit) : own.kind === 'spell';
+      if (!mine1) continue;
+      if (!day) day = pg.day;
+      if (pg.day === day) out.push(pg);
     }
-    return null;
+    return out;
+  }
+  /* ⭐ A SUM IS REBUILT EXACTLY, not generated again. The problem is stored
+     beside the ink for the printed sheet, so 88 × 8 comes back as 88 × 8 and
+     he meets the one he actually got wrong rather than another like it. An ask
+     card needs no rebuilding at all: the KEY is the answer and `label` is what
+     was asked, which is the whole card. */
+  /* ⚠️ AND IT HAS TO TEACH, because `why` beside `from` is what paints the red
+     line above the pad. A rebuilt card has lost the one the generator wrote,
+     so there is a line per KIND here instead, which is truer anyway: it says
+     how that sort of question is done rather than how that one was. */
+  var MATH_HINT = {
+    add: 'Line the columns up and start at the ones. When a column makes ten or more, '
+       + 'the ten carries over to the next one.',
+    sub: 'Start at the ones. If the top digit is the smaller one, borrow, and take one '
+       + 'off the digit you borrowed from.',
+    mul: 'Multiply the ones first. If that makes more than nine, the tens part carries '
+       + 'over and gets added on after the next multiply.',
+    missing: 'Turn it round. A missing number in an adding sum is found by taking away; '
+       + 'a missing number in a times sum is found by counting up in groups.',
+    words: 'The part before the comma is the thousands. Then three more places after it, '
+       + 'and a nought is a place too.',
+    angles: 'A right angle is a square corner, like the corner of this page. Count only '
+       + 'the corners that are square. The number of sides is not the answer.',
+    measure: 'Say it as a fact: how many of the small one fit inside one of the big one. '
+       + 'A yard is three feet, and the 12 belongs to the foot, 12 inches in a foot.',
+    coins: 'Quarters first, 25, 50, 75. Then the dimes in tens, the nickels in fives, '
+       + 'and the pennies one at a time.'
+  };
+  function missCard(pg, key, slot){
+    var base = key.split('~')[0];
+    if (!againMath()) return spellByWord(base);
+    var u = mathById(pg.unit); if (!u) return null;
+    /* ⚠️ A clock is two hand-drawn lines and a roman numeral has its own
+       shape. Neither rebuilds off what is stored, so they are left out rather
+       than put back wrongly. */
+    if (u.kind === 'clock' || u.kind === 'roman') return null;
+    if (slot.sum && slot.sum.ops && !slot.sum.roman){
+      return sumCard(slot.sum.op, slot.sum.ops, u, u.kind);
+    }
+    if (!slot.label) return null;
+    return { k: 'q', w: base, m: slot.label, u: u.id, kind: u.kind,
+             why: MATH_HINT[u.kind] || '', from: u.from || 'his last round' };
   }
   function lastMissed(){
-    var pg = lastMissPage();
-    if (!pg) return { pg: null, rows: [] };
-    var words = pg.words || {}, by = {}, rows = [];
-    Object.keys(words).forEach(function(key){
-      // ⚠️ a meaning is filed under its own prefix and is not a spelling miss
-      if (key.indexOf('def:') === 0) return;
-      var slot = words[key]; if (!slot) return;
-      var w = key.split('~')[0];
-      var r = by[w] || (by[w] = { w: w, goes: 0, bad: 0, got: '', last: null });
-      r.goes++;
-      if (slot.missed) r.bad++;
-      if (!r.got && slot.got) r.got = slot.got;
-      if (key === w) r.last = slot;       // the base key is his LATEST go
+    var pgs = lastMissPages();
+    if (!pgs.length) return { day: '', rows: [] };
+    var rows = [];
+    pgs.forEach(function(pg){
+      var words = pg.words || {}, by = {};
+      Object.keys(words).forEach(function(key){
+        // ⚠️ a meaning is filed under its own prefix and is not a spelling miss
+        if (key.indexOf('def:') === 0) return;
+        var slot = words[key]; if (!slot) return;
+        var base = key.split('~')[0];
+        var r = by[base] || (by[base] = { w: base, pg: pg, goes: 0, bad: 0, got: '',
+                                          last: null, slot: slot });
+        r.goes++;
+        if (slot.missed) r.bad++;
+        if (!r.got && slot.got) r.got = slot.got;
+        if (key === base){ r.last = slot; r.slot = slot; }   // the base key is his LATEST go
+      });
+      Object.keys(by).forEach(function(base){
+        var r = by[base];
+        if (!r.bad) return;
+        var c = missCard(pg, base, r.slot);
+        if (!c) return;                   // off a list he no longer has, or not rebuildable
+        r.card = c;
+        r.title = againMath() ? (r.slot.label || base) : base;
+        /* ⚠️ THE BASE SLOT DECIDES WHETHER HE FIXED IT, and the count of marked
+           slots only refines what to call it. An earlier sitting is COPIED aside
+           under `~try` and again under `~<epoch>`, so one wrong go can be two or
+           three marked slots: counting them said "wrong both times he wrote it"
+           about appear, which he wrote as apear and then got right. */
+        r.why = r.got ? 'the checker read \u201c' + r.got + '\u201d'
+          : (r.last && r.last.missed)
+            ? (r.bad > 1 ? 'wrong both times he tried it.' : 'this one came back wrong.')
+            : 'wrong the first time, right on the second. One more to be sure.';
+        rows.push(r);
+      });
     });
-    Object.keys(by).forEach(function(w){
-      var r = by[w];
-      if (!r.bad) return;
-      var c = spellByWord(w);
-      if (!c) return;                     // off a list he no longer has
-      r.card = c;
-      /* ⚠️ OFF `bad`, NOT `goes`. Counting the goes said "wrong both times he
-         wrote it" about a word he wrote twice and only got wrong once, which
-         is a harder thing to say to a child than what actually happened. */
-      /* ⚠️ THE BASE SLOT DECIDES WHETHER HE FIXED IT, and the count of marked
-         slots only refines what to call it. An earlier sitting is COPIED aside
-         under `~try` and again under `~<epoch>`, so one wrong go can be two or
-         three marked slots: counting them said "wrong both times he wrote it"
-         about appear, which he wrote as apear and then got right. */
-      r.why = r.got ? 'the checker read “' + r.got + '”'
-        : (r.last && r.last.missed)
-          ? (r.bad > 1 ? 'wrong both times he wrote it.' : 'this one came back wrong.')
-          : 'wrong the first time, right on the second. One more to be sure.';
-      rows.push(r);
-    });
-    rows.sort(function(a, b){ return b.bad - a.bad || a.w.localeCompare(b.w); });
-    return { pg: pg, rows: rows };
+    rows.sort(function(a, b){ return b.bad - a.bad || a.title.localeCompare(b.title); });
+    return { day: pgs[0].day, rows: rows };
   }
   /* His page is stamped with the day it was written, and "on 2026-09-11" is
      not a thing anybody says to a child. */
@@ -4425,7 +4483,7 @@
   }
   function pad2(n){ return (n < 10 ? '0' : '') + n; }
   function paintAgain(){
-    if (!spellingNow()){ el.againBlock.classList.add('hide'); return; }
+    if (!spellingNow() && !againMath()){ el.againBlock.classList.add('hide'); return; }
     var found = lastMissed();
     el.againBlock.classList.toggle('hide', !found.rows.length);
     if (!found.rows.length) return;
@@ -4437,20 +4495,27 @@
       b.addEventListener('click', function(ev){
         ev.currentTarget.classList.toggle('open'); sfx.tap();
       });
-      /* The syllables off the same splitter the pad uses, so what he is told
-         here and what the phone says to him cannot drift apart. */
-      var parts = sylParts({ w: r.w, u: r.card.u, k: 'w' });
-      b.innerHTML = '<span class="mkey">' + esc(r.w) + '</span>'
-        + '<span class="ans">' + esc(parts.join('·')) + ' — ' + esc(r.why) + '</span>';
+      /* ⚠️ NO ANSWER ON THE CHIP. It is on the screen he is about to work
+         from, so the sum goes on it and what it comes to does not. On a
+         spelling word the syllables are safe: they are the word he is being
+         asked to write and he can already see it. */
+      var right = againMath() ? (mathById(r.pg.unit) || {}).title || ''
+                              : sylParts({ w: r.w, u: r.card.u, k: 'w' }).join('\u00b7');
+      b.innerHTML = '<span class="mkey">' + esc(r.title) + '</span>'
+        + '<span class="ans">' + esc(right) + ' \u2014 ' + esc(r.why) + '</span>';
       el.againList.appendChild(b);
     });
-    var n = found.rows.length;
-    el.againBtn.innerHTML = '✏️ Write these again<small>'
-      + n + (n === 1 ? ' word he got wrong ' : ' words he got wrong ')
-      + daySaid(found.pg.day) + '</small>';
-    el.againNote.textContent = 'Just the ones that came back wrong, so it is five minutes '
-      + 'rather than a whole list. One of them may only have been hard to read rather than '
-      + 'really wrong, and writing it again fixes either. It clears itself as he gets them.';
+    var n = found.rows.length, thing = againMath() ? 'question' : 'word';
+    el.againBtn.innerHTML = (againMath() ? '\uD83D\uDD22' : '\u270F\uFE0F')
+      + ' Do these again<small>'
+      + n + ' ' + thing + (n === 1 ? ' he got wrong ' : 's he got wrong ')
+      + daySaid(found.day) + '</small>';
+    el.againNote.textContent = againMath()
+      ? 'The very same questions he got wrong, not others like them, and each one says how '
+        + 'to do it rather than only whether he got it. It clears itself as he gets them.'
+      : 'Just the ones that came back wrong, so it is five minutes rather than a whole list. '
+        + 'One of them may only have been hard to read rather than really wrong, and writing '
+        + 'it again fixes either. It clears itself as he gets them.';
   }
   el.againBtn.addEventListener('click', function(){
     var rows = lastMissed().rows;
