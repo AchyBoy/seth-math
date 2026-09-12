@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.22">
+<meta name="x-cards-version" content="5.23">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3915,8 +3915,41 @@
     if (!me.token) return;
     clearTimeout(pushId);
     pushId = setTimeout(function(){
-      apiCall('/misses', { method: 'POST', body: { token: me.token, misses: record } });
+      apiCall('/misses', { method: 'POST', body: { token: me.token, misses: record } })
+        .then(function(res){ takeFixes(res && res.data && res.data.fixed); });
     }, 1500);
+  }
+  /* 🔴 WHAT A GROWN-UP SETTLED COMES BACK DOWN, and this is the other half of
+     the fix on the server. This record is a running tally the device keeps and
+     posts WHOLE on every answered card, so before this a verdict written
+     anywhere else lasted until the next card and no longer: his iPad simply
+     put its own copy back. Measured on 2026-09-11, twice, five minutes apart,
+     with no round played in between.
+
+     The server lays those decisions over what arrived and says which keys it
+     overrode. Only those are taken, never the whole record: he may have
+     answered another card while this was in flight and handing everything back
+     would throw that away.
+
+     ⚠️ IT SAVES BUT DOES NOT PUSH AGAIN FROM HERE. The next ordinary save
+     carries it up, the server sees the device agreeing and lets the entry go.
+     Posting from inside the response would be a loop with a terminating
+     condition, which is a worse thing to have than no loop. */
+  function takeFixes(fixed){
+    if (!fixed || typeof fixed !== 'object') return;
+    var keys = Object.keys(fixed), moved = 0;
+    keys.forEach(function(k){
+      var want = fixed[k];
+      if (want === null){ if (record[k]){ delete record[k]; moved++; } return; }
+      var got = record[k];
+      if (got && got.m === want.m && got.h === want.h) return;
+      record[k] = { m: want.m, h: want.h };
+      if (got && got.red) record[k].red = got.red;   // the red pen flag is not a tally
+      moved++;
+    });
+    if (!moved) return;
+    try { localStorage.setItem(missKey(), JSON.stringify(record)); } catch(e){}
+    paintTrouble();
   }
   /* Everything belonging to a child is dropped in one place. Three separate
      hand-written clears had already drifted apart: one forgot the bests, one
@@ -12724,10 +12757,6 @@
     for (i = 0; i < checks.length; i++) if (checks[i].id === id) row = checks[i];
     if (!row) return;
     checks = checks.filter(function(r){ return r.id !== id; });
-    if (me.token){
-      apiCall('/check/resolve', { method:'POST',
-        body:{ token: me.token, id: id, verdict: right ? 'right' : 'wrong' } });
-    }
     var key = 'w:' + row.word;
     var pg = null;
     for (i = 0; i < pages.length; i++) if (pages[i].id === row.page_id) pg = pages[i];
@@ -12761,6 +12790,21 @@
         saveRecord();
         if (slot){ slot.missed = true; savePages(); pushPage(pg); }
       }
+    }
+    /* 🔴 THE VERDICT GOES UP AFTER THE ARITHMETIC, AND CARRIES IT. The record
+       edit above is page-aware: it knows whether the word already took the
+       miss, off the page slot with the check's kind as the fallback. Doing
+       that sum a second time on the server would double count, so the server
+       is told what was decided rather than asked to work it out, and it keeps
+       it as a decision that a device's own tally cannot undo.
+       ⚠️ Sent even when the record did not move, because "right" on a word
+       carrying nothing is still a decision, and the entry it names is the one
+       the other devices have to end up with. */
+    if (me.token){
+      var ent = record[key];
+      apiCall('/check/resolve', { method:'POST',
+        body:{ token: me.token, id: id, verdict: right ? 'right' : 'wrong',
+               record: ent ? { key: key, m: ent.m, h: ent.h } : { key: key, gone: true } } });
     }
     sfx.tap();
     paintChecks();
