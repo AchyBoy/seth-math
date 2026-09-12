@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.23">
+<meta name="x-cards-version" content="5.24">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3916,7 +3916,11 @@
     clearTimeout(pushId);
     pushId = setTimeout(function(){
       apiCall('/misses', { method: 'POST', body: { token: me.token, misses: record } })
-        .then(function(res){ takeFixes(res && res.data && res.data.fixed); });
+        .then(function(res){
+          if (!res || !res.data) return;
+          takeFixes(res.data.fixed);
+          takePageFixes(res.data.pages);
+        });
     }, 1500);
   }
   /* 🔴 WHAT A GROWN-UP SETTLED COMES BACK DOWN, and this is the other half of
@@ -3950,6 +3954,39 @@
     if (!moved) return;
     try { localStorage.setItem(missKey(), JSON.stringify(record)); } catch(e){}
     paintTrouble();
+  }
+  /* 🔴 AND THE PAGE MARKS COME DOWN THE SAME WAY, which is the same bug one
+     layer lower. A page only ever travelled UP from this device, so a word a
+     grown-up marked wrong anywhere else was invisible here: on 2026-09-11 four
+     arithmetic questions he had passed himself were settled from outside the
+     app and "Do these again" came up empty on his own iPad, because his own
+     iPad had no idea they were wrong.
+
+     ⚠️ Only the slots the server names, and only the `missed` flag on them.
+     The ink is his and is never touched from here. */
+  function takePageFixes(fix){
+    if (!fix || typeof fix !== 'object') return;
+    var touched = {}, moved = 0;
+    Object.keys(fix).forEach(function(pid){
+      var marks = fix[pid];
+      if (!marks || typeof marks !== 'object') return;
+      var pg = null;
+      for (var i = 0; i < pages.length; i++) if (pages[i].id === pid) pg = pages[i];
+      if (!pg || !pg.words) return;
+      Object.keys(marks).forEach(function(k){
+        var slot = pg.words[k];
+        if (!slot || !!slot.missed === !!marks[k]) return;
+        slot.missed = !!marks[k];
+        touched[pid] = pg; moved++;
+      });
+    });
+    if (!moved) return;
+    savePages();
+    /* The server lets an entry go when a page arrives agreeing with it, so the
+       corrected pages are pushed straight back rather than waiting for him to
+       write on them again, which might be never. */
+    Object.keys(touched).forEach(function(pid){ pushPage(touched[pid]); });
+    paintHome();
   }
   /* Everything belonging to a child is dropped in one place. Three separate
      hand-written clears had already drifted apart: one forgot the bests, one
