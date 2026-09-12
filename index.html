@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.18">
+<meta name="x-cards-version" content="5.19">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3334,8 +3334,174 @@
         ['wow, there are now over 4,000 wolves in the United States', 'Exc.', '!'],
         ['if you want to know more, find books about the gray wolf', 'Imp.', '.']
       ]
+    },
+    /* ---------- Language 3, Lesson 19, QUIZ 2, 10 September, scored 59 F ----------
+       🔴 THE FOURTH COLUMN IS WHAT HE ACTUALLY PUT, on the four his teacher
+       crossed. It is not shown to him before he answers, or the card would be
+       handing him three choices instead of four; it is what the round is
+       WEIGHTED by, and what the reason line can point at afterwards.
+
+       His four are one fault wearing two faces, and it is the same slip the
+       deck already has off lesson 7: he goes by what a sentence is ABOUT
+       rather than what it DOES.
+         3 "look at the elf owl"        he put Exc.   it is a command
+         6 "please tell me where..."    he put Dec.   it is a command, please
+                                                      does not stop it bossing
+         7 "the wolf pups are playful"  he put Exc.   a nice thing to say is
+                                                      not an excited sentence
+         8 "what fun we have had..."    he put Dec.   what fun is the giveaway
+       ⚠️ AND THE CAPITAL COST HIM AS MUCH AS THE FOUR DID. Every one of his
+       eight answers is written dec, int, exc, and his teacher has ruled the
+       capitalize mark under all eight and written "Capitalization" across the
+       page in red. On the arithmetic of the sheet that is around half the 32
+       he lost in this section. The abbreviation is a capital and a period,
+       every time, and it is now checked rather than only asked for. */
+    {
+      id: 19, who: 'Seth', lesson: 19, quiz: 'Quiz 2',
+      rule: 'Dec. for declarative, Int. for interrogative, Exc. for exclamatory, '
+          + 'Imp. for imperative. Each one is written with a CAPITAL letter and a '
+          + 'period after it.',
+      choices: ['Dec.', 'Int.', 'Exc.', 'Imp.'],
+      lines: [
+        ['we are going to the zoo', 'Dec.', '.'],
+        ['may we go see the owls', 'Int.', '?'],
+        ['look at the elf owl', 'Imp.', '.', 'Exc.'],
+        ["i can't believe it is so tiny", 'Exc.', '!'],
+        ['may we find the wolves next', 'Int.', '?'],
+        ['please tell me where they are', 'Imp.', '.', 'Dec.'],
+        ['the wolf pups are playful', 'Dec.', '.', 'Exc.'],
+        ['what fun we have had on our visit', 'Exc.', '!', 'Dec.']
+      ]
     }
   ];
+
+
+  /* =========================================================
+     THE REST OF QUIZ 2, off Language 3 Lesson 19, 10 September.
+
+     The sentence types above are the biggest piece of it, but they are not the
+     whole paper. Two more sections came back marked and neither had anywhere
+     to go on this page, so they are here:
+
+       Two parts of a sentence   -4    one line drawn in the wrong place
+       Run-on sentences          -5    a comma where a period and a capital go
+
+     ⚠️ ONE OF THE FIVE SUBJECT AND PREDICATE LINES LOST THE 4 MARKS AND I
+     CANNOT TELL WHICH. The red on that section is a rule under one sentence
+     and a slash through another, and reading a pencil line against a red one
+     off a photograph is exactly the kind of guess that puts the wrong fault in
+     front of him. So all five of his are in, rather than one of them picked
+     wrongly. See the note about leaving ambiguous marks out.
+
+     ⭐ THEY ARE ASK CARDS, the same shape the arithmetic uses: a prompt on the
+     face, a short answer written on the line, a teaching line in red
+     underneath. Drawing a vertical stroke between two words is what he does on
+     paper, and there is no card on this page that can read one, so the
+     question is turned into the word the line goes AFTER. That is the same
+     answer said differently, and it can be marked.
+     ========================================================= */
+  /* Five off his own quiz, then five more built the same way so the set does
+     not run out after one round. The answer is the LAST word of the subject
+     part, which is the word his pencil line goes after. */
+  var SPLIT_LINES = [
+    ['The red-eyed tree frog lays her eggs on a leaf over the water.', 'frog'],
+    ['The tadpoles hatch and fall into the water.', 'tadpoles'],
+    ['These little tadpoles eat many small insects.', 'tadpoles'],
+    ['Little tree frogs climb out of the water and up nearby trees.', 'frogs'],
+    ['A red-eyed tree frog sleeps under a leaf all day long.', 'frog'],
+    ['The elf owl hunts insects at night.', 'owl'],
+    ['Gray wolves once lived in most of North America.', 'wolves'],
+    ['My little brother found a ladybug on the window.', 'brother'],
+    ['The big yellow school bus stops at the corner.', 'bus'],
+    ['Two men in the boat waved at us.', 'boat']
+  ];
+  /* His two, then five more. The answer is the word that has to start the
+     second sentence, WITH its capital, which means the capital check on the
+     server marks it without anything new being written: the answer begins with
+     an uppercase letter, which is the one thing that gate looks for. */
+  var RUNON_LINES = [
+    ['The red-eyed frog sleeps in the day, it hunts for insects at night.', 'It'],
+    ['Red-eyed frogs have sticky feet, they can walk on smooth places without slipping.', 'They'],
+    ['The elf owl is very small, it can sit in your hand.', 'It'],
+    ['We went to the zoo, we saw the wolf pups.', 'We'],
+    ['Bats sleep all day, they fly at night.', 'They'],
+    ['My sister found a ladybug, she put it on a leaf.', 'She'],
+    ['The bus stopped at the corner, everybody got off.', 'Everybody'],
+    ['Gray wolves hunt in a pack, they are too small to bring down a moose alone.', 'They'],
+    ['We waited at the gate, the keeper let us in at last.', 'The'],
+    ['The tadpoles hatch in the water, later they climb out as little frogs.', 'Later']
+  ];
+  /* ⚠️ IDS OF THEIR OWN, well clear of the spelling weeks and the maths units.
+     An ask card files its ink under `c.u` exactly like an arithmetic one does,
+     and a number that collided with a spelling unit would put grammar ink on
+     his spelling page. Same trap the grammar cards hit once already. */
+  var LANG_SETS = [
+    {
+      id: 401, kind: 'type', title: 'Which kind of sentence it is',
+      what: 'Dec. Int. Exc. or Imp., written with its capital and its period. Four of '
+          + 'his eight were the wrong kind and all eight were missing the capital.',
+      from: 'Quiz 2, sentences 1 to 8', lift: 2
+    },
+    {
+      id: 402, kind: 'split', title: 'Where the subject part ends',
+      what: 'The last word of the subject part, which is where his pencil line goes.',
+      from: 'Quiz 2, sentences 9 to 13', lift: 0.8
+    },
+    {
+      id: 403, kind: 'runon', title: 'Two sentences stuck together',
+      what: 'The word that has to start the second sentence, with its capital, where he '
+          + 'left a comma doing a period’s job.',
+      from: 'Quiz 2, sentences 14 and 15', lift: 1.4
+    }
+  ];
+  /* ⚠️ WITHOUT REPLACEMENT, unlike the arithmetic generators. A sum is made up
+     fresh every time so drawing the same shape twice costs nothing, but there
+     are ten sentences here and seven there: picking at random would deal the
+     same one twice in a ten card round more often than not. */
+  var LANG_WHY = {
+    split: 'The subject part is who or what the sentence is about. The predicate part '
+         + 'tells what it does. Find the doing word, and write the word just BEFORE it.',
+    runon: 'Two whole sentences got stuck together with a comma. Find where the first '
+         + 'one ends, put a period there, and start the next one with a CAPITAL. '
+         + 'Write that word.'
+  };
+  /* ⚠️ AND IT CYCLES RATHER THAN RUNNING SHORT. On a night when one set is
+     carrying eight of the ten cards, eight is more than there are sentences in
+     it, and slicing a shorter list quietly gave back a round of nine. A
+     sentence coming round twice is a much smaller wrong than a focus round
+     that is not the size it says it is. Found by printing a round rather than
+     by reading this. */
+  function langAskCards(u, n){
+    var pool = (u.kind === 'split' ? SPLIT_LINES : RUNON_LINES), out = [], bag = [];
+    while (out.length < n){
+      if (!bag.length){ bag = pool.slice(); shuffle(bag); }
+      var row = bag.pop();
+      out.push(askCard(row[1], row[0], u, LANG_WHY[u.kind]));
+    }
+    return out;
+  }
+  /* ⭐ THE TYPE CARDS ARE THE ORDINARY GRAMMAR CARD, not a new one, so the
+     clue, the help button, the four-way reader and the reason line all come
+     with them.
+     ⚠️ AND THE END MARK PARTNER IS LEFT OUT HERE, on purpose. In an ordinary
+     round the pair is dealt together because the mark follows from the kind.
+     This round is ten cards aimed at what came back marked, and the end marks
+     on Quiz 2 did not: spending half of it on a card he is getting right would
+     be the flat round this whole thing exists to stop. */
+  function langTypeCards(n){
+    var pool = [];
+    myLessons().forEach(function(u){
+      u.lines.forEach(function(row){
+        var r = record['w:' + row[1]] || { m: 0, h: 0 };
+        pool.push({ c: { k: 'st', t: row[0], mark: row[2], w: row[1], u: u.id },
+                    /* the four he actually got wrong on the quiz first, then
+                       whichever kind the record says keeps catching him */
+                    s: (row[3] ? 3 : 0) + r.m * 2 - r.h * 0.5 + Math.random() * 0.4 });
+      });
+    });
+    pool.sort(function(a, b){ return b.s - a.s; });
+    return pool.slice(0, n).map(function(x){ return x.c; });
+  }
 
   /* =========================================================
      PROOFREADING. He finds what is wrong in a sentence and marks
@@ -3377,7 +3543,7 @@
   var GROUP_PACE = 10;   // ⚠️ must match GROUP_PACE on the server, which scores it
   var state = {
     subject: 'times', tables: [], sets: [1], topics: [0], mode: 'flip', shuffle: true,
-    offered: 0, wroteFor: '', units: [], lessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: false, aiOff: 0,
+    offered: 0, wroteFor: '', units: [], lessons: [], seenLessons: [], chapters: [], study: 'both', penLessons: [], maths: [], teach: true, times: {}, redTimes: {}, armedFor: '', write: 'copy', extras: true, defs: true, tries: 0, hand: true, autoMark: false, aiOff: 0,
     dealt: false, roundId: '', sitting: 0, answers: [], marked: null, testing: false, manual: false,
     timer: 'off', secs: 5, pace: 10, pair: 'cat', sound: true,
     rounds: [], roundIdx: 0,
@@ -3810,10 +3976,19 @@
      be the same string and are not the same card. */
   function isTermKey(k){ return k.slice(0, 2) === 'q:'; }
   function isMathKey(k){ return k.slice(0, 2) === 'm:'; }
-  var MATH_NAMES = { add: 'Adding three numbers', sub: 'Taking away',
+  /* ⚠️ EVERY NEW `kind` NEEDS A LINE HERE or it shows on Keeps missing these as
+     the bare key. `add` covers both the three-number unit and the two-number
+     one off his Test 1, so it is named for the skill rather than the shape. */
+  var MATH_NAMES = { add: 'Column addition', sub: 'Taking away',
                      mul: 'Multiplying', div: 'Dividing', roman: 'Roman numerals',
                      clock: 'Drawing the hands', missing: 'What goes in the box',
-                     words: 'Writing the number' };
+                     words: 'Writing the number', angles: 'Right angles in a shape',
+                     measure: 'How many in one', coins: 'Counting up coins',
+                     /* ⚠️ Grammar, not arithmetic. They are ask cards, and an ask
+                        card is keyed `m:` by the one generic rule in cardKey, so
+                        they have to be named here or they show as the bare key. */
+                     split: 'The subject and predicate line',
+                     runon: 'Two sentences stuck together' };
   function isAskKey(k){ return k.slice(0, 2) === 'a:'; }
   function termByWord(w){
     for (var i = 0; i < STUDY.length; i++){
@@ -3884,6 +4059,7 @@
         if (typeof s.wroteFor === 'string') state.wroteFor = s.wroteFor;
         if (Array.isArray(s.units) && s.units.length) state.units = s.units;
         if (Array.isArray(s.lessons) && s.lessons.length) state.lessons = s.lessons;
+        if (Array.isArray(s.seenLessons)) state.seenLessons = s.seenLessons;
         if (Array.isArray(s.chapters) && s.chapters.length) state.chapters = s.chapters;
         if (s.study === 'both' || s.study === 'terms' || s.study === 'asks') state.study = s.study;
         if (Array.isArray(s.penLessons) && s.penLessons.length) state.penLessons = s.penLessons;
@@ -3926,7 +4102,8 @@
       localStorage.setItem(STORE, JSON.stringify({
         subject: state.subject, tables: state.tables, sets: state.sets, topics: state.topics,
       chapters: state.chapters, study: state.study, penLessons: state.penLessons, maths: state.maths,
-        units: state.units, lessons: state.lessons, teach: state.teach, times: state.times, redTimes: state.redTimes,
+        units: state.units, lessons: state.lessons, seenLessons: state.seenLessons,
+        teach: state.teach, times: state.times, redTimes: state.redTimes,
         armedFor: state.armedFor,
         offered: state.offered, wroteFor: state.wroteFor,
         write: state.write, extras: state.extras, defs: state.defs, hand: state.hand,
@@ -4156,6 +4333,12 @@
                     : 'he has not met this one yet.';
   }
   function paintWatch(){
+    /* 🔴 GRAMMAR FIRST, and it does not go through a picker. The three Lesson
+       19 sets are not lessons he can tick, and `state.lessons` was saved
+       before Quiz 2 existed anyway, which is the exact way the arithmetic sets
+       were invisible for two versions. A focus set the child cannot reach is
+       not a focus set. */
+    if (sentenceNow()){ paintLangFocus(); return; }
     var maths = focusMaths();
     if (maths.length){ paintMathFocus(maths); return; }
     var u = watchUnit();
@@ -4205,57 +4388,194 @@
      verify he hasn't regressed", and it is also what stops a set he has aced
      twice from disappearing and never being checked again. The rest of the
      round is shared out by how badly it is going. */
+  /* ⭐ A FRESH PAPER OUTWEIGHS AN OLD ONE, and it wears off. With nothing on
+     the record every set weighs exactly the same, so the night a marked paper
+     comes home its four new faults sorted BELOW the four he has been drilling
+     for a week and went into the rotation instead. That is precisely backwards.
+     `lift` is how many marks the question actually cost him, quartered, and it
+     drops away once he has had three clean goes at that kind, so what his
+     teacher marked in September is not still steering the round in December.
+     ⚠️ Set it on the units off the newest paper. It is the only prior there is
+     before he has answered anything. */
   function mathWeight(u){
     var r = record['m:' + u.kind];
-    if (!r) return 2;                       // never met: worth a proper look
-    return Math.max(0.4, r.m * 2 - r.h * 0.5 + 0.4);
+    var lift = (!r || r.h < 3) ? (u.lift || 0) : 0;
+    if (!r) return 2 + lift;                // never met: worth a proper look
+    return Math.max(0.4, r.m * 2 - r.h * 0.5 + 0.4) + lift;
   }
-  function mathFocusCards(list){
-    var want = {}, left = MATH_FOCUS_CAP, total = 0, out = [];
-    list.forEach(function(u){ want[u.id] = 1; left--; total += mathWeight(u); });
-    /* 🔴 SHARE OUT WHAT IS LEFT, not the whole round. Dividing the full ten by
-       weight after already reserving one each meant the first two sets ate
-       everything: on four equal weights it came out 4, 4, 1, 1 instead of
-       3, 3, 2, 2. Caught by printing the plan rather than reading it.
-       Biggest share first, so the rounding lands on the weakest set rather
-       than on whichever happens to be last in the list. */
-    var spare = left;
-    list.slice().sort(function(a, b){ return mathWeight(b) - mathWeight(a); })
-        .forEach(function(u){
-      var take = Math.min(left, Math.round(spare * mathWeight(u) / total));
-      want[u.id] += take; left -= take;
+  /* 🔴 RESERVING A CARD FOR EVERY SET STOPS WORKING ONCE THERE ARE ENOUGH
+     SETS, and his Test 1 took it from four to eight. One each out of ten left
+     two cards to share, so the round came out flat: one card of the thing he
+     cannot do and one card of the thing he aced, which is the opposite of what
+     was asked for (Andrew, 2026-09-11: "weigh the ones he gets wrong so the
+     focus test shows more of those").
+
+     So the guarantee moved. The WEAK sets carry the round and share it out by
+     how badly it is going; the ones he is acing keep their look in, but by
+     ROTATION rather than all at once, fewest-asked first. Nothing disappears
+     for good, and nothing he can already do eats a card off the thing he
+     cannot. */
+  var MATH_HOT = 4, MATH_CHECK = 2;
+  /* ⭐ ONE ALLOCATOR, TWO SUBJECTS. Arithmetic and Language want the identical
+     thing off different data: the sets he is losing marks on carry the round,
+     the ones he has get their look in by rotation. Written twice it would
+     drift, the way every second count on this page has. */
+  function focusPlan(list, cap, hotN, checkN, weigh, asked){
+    if (!list.length) return [];
+    var scored = list.map(function(u){
+      return { u: u, w: weigh(u), asked: asked(u) };
     });
-    if (left > 0 && list.length){
-      var top = list.slice().sort(function(a, b){ return mathWeight(b) - mathWeight(a); })[0];
-      want[top.id] += left;
-    }
-    list.forEach(function(u){ out = out.concat(mathCards(u).slice(0, want[u.id])); });
+    scored.sort(function(a, b){ return b.w - a.w || a.asked - b.asked; });
+    /* ⚠️ THE TOP FEW, ALWAYS, rather than everything over some threshold. A
+       threshold reads well and behaves badly at both ends: on a night when
+       nothing is going wrong it dropped to two sets and gave one of them four
+       cards, and on a night with one stubborn fault it gave that fault eight
+       of the ten. The sort is by weight and then by FEWEST ASKED, so on a
+       night when he is level everywhere the same few are not picked again. */
+    var hot = scored.slice(0, hotN);
+    var rest = scored.slice(hotN);
+    // rotation: the one nobody has looked at for longest goes first
+    rest.sort(function(a, b){ return a.asked - b.asked || b.w - a.w; });
+    var check = rest.slice(0, Math.min(checkN, Math.max(0, cap - hot.length)));
+    var left = cap - check.length, total = 0;
+    hot.forEach(function(x){ total += x.w; left--; });     // one each, reserved
+    /* 🔴 SHARE OUT WHAT IS LEFT, not the whole round, or the first two sets eat
+       everything. Biggest share first so the rounding lands on the weakest. */
+    var spare = Math.max(0, left);
+    hot.forEach(function(x){
+      var take = Math.min(left, Math.round(spare * x.w / (total || 1)));
+      x.take = 1 + take; left -= take;
+    });
+    if (left > 0 && hot.length) hot[0].take += left;
+    check.forEach(function(x){ x.take = 1; });
+    return hot.map(function(x){ return { u: x.u, take: x.take, w: x.w, check: false }; })
+      .concat(check.map(function(x){ return { u: x.u, take: x.take, w: x.w, check: true }; }));
+  }
+  function mathAsked(u){
+    var r = record['m:' + u.kind] || { m: 0, h: 0 };
+    return r.m + r.h;
+  }
+  function mathFocusPlan(list){
+    return focusPlan(list, MATH_FOCUS_CAP, MATH_HOT, MATH_CHECK, mathWeight, mathAsked);
+  }
+  /* ⚠️ ONE BUILDER, and the chip list reads the same plan. Counting the round
+     a second time alongside the deck has drifted from it three times on this
+     page already. */
+  function mathFocusCards(list){
+    var out = [];
+    mathFocusPlan(list).forEach(function(row){
+      out = out.concat(mathCards(row.u).slice(0, row.take));
+    });
     shuffle(out);
     return out.slice(0, MATH_FOCUS_CAP);
   }
   function paintMathFocus(list){
-    var n = 0;
+    var plan = mathFocusPlan(list), n = 0;
     el.watchBlock.classList.remove('hide');
     el.watchList.innerHTML = '';
-    list.forEach(function(u){
-      n += (u.count || 10);
+    plan.forEach(function(row){
+      n += row.take;
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'miss tappable';
       b.addEventListener('click', function(ev){
         ev.currentTarget.classList.toggle('open'); sfx.tap();
       });
-      b.innerHTML = '<span class="mkey">' + esc(u.title) + '</span>'
-        + '<span class="ans">' + esc(u.what) + '  \u2014  ' + esc(u.from) + '</span>';
+      /* ⭐ THE COUNT IS ON THE CHIP. The whole point of weighting the round is
+         that a grown-up can see it happening, and "4 tonight" against "1
+         tonight, just checking" says it without a word of explanation. */
+      var why = row.check ? '1 tonight, just checking he has not slipped back'
+              : row.take + (row.take === 1 ? ' tonight' : ' tonight, this is where he is losing marks');
+      b.innerHTML = '<span class="mkey">' + esc(row.u.title) + '  \u00b7  ' + esc(why) + '</span>'
+        + '<span class="ans">' + esc(row.u.what) + '  \u2014  ' + esc(row.u.from) + '</span>';
       el.watchList.appendChild(b);
     });
     el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
-      + Math.min(n, MATH_FOCUS_CAP) + ' cards, off the questions his teacher marked</small>';
+      + Math.min(n, MATH_FOCUS_CAP) + ' cards, weighted to what he keeps getting wrong</small>';
     el.watchNote.textContent = 'Every one of these is built from a question he actually got '
       + 'wrong on a marked paper, and each card says how to do it rather than only whether he '
-      + 'got it. Tap one to see where it came from. Practice only, nothing here is scored.';
+      + 'got it. The ones he keeps missing get most of the round; the ones he has nailed still '
+      + 'come round on their own, one at a time, so nothing goes unchecked. Tap one to see '
+      + 'where it came from. Practice only, nothing here is scored.';
+  }
+  /* ⭐ THE SAME BUTTON, WEARING THE GRAMMAR (Andrew, 2026-09-11: "the English,
+     do the same concept of the focus test, focus on his weaknesses").
+
+     Quiz 2 came back 59 and the whole of it is three faults, so the round is
+     three sets sharing ten cards by how badly each is going, exactly as the
+     arithmetic does. With only three sets all three are always in it; what
+     changes night to night is how many cards each one gets.
+
+     ⚠️ THE LIFT IS THE QUIZ ITSELF, and it wears off. A set starts heavier
+     than the record alone would make it, because the paper is newer than
+     anything the app has seen him do, and the lift drops away once he has had
+     three clean goes at it. Without that, the marks his teacher made in
+     September would still be steering the round in December. */
+  var LANG_FOCUS_CAP = 10, LANG_HOT = 2, LANG_CHECK = 1;
+  function langRecord(u){
+    if (u.kind !== 'type') return record['m:' + u.kind] || { m: 0, h: 0 };
+    /* ⚠️ The type card has no line of its own: it is an ordinary grammar card
+       and those are keyed by the ANSWER, `w:Imp.` and the other three. So the
+       set's record is the four of them added up. */
+    var t = { m: 0, h: 0 };
+    ['Dec.', 'Int.', 'Exc.', 'Imp.'].forEach(function(k){
+      var r = record['w:' + k];
+      if (r){ t.m += r.m; t.h += r.h; }
+    });
+    return t;
+  }
+  function langWeight(u){
+    var r = langRecord(u);
+    var lift = r.h < 3 ? (u.lift || 0) : 0;
+    if (!r.m && !r.h) return 2 + lift;              // never met: worth a proper look
+    return Math.max(0.4, r.m * 2 - r.h * 0.5 + 0.4) + lift;
+  }
+  function langAsked(u){ var r = langRecord(u); return r.m + r.h; }
+  function langFocusPlan(){
+    return focusPlan(LANG_SETS, LANG_FOCUS_CAP, LANG_HOT, LANG_CHECK, langWeight, langAsked);
+  }
+  function langFocusCards(){
+    var out = [];
+    langFocusPlan().forEach(function(row){
+      out = out.concat(row.u.kind === 'type' ? langTypeCards(row.take)
+                                             : langAskCards(row.u, row.take));
+    });
+    shuffle(out);
+    return out.slice(0, LANG_FOCUS_CAP);
+  }
+  function paintLangFocus(){
+    var plan = langFocusPlan(), n = 0;
+    el.watchBlock.classList.remove('hide');
+    el.watchList.innerHTML = '';
+    plan.forEach(function(row){
+      n += row.take;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'miss tappable';
+      b.addEventListener('click', function(ev){
+        ev.currentTarget.classList.toggle('open'); sfx.tap();
+      });
+      var why = row.check ? '1 tonight, just checking he has not slipped back'
+              : row.take + (row.take === 1 ? ' tonight'
+                                           : ' tonight, this is where he is losing marks');
+      b.innerHTML = '<span class="mkey">' + esc(row.u.title) + '  ·  ' + esc(why) + '</span>'
+        + '<span class="ans">' + esc(row.u.what) + '  —  ' + esc(row.u.from) + '</span>';
+      el.watchList.appendChild(b);
+    });
+    el.watchBtn.innerHTML = '🏆 The A+ 100 Maker<small>'
+      + Math.min(n, LANG_FOCUS_CAP) + ' cards, weighted to what Quiz 2 came back marked on</small>';
+    el.watchNote.textContent = 'Every one of these is a question he actually lost marks on, '
+      + 'and each card says how to work it out rather than only whether he got it. The '
+      + 'abbreviation is checked for its capital letter now, because all eight of his were '
+      + 'written small. Tap one to see where it came from. Practice only, nothing here is scored.';
   }
   el.watchBtn.addEventListener('click', function(){
+    if (sentenceNow()){
+      var lang = langFocusCards();
+      if (!lang.length) return;
+      startRun([{ label: 'The A+ 100 Maker', cards: lang }], true);
+      return;
+    }
     var maths = focusMaths();
     if (maths.length){
       var sums = mathFocusCards(maths);
@@ -6303,10 +6623,24 @@
     for (var i = 0; i < mine.length; i++) if (mine[i].id === id) return mine[i];
     return null;
   }
+  /* 🔴 A NEW LESSON HAS TO TICK ITSELF ON. `state.lessons` is saved, so Quiz 2
+     did not exist when his iPad last wrote that list and the ordinary round
+     went on dealing lessons 6 and 7 for ever. That is the same way units 305
+     and 306 were invisible for two versions, and it is worth having the rule
+     written down once rather than found again next time.
+     `seenLessons` is the list he has actually been OFFERED. Anything not in it
+     is new, so it goes on, and his own choices among the ones he has seen are
+     left exactly as they are. */
   function fixLessons(){
     var mine = myLessons();
+    if (!Array.isArray(state.seenLessons)) state.seenLessons = [];
     state.lessons = state.lessons.filter(function(id){
       return mine.some(function(u){ return u.id === id; });
+    });
+    mine.forEach(function(u){
+      if (state.seenLessons.indexOf(u.id) !== -1) return;
+      state.seenLessons.push(u.id);
+      if (state.lessons.indexOf(u.id) === -1) state.lessons.push(u.id);
     });
     if (!state.lessons.length && mine.length) state.lessons = mine.map(function(u){ return u.id; });
   }
@@ -7439,6 +7773,75 @@
       k: 'tr', w: 'against', pass: 'own', u: 201, row: 1
     },
 
+
+    /* --- Spelling tests 1-6, 10 September, scored 56 F ---
+       ⭐ HE IS OFF THIS LIST ALREADY (Andrew: "he's on a new list now but this
+       is so you know what he made and can see his weaknesses"). So these are
+       not a week to study, they are here because this deck is the one place on
+       the site that keeps what a red pen actually said.
+
+       🔴 AND THEY ARE ALL ONE FAULT. autumn without its u, easily without its
+       i, struggle with one g, disciple without its c: every single one is a
+       letter he does not SAY, so it does not get written. That is the same
+       thing the days of the week did on the 2 September test, wensday and
+       Tusday and Thrsday, and it is the thing to keep saying to him. See the
+       note on his hearing the word rather than seeing it.
+
+       ⚠️ TWO OF HIS SEVEN ARE NOT IN HERE. Words 3 and 8 on the sheet are a
+       run of joined loops I cannot read with any confidence, and I do not know
+       what either word was meant to be either, so there is nothing honest to
+       put on a card. Andrew has the paper. Anything ambiguous stays out: a
+       deck that drills the wrong fault is worse than a short one. */
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You wrote miricle. It is mir-A-cle. Say it slowly and the a is there in the middle.',
+      k: 'w', w: 'miracle', s: 'Feeding five thousand people was a miracle.'
+    },
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You wrote disiple. There is a C in it, dis-CI-ple, and it says s.',
+      k: 'w', w: 'disciple', s: 'Peter was a disciple who followed Jesus.'
+    },
+    {
+      /* ⚠️ A JUDGEMENT, AND WORTH SAYING SO. The word is spelled correctly and
+         still crossed, and the only thing left on the line to be wrong is the
+         capital B, which is the same shape he writes at the front of Bible on
+         the line above. His teacher has marked him for a capital three times
+         on other papers, so it fits, but it is read off the photograph. */
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You spelled bramble right and it was still crossed. It is the capital B. '
+         + 'A bramble is not a name, so it starts small.',
+      k: 'w', w: 'bramble', s: 'A bramble grew right across the path.'
+    },
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You wrote it with an a. It is strawBERRY, and a berry is a thing you can eat.',
+      k: 'w', w: 'strawberry', s: 'He picked one strawberry and ate it straight away.'
+    },
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You wrote autmn. The u you cannot hear is in there, au-TU-mn, exactly like '
+         + 'the letter nobody says in Wednesday.',
+      k: 'w', w: 'autumn', s: 'The leaves come down in autumn.'
+    },
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You wrote strugle in your own meaning. It has a double g, strug-gle.',
+      k: 'w', w: 'struggle', m: 'a difficult task'
+    },
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'Your meaning for valuable was right and worth was marked inside it. '
+         + 'It is w-o-r-t-h.',
+      k: 'w', w: 'worth', m: 'what a thing is really valued at'
+    },
+    {
+      who: 'Seth', from: 'Spelling tests 1-6, 10 September',
+      why: 'You wrote easly. It is eas-I-ly. The i is easy to skip because you do not '
+         + 'say it, which is the same thing that lost the u in autumn.',
+      k: 'w', w: 'easily', m: 'without any trouble'
+    },
+
     /* --- Bailey, Arithmetic 5 Test 1, 28 August, 77 ---
        ⚠️ THESE ARE THE PROBLEMS OFF HER PAPER, NOT A LIST OF WHAT SHE GOT
        WRONG, and the difference matters. Question 2 carries the whole of her
@@ -7575,6 +7978,69 @@
       what: 'A number said in words to write in figures. Every one has a nought inside it, '
           + 'because three hundred eight written as 38 is the mistake.',
       count: 10, from: 'Lesson 19, question 6'
+    },
+    /* ---------- Seth, off Arithmetic 3 Test 1 (Lesson 18), 9 September ----------
+       Written 78 C, oral 100. The written marks he lost are four separate
+       faults and only ONE of them is the column method, which is why they are
+       four units rather than one:
+         q1c  378 + 145 came out 522 for 523                        -> 307
+         q2   the right angle column, every one of the four marked   -> 308
+         q3d  1 yd = 12 ft   q3e  1 yd = 12 in                       -> 309
+         q4a  a 92c pile of coins came out $1.17                     -> 310
+       ⚠️ Everything else on the page is right: sides and vertexes both full
+       marks, the commas, the value of the circled digit, 46-29 and 406-293. */
+    {
+      /* 🔴 TWO NUMBERS, NOT THREE, and that is the whole difference from 301.
+         His page had 8+2+5 and 28+32 right and 378+145 wrong, so the shape he
+         is missing is the 3-digit one with two carries running through it. He
+         wrote 522: the 13 out of 8+5 put its 3 somewhere else.
+         ⚠️ Shares the `m:add` line on the record with 301 on purpose. Both are
+         column addition and the record keeps a line per KIND, so splitting
+         them would be claiming they are different skills when they are not. */
+      id: 307, who: 'Seth', kind: 'add', title: 'Adding two bigger numbers',
+      what: 'Two 3-digit numbers stacked in a column, always with a carry, because '
+          + '378 + 145 came out 522 and the 3 out of 8 + 5 never landed.',
+      n: 2, digits: 3, count: 10, from: 'Arithmetic Test 1, question 1c', lift: 0.75
+    },
+    {
+      /* 🔴 HE ANSWERED THE RIGHT ANGLE COLUMN WITH THE NUMBER OF SIDES. Every
+         row: triangle 3, trapezoid 1, square 4, pentagon 5, and the sides
+         column beside it reads 3, 4, 4, 5. All four marked, 8 marks, the
+         biggest single loss on the paper. So the card DELIBERATELY hands him
+         the number of sides first and then asks for the right angles, because
+         that is exactly the trap he fell into.
+         ⚠️ Only shapes whose answer is not arguable are in the pool. His
+         purple trapezoid had two square corners, but a trapezoid in general
+         has none, so asking about "a trapezoid" would mark a right answer
+         wrong. A triangle with a square corner is in, so he does not learn the
+         false rule that a triangle can never have one. */
+      id: 308, who: 'Seth', kind: 'angles', title: 'Sides, corners and right angles',
+      what: 'How many right angles a shape has, when he has just been told how many '
+          + 'sides it has, because he answered the right angle column with the side '
+          + 'count all four times.',
+      count: 10, from: 'Arithmetic Test 1, question 2', lift: 2
+    },
+    {
+      /* ⚠️ THE YARD IS THE FAULT AND NOTHING ELSE IS. 1 hr = 60 min, 1 day =
+         24 hr and 1 ft = 12 in were all right, then he wrote 12 for BOTH yard
+         questions: the twelve he had just used for the foot came along with
+         him. So the yard facts are three times as likely to be dealt, and
+         every yard card says in so many words where the 12 belongs. */
+      id: 309, who: 'Seth', kind: 'measure', title: 'How many in one',
+      what: 'Feet in a yard, inches in a yard, minutes in an hour. Weighted to the '
+          + 'yard, because he answered 12 feet AND 12 inches in a yard.',
+      count: 10, from: 'Arithmetic Test 1, questions 3d and 3e', lift: 1.5
+    },
+    {
+      /* ⚠️ NAMED, NOT DRAWN. The pile on his test is a photograph of real
+         coins and there is nothing on this page that can draw one honestly, so
+         the card names them instead. That practises the counting, which is
+         where the 25 went astray, and not the recognising. Worth saying out
+         loud rather than pretending the card covers both. */
+      id: 310, who: 'Seth', kind: 'coins', title: 'Counting up coins',
+      what: 'A handful of coins named out, to add up in cents. His 92¢ pile came '
+          + 'out $1.17, which is one quarter too many.',
+      count: 10, from: 'Arithmetic Test 1, question 4a', lift: 0.75
     },
     {
       id: 303, who: 'Seth', kind: 'clock', title: 'Draw the hands',
@@ -7753,6 +8219,90 @@
       return askCard(shown, numWords(n), u, why);
     }
     return askCard('308,643', numWords(308643), u, 'The part before the comma is 308.');
+  }
+  /* ⚠️ EVERY SHAPE IN HERE HAS ONE ANSWER A TEACHER WOULD ACCEPT, which is why
+     the pool is short and why three of them describe themselves. "A trapezoid"
+     is not in it: the purple one on his test has two square corners and a
+     trapezoid in general has none, so the card would mark a right answer
+     wrong. "A triangle with one square corner" IS in it, so what he takes away
+     is not the false rule that a triangle never has one. */
+  var SHAPE_FACTS = [
+    { n: 'a square', sides: 4, vx: 4, right: 4 },
+    { n: 'a rectangle', sides: 4, vx: 4, right: 4 },
+    { n: 'a triangle with three equal sides', sides: 3, vx: 3, right: 0 },
+    { n: 'a triangle with one square corner', sides: 3, vx: 3, right: 1 },
+    { n: 'a pentagon with five equal sides', sides: 5, vx: 5, right: 0 },
+    { n: 'a hexagon with six equal sides', sides: 6, vx: 6, right: 0 },
+    { n: 'an octagon with eight equal sides', sides: 8, vx: 8, right: 0 }
+  ];
+  function makeAngles(u){
+    var s = SHAPE_FACTS[randInt(0, SHAPE_FACTS.length - 1)];
+    /* ⭐ THE SIDE COUNT IS HANDED TO HIM ON PURPOSE. On his test the sides
+       column sat right beside the right angle column and he copied it across
+       four times, so a card that hides the sides is not asking the question he
+       got wrong. */
+    if (randInt(0, 4) === 0){
+      return askCard(String(s.vx), 'How many vertexes does ' + s.n + ' have?', u,
+        'A vertex is a corner, where two sides meet. Count the corners.');
+    }
+    return askCard(String(s.right),
+      capFirst(s.n) + ' has ' + s.sides + ' sides. How many RIGHT ANGLES does it have?', u,
+      'A right angle is a square corner, like the corner of this page. Count only the '
+      + 'corners that are square. The number of sides is not the answer.');
+  }
+  function capFirst(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
+  /* ⚠️ THE YARD IS LISTED THREE TIMES OVER and nothing else is. He had 1 hr,
+     1 day and 1 ft all right and then wrote 12 for BOTH yard questions, so the
+     twelve he had just used for the foot is what has to be argued with. */
+  var MEASURE_FACTS = [
+    ['1 yd. = ___ ft.', '3', 'Think of a yardstick. It is three rulers laid end to end, '
+      + 'and a ruler is one foot. The 12 belongs to the foot: 12 inches in a foot.'],
+    ['1 yd. = ___ in.', '36', 'A yard is 3 feet and every foot is 12 inches, so it is '
+      + '3 lots of 12.'],
+    ['2 yd. = ___ ft.', '6', 'One yard is 3 feet, so two yards is that twice.'],
+    ['1 ft. = ___ in.', '12', 'A ruler is one foot long. Count the inches marked on it.'],
+    ['1 hr. = ___ min.', '60', 'Go round the clock face. Each number is 5 minutes and '
+      + 'there are 12 of them.'],
+    ['1 day = ___ hr.', '24', 'The clock goes round twice in a day, once for the morning '
+      + 'and once for the night, and each time round is 12 hours.'],
+    ['1 min. = ___ sec.', '60', 'The same as the minutes in an hour.'],
+    ['1 wk. = ___ days', '7', 'Count them: Sunday to Saturday.']
+  ];
+  function makeMeasure(u){
+    // the two yard facts weighted three to one against the rest
+    var pool = [0, 0, 0, 1, 1, 1, 2, 3, 4, 5, 6, 7];
+    var f = MEASURE_FACTS[pool[randInt(0, pool.length - 1)]];
+    return askCard(f[1], f[0], u, f[2]);
+  }
+  /* ⚠️ THE COINS ARE NAMED, NOT DRAWN, and that is a real limit worth knowing:
+     this practises adding them up, which is where his 92¢ became $1.17, and
+     not telling a quarter from a dollar coin by sight. Kept under a dollar,
+     like both piles on his test, so the answer is a plain number of cents and
+     the checker reads digits rather than a $ and a point. */
+  function makeCoins(u){
+    for (var tries = 0; tries < 200; tries++){
+      var q = randInt(0, 3), d = randInt(0, 3), n = randInt(0, 2), p = randInt(0, 4);
+      var total = q * 25 + d * 10 + n * 5 + p;
+      if (total < 20 || total > 99) continue;
+      var kinds = (q ? 1 : 0) + (d ? 1 : 0) + (n ? 1 : 0) + (p ? 1 : 0);
+      if (kinds < 3) continue;             // a real handful, like the one on his page
+      var say = [];
+      if (q) say.push(coinsSay(q, 'quarter'));
+      if (d) say.push(coinsSay(d, 'dime'));
+      if (n) say.push(coinsSay(n, 'nickel'));
+      if (p) say.push(coinsSay(p, 'penny', 'pennies'));
+      var face = listSay(say) + '.  How many cents?';
+      return askCard(String(total), face, u,
+        'Start with the biggest and count on. Quarters first: 25, 50, 75. Then the dimes '
+        + 'in tens, the nickels in fives, and the pennies one at a time.');
+    }
+    return askCard('92', '3 quarters, 1 dime, 1 nickel and 2 pennies.  How many cents?', u,
+      'Quarters first: 25, 50, 75. Then the dime, the nickel and the pennies.');
+  }
+  function coinsSay(n, one, many){ return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function listSay(parts){
+    if (parts.length < 2) return parts.join('');
+    return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
   }
   function askCard(answer, face, u, why){
     return { k: 'q', w: answer, m: face, u: u.id, kind: u.kind,
@@ -8089,6 +8639,8 @@
       out.push(u.kind === 'add' ? makeAdd(u) : u.kind === 'sub' ? makeSub(u)
              : u.kind === 'mul' ? makeMul(u) : u.kind === 'div' ? makeDiv(u)
              : u.kind === 'missing' ? makeMissing(u) : u.kind === 'words' ? makeWords(u)
+             : u.kind === 'angles' ? makeAngles(u) : u.kind === 'measure' ? makeMeasure(u)
+             : u.kind === 'coins' ? makeCoins(u)
              : u.kind === 'roman' ? makeRoman(u) : makeClock(u));
     }
     return out;
@@ -8117,7 +8669,8 @@
       var p = String(u.from).split(',')[0];
       if (!papers[p]){ papers[p] = 1; out.push(p); }
     });
-    return out.join(' and ') + ', the questions she lost marks on';
+    // ⚠️ not "she": this line is read by Seth's units too, off his Test 1.
+    return out.join(' and ') + ', the questions that came back marked';
   }
   function mathSummary(){
     var picked = myMath().filter(function(u){ return state.maths.indexOf(u.id) !== -1; });
@@ -10551,7 +11104,16 @@
        and the job got lost in the middle of it. The red line says what to do
        and nothing else; the small line above the sentence is the rule, which
        is printed at the top of his sheet and he may look at it. */
+    /* ⚠️ AND IT SAYS CAPITAL AND PERIOD. On Quiz 2 he wrote all eight answers
+       as dec, int, exc with no capital and no period, and his teacher ruled
+       the capitalize mark under every one of them. Asking for the abbreviation
+       without saying what an abbreviation looks like was leaving him to
+       remember the half of it he keeps forgetting. Kept to one short clause:
+       three lines of red on a phone push the pad under the fold. */
+    /* ⚠️ No period of its own: the last choice in the list already ends with
+       one, and adding another read "or Imp.. Capital letter". */
     var task = c.k === 'st' ? 'What kind is it? Write ' + kindList
+                            + ' Capital letter, and a period.'
       : c.k === 'sm' ? 'What goes on the end? Draw it:  .  ?  or  !'
       /* The pad has two rules under a meaning card, so the instruction names
          them. Typed, there is one field and it is still one line. */
