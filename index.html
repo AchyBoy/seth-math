@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.26">
+<meta name="x-cards-version" content="5.27">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -575,29 +575,12 @@
   /* a ring round a word that is spelled wrong */
   .pw.ringed{color:var(--red);box-shadow:0 0 0 3px var(--red) inset;border-radius:999px;
     padding-left:12px;padding-right:12px}
-  /* ⭐ THE SPACE BETWEEN TWO WORDS IS TAPPABLE, because that is where a
-     proofreader's mark goes and putting it THERE is the exercise (Andrew,
-     2026-09-11: "he needs some that are just like his workbook where he adds
-     the comma and does the mark ^ where it goes on the sentence itself").
-     Wide enough for a finger and drawn as a faint tick until it is used, so
-     the sentence still reads as a sentence rather than as a row of buttons. */
-  .gp{border:none;background:none;padding:6px 0 14px;width:20px;border-radius:8px;
-    position:relative;line-height:1.2;font-size:30px}
-  .gp::before{content:'';position:absolute;left:50%;transform:translateX(-50%);
-    bottom:18px;width:2px;height:16px;background:var(--line);border-radius:2px}
-  .gp:active{transform:scale(.95)}
-  .gp.no{background:var(--red-soft)}
-  .gp.set::before{display:none}
-  /* the mark he put in: the punctuation sitting over a caret, in red, the way
-     his teacher writes it on his page */
-  .gp .ins{position:absolute;left:50%;transform:translateX(-50%);bottom:0;
-    color:var(--red);font-weight:800;line-height:1;white-space:nowrap;font-size:24px}
-  .gp .ins b{display:block;font-size:20px;margin-bottom:-3px}
-  /* a comma his teacher struck out, because the whole of a run-on fix is that
-     the comma comes out and a period goes in */
-  .pw .cut{position:relative;color:var(--red)}
-  .pw .cut::after{content:'';position:absolute;left:-1px;right:-1px;top:45%;height:2px;
-    background:var(--red);transform:rotate(-20deg)}
+  .mark{display:none}
+  body.marking .mark{display:block;max-width:900px;margin:8px auto auto}
+  body.marking .screen.on{justify-content:flex-start}
+  body.marking .stage,body.marking .next,body.marking .grade{display:none}
+  #markCv{display:block;width:100%;height:auto;background:#fff;border:2px solid var(--line);
+    border-radius:16px;touch-action:none}
   .pnote{text-align:center;font-size:16px;color:var(--muted);margin:16px 2px 0;line-height:1.45}
 
   /* The teaching page. Only on screen while a teach card is up, and it is the
@@ -1746,6 +1729,28 @@
       <div class="crow">
         <button type="button" class="small" id="clockUndo">↩︎ Start again</button>
         <button type="button" class="wgo" id="clockDone">Done</button>
+      </div>
+    </div>
+    <!-- ⭐ HE DRAWS THE MARK, HE DOES NOT TAP IT (Andrew, 2026-09-12: "instead
+         of tapping, can he do it just like his paper where he draws it? And I
+         can have you score it when he's done"). Same correction he has made
+         about the number pad and about the grammar buttons, and it is right
+         for the same reason: tapping marks itself honestly and practises
+         nothing, because on the page he draws a caret with a pen.
+         ⚠️ A SIBLING of the writing panel, never inside it. .wpanel is
+         display:none unless body.write and this is not a writing card. -->
+    <div class="mark" id="markBox">
+      <p class="ptask" id="markTask"></p>
+      <canvas id="markCv"></canvas>
+      <p class="cnote" id="markNote"></p>
+      <div class="crow" id="markRow">
+        <button type="button" class="small" id="markUndo">↩︎ Undo</button>
+        <button type="button" class="small" id="markClear">Start again</button>
+        <button type="button" class="wgo" id="markDone">Done</button>
+      </div>
+      <div class="crow hide" id="markSaid">
+        <button type="button" class="small" id="markNo">Missed it</button>
+        <button type="button" class="wgo" id="markYes">I got it</button>
       </div>
     </div>
     <div class="teach" id="teachBox">
@@ -3512,17 +3517,23 @@
       var at = steps[0].at;
       steps[0].say = 'A comma cannot join two whole sentences. The period goes there, '
                    + 'and the comma is crossed out.';
-      steps[0].ask = 'Two sentences are stuck together. Tap the space where the first '
-                   + 'one ENDS, and a period goes in.';
+      /* ⚠️ ONE INSTRUCTION, NOT A SEQUENCE. While the marks were tapped these
+         were asked one at a time; he draws both before he presses Done now, so
+         they are read together and each one has to be a clause rather than a
+         turn. */
+      steps[0].ask = 'Two sentences are stuck together. Put a caret \u2227 with a period '
+                   + 'on it where the first one ENDS, and cross the comma out.';
       steps.push({ do: 'cap', at: at, fix: words[at].charAt(0).toUpperCase() + words[at].slice(1),
-                   ask: 'Now the next sentence needs a capital. Tap the word it starts with.',
+                   ask: 'Then rule three lines under the letter that has to be a capital.',
                    say: 'Three lines under a letter means "make this a capital". '
                       + 'Every sentence starts with one.' });
     } else {
       steps.forEach(function(st, n){
-        st.ask = steps.length > 1
-          ? 'Commas are missing. Tap the space where the next one goes. ' + (n + 1) + ' of ' + steps.length
-          : 'A comma is missing. Tap the space where it goes.';
+        // one line however many commas there are, since he draws them all before Done
+        st.ask = n > 0 ? '' : steps.length > 1
+          ? 'Commas are missing. Put a caret \u2227 with a comma on it wherever one goes. '
+            + 'There are ' + steps.length + '.'
+          : 'A comma is missing. Put a caret \u2227 with a comma on it where it goes.';
         st.say = 'The caret says "put something in here", and what goes in sits on top of it.';
       });
     }
@@ -3713,6 +3724,8 @@
    'penBlock','handChips','penNote','redpenBlock','redpenNote',
    'mathBox','sumStack','sumNote',
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
+   'markBox','markCv','markTask','markNote','markUndo','markClear','markDone',
+   'markRow','markSaid','markYes','markNo',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'waitBar','pips','againBlock','againList','againBtn','againNote','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
@@ -7087,13 +7100,13 @@
     return [{ label: '', table: 0, cards: all }];
   }
 
-  /* ⭐ A MARKING CARD IS A PROOFREADING CARD as far as the screen is concerned:
-     the sentence IS the exercise, the card face and the answer buttons have
-     nothing to say, and the whole thing lives in the same box. Everything that
-     asks "is this a proof card" wants the same answer for both, so they share
-     the one predicate and the two differ inside paintProof and the tap. */
+  /* 🔴 A MARKING CARD IS ITS OWN THING NOW. It shared the proofreading box for
+     an hour, while the marks were TAPPED. He draws them, so it has a canvas
+     and its own body class, and the two must not both be on: they each take
+     the screen. Everything that asks "is the card face and the answer row
+     redundant here" has to ask BOTH. */
   function isMarks(c){ return !!(c && c.k === 'pm'); }
-  function isProof(c){ return !!(c && (c.k === 'pf' || c.k === 'pm')); }
+  function isProof(c){ return !!(c && c.k === 'pf'); }
   function proofNow(){ return state.subject === 'proof'; }
   /* Built from what he already has: the capitals off his Language 3 lessons,
      which are printed with a lowercase first letter because marking it is the
@@ -9498,6 +9511,248 @@
     unlock(); var c = card(); if (isClock(c) && !state.answered) markClock(c);
   });
 
+  /* =========================================================
+     ⭐ HE DRAWS THE MARK ON THE SENTENCE, the way his page asks (Andrew,
+     2026-09-12: "instead of tapping, can he do it just like his paper where he
+     draws it? And I can have you score it when he's done").
+
+     This is the same correction he has made twice before, about the number pad
+     on the sums and about the four buttons on the grammar cards, and it is
+     right for the same reason both times: tapping marks itself honestly and
+     practises nothing, because the thing being taught is made with a pen.
+
+     ⭐ AND IT IS NOT MARKED BY THE MACHINE. Nothing here can read a caret, and
+     pretending otherwise would either wave a wrong one through or fail a right
+     one. He says whether he got it, the right marking is drawn for him in red
+     either way so he sees it, and the INK IS KEPT with the sentence it was
+     drawn on, so it can be scored properly off the page afterwards.
+
+     ⚠️ THE SENTENCE GOES WITH THE INK, exactly as the dial does on a clock
+     card. Bare strokes cropped to themselves say nothing about which two words
+     a caret sat between.
+     ========================================================= */
+  var markInk = [], markCur = null, markShown = false;
+  /* ⚠️ ROOM UNDER EVERY LINE, and more than looks necessary. A caret, the
+     mark that sits on it and three ruled lines all go BELOW the words, drawn
+     by an eight year old with a pencil, and the first cut gave them 34px
+     between one line of the sentence and the next. */
+  var MARK_PAD = 26, MARK_LH = 104, MARK_BASE = 56;
+  /* Laid out here rather than by the browser, because every word's box has to
+     be KNOWN: it is what puts the right answer in red on the reveal, and it is
+     the only way anyone reading this back later can say which two words a mark
+     went between. */
+  function markLayout(c, W, fs){
+    var cv = el.markCv, g = cv.getContext('2d');
+    g.font = '700 ' + fs + 'px ui-rounded, "Nunito", system-ui, sans-serif';
+    /* ⚠️ WIDER SPACES THAN PROSE WANTS. A caret goes BETWEEN two words and an
+       ordinary word space is about seven pixels, so the caret, the struck out
+       comma and the three lines under the next letter all landed in the same
+       smudge. His workbook line is airy for the same reason. */
+    var max = W - MARK_PAD * 2, lines = [], row = [], x = MARK_PAD;
+    var sp = g.measureText(' ').width * 2.6;
+    c.words.forEach(function(w, i){
+      var wd = g.measureText(w).width;
+      if (row.length && x + wd > MARK_PAD + max){
+        lines.push(row); row = []; x = MARK_PAD;
+      }
+      row.push({ w: w, i: i, x: x, width: wd });
+      x += wd + sp;
+    });
+    if (row.length) lines.push(row);
+    lines.forEach(function(r, n){ r.forEach(function(t){ t.y = MARK_BASE + n * MARK_LH; }); });
+    return { fs: fs, w: W, h: MARK_PAD + lines.length * MARK_LH, lines: lines,
+             text: c.words.join(' ') };
+  }
+  function markBoxOf(L, i){
+    for (var a = 0; a < L.lines.length; a++)
+      for (var b = 0; b < L.lines[a].length; b++)
+        if (L.lines[a][b].i === i) return L.lines[a][b];
+    return null;
+  }
+  /* Where a caret belongs: halfway between the word before the gap and the word
+     after it. ⚠️ When the gap falls at a line break the two are nowhere near
+     each other, so it goes just past the end of the earlier word, which is
+     where his pen would go on paper. */
+  function markGapAt(L, g){
+    var before = markBoxOf(L, g - 1), after = markBoxOf(L, g);
+    if (!before) return after ? { x: after.x - 6, y: after.y } : null;
+    if (!after || after.y !== before.y) return { x: before.x + before.width + 7, y: before.y };
+    return { x: (before.x + before.width + after.x) / 2, y: before.y };
+  }
+  /* 🔴 THE REVEAL IS READ, NEVER PASSED IN. It was an argument, and the
+     redraw queued on the next frame by paintMarkCard passed `false`: land that
+     frame after he has pressed Done, which is exactly what happens when the
+     tab was in the background, and the teacher's marking is wiped off the
+     canvas with no error and no way to get it back. One source of truth for
+     whether the answer is showing. */
+  function markDraw(c){
+    var reveal = markShown;
+    var cv = el.markCv, g = cv.getContext('2d');
+    if (!g) return;
+    var box = cv.getBoundingClientRect();
+    var W = Math.max(320, Math.round(box.width || 700));
+    var fs = W < 520 ? 21 : 26;
+    var L = markLayout(c, W, fs);
+    c._L = L;
+    var dpr = Math.min(3, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(L.h * dpr);
+    cv.style.height = L.h + 'px';
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, L.h);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, L.h);
+    /* A ruled line under each row, like the one his sentence sits on, so there
+       is somewhere obvious to put three lines under a letter. */
+    g.strokeStyle = '#ece7dc'; g.lineWidth = 1.5;
+    L.lines.forEach(function(r, n){
+      var y = MARK_BASE + n * MARK_LH + 6;
+      g.beginPath(); g.moveTo(MARK_PAD - 8, y); g.lineTo(W - MARK_PAD + 8, y); g.stroke();
+    });
+    g.font = '700 ' + fs + 'px ui-rounded, "Nunito", system-ui, sans-serif';
+    g.textBaseline = 'alphabetic'; g.fillStyle = '#20242e';
+    L.lines.forEach(function(r){ r.forEach(function(t){ g.fillText(t.w, t.x, t.y); }); });
+    if (reveal) markRight(c, L, g, fs);
+    g.strokeStyle = '#20242e'; g.lineWidth = 3.5;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    markInk.concat(markCur ? [markCur] : []).forEach(function(st){
+      if (st.length < 2){
+        if (st.length) { g.beginPath(); g.arc(st[0][0], st[0][1], 2, 0, 6.284); g.fill(); }
+        return;
+      }
+      g.beginPath(); g.moveTo(st[0][0], st[0][1]);
+      for (var i = 1; i < st.length; i++) g.lineTo(st[i][0], st[i][1]);
+      g.stroke();
+    });
+    el.markUndo.disabled = !markInk.length;
+    el.markClear.disabled = !markInk.length;
+  }
+  /* The marking his teacher would make, in red, shown once he is done. It is
+     what he checks his own against, and it is the whole teaching of the card. */
+  function markRight(c, L, g, fs){
+    g.save();
+    g.strokeStyle = '#e0524a'; g.fillStyle = '#e0524a'; g.lineWidth = 3;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    c.steps.forEach(function(job){
+      if (job.do === 'ins'){
+        var at = markGapAt(L, job.at); if (!at) return;
+        // ⚠️ below the ruled line, or the caret and the rule are one smudge
+        var y = at.y + 14, h = 14;
+        g.beginPath();
+        g.moveTo(at.x - h * 0.7, y + h); g.lineTo(at.x, y); g.lineTo(at.x + h * 0.7, y + h);
+        g.stroke();
+        g.font = '800 ' + Math.round(fs * 0.8) + 'px ui-rounded, system-ui, sans-serif';
+        g.textAlign = 'center';
+        g.fillText(job.mark, at.x, y - 3);
+        g.textAlign = 'left';
+        if (job.cut >= 0){
+          var cw = markBoxOf(L, job.cut);
+          if (cw){
+            g.beginPath();
+            g.moveTo(cw.x + cw.width - 8, cw.y + 10);
+            g.lineTo(cw.x + cw.width + 3, cw.y - 6);
+            g.stroke();
+          }
+        }
+      } else {
+        var b = markBoxOf(L, job.at); if (!b) return;
+        // ≡ under the FIRST LETTER only, which is what the mark means
+        g.font = '700 ' + fs + 'px ui-rounded, "Nunito", system-ui, sans-serif';
+        var lw = g.measureText(job.fix.charAt(0)).width;
+        for (var n = 0; n < 3; n++){
+          var yy = b.y + 13 + n * 5;
+          g.beginPath(); g.moveTo(b.x, yy); g.lineTo(b.x + lw, yy); g.stroke();
+        }
+      }
+    });
+    g.restore();
+  }
+  function markAt(ev){
+    var box = el.markCv.getBoundingClientRect();
+    return [ev.clientX - box.left, ev.clientY - box.top];
+  }
+  function markDown(ev){
+    var c = card(); if (!isMarks(c) || markShown) return;
+    ev.preventDefault(); unlock();
+    markCur = [markAt(ev)];
+    try { el.markCv.setPointerCapture(ev.pointerId); } catch(e){}
+    markDraw(c);
+  }
+  function markMove(ev){
+    if (!markCur) return;
+    ev.preventDefault();
+    markCur.push(markAt(ev));
+    markDraw(card());
+  }
+  function markUp(){
+    if (!markCur) return;
+    if (markCur.length > 1) markInk.push(markCur);
+    markCur = null;
+    markDraw(card());
+  }
+  function paintMarkCard(c){
+    markInk = []; markCur = null; markShown = false;
+    el.markRow.classList.remove('hide');
+    el.markSaid.classList.add('hide');
+    el.markTask.textContent = c.steps.map(function(j){ return j.ask; })
+      .filter(Boolean).join('  ');
+    el.markNote.textContent = c.why || '';
+    el.markNote.className = 'cnote';
+    markDraw(c);
+    /* ⚠️ Drawn again on the next frame. The class that gives the canvas its
+       width goes on the body a moment before this, and measuring it before the
+       layout has settled lays the sentence out to a 0px box. The clock card
+       has the same note and the same reason. */
+    requestAnimationFrame(function(){ if (card() === c) markDraw(c); });
+  }
+  /* ⭐ HIS INK IS KEPT WHATEVER HE SAYS, with the sentence it was drawn on, so
+     it can be read back and scored properly later. That is the whole of "I can
+     have you score it when he's done": nothing here judges a caret. */
+  function markKeep(c, missed){
+    var L = c._L || markLayout(c, 700, 26);
+    keepInk(c, missed, markInk, L.w, L.h);
+    var rec = currentPage(c.u || 0).words[inkKey(c)];
+    if (rec) rec.mark = { text: L.text, fs: L.fs, w: L.w, h: L.h, lines: L.lines,
+                          steps: c.steps, kind: c.kind };
+    savePages();
+    var pg = currentPage(c.u || 0);
+    pushPage(pg);
+  }
+  el.markCv.addEventListener('pointerdown', markDown);
+  el.markCv.addEventListener('pointermove', markMove);
+  el.markCv.addEventListener('pointerup', markUp);
+  el.markCv.addEventListener('pointercancel', markUp);
+  el.markUndo.addEventListener('click', function(){
+    var c = card(); if (!isMarks(c) || markShown) return;
+    unlock(); sfx.tap(); markInk.pop(); markCur = null; markDraw(c);
+  });
+  el.markClear.addEventListener('click', function(){
+    var c = card(); if (!isMarks(c) || markShown) return;
+    unlock(); sfx.tap(); markInk = []; markCur = null; markDraw(c);
+  });
+  el.markDone.addEventListener('click', function(){
+    var c = card(); if (!isMarks(c) || markShown) return;
+    unlock();
+    if (!markInk.length){ el.markNote.textContent = 'Draw the mark on the sentence first.'; return; }
+    markShown = true;
+    markDraw(c);
+    el.markRow.classList.add('hide');
+    el.markSaid.classList.remove('hide');
+    el.markNote.textContent = 'In red is how his teacher marks it. Did you get it?';
+    el.markNote.className = 'cnote';
+  });
+  function markSaid(right){
+    var c = card(); if (!isMarks(c) || !markShown || state.answered) return;
+    unlock();
+    state.answered = true;
+    markKeep(c, !right);
+    if (right) sfx.right(); else sfx.wrong();
+    bump(right);
+    if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, 900);
+  }
+  el.markYes.addEventListener('click', function(){ markSaid(true); });
+  el.markNo.addEventListener('click', function(){ markSaid(false); });
+
   function buildRounds(){
     if (mathNow()) return buildMathRounds();
     if (redpenNow()) return buildRedpenRounds();
@@ -9619,6 +9874,7 @@
     if (c && c.k === 'qa') return c.q;
     if (isWord(c)) return c.w;
     if (isProof(c)) return '';       // the sentence is the tappable row, not a card face
+    if (isMarks(c)) return '';       // and the sentence he marks is not one either
     /* ⚠️ TWO KINDS OF TEACHING CARD SHARE isTeach NOW. A grammar one names a
        kind in SENTENCE_KINDS and a study one carries its own words, so this
        has to ask which it is. Reading SENTENCE_KINDS[undefined].example blanked
@@ -11021,95 +11277,11 @@
     }
   }
 
-  /* How far through the marks he is. Reset when the card is painted rather
-     than carried on the card, so a card dealt twice in one round starts clean
-     both times. */
-  var markStep = 0;
-  function gapBtn(n){
-    var g = document.createElement('button');
-    g.type = 'button'; g.className = 'gp';
-    g.setAttribute('data-g', String(n));
-    return g;
-  }
-  function paintMarks(c){
-    markStep = 0;
-    el.proofLine.innerHTML = '';
-    c.words.forEach(function(w, i){
-      if (i > 0) el.proofLine.appendChild(gapBtn(i));
-      var b = document.createElement('button');
-      b.type = 'button'; b.className = 'pw';
-      b.setAttribute('data-i', String(i));
-      b.innerHTML = '<span class="l1">' + esc(w.charAt(0)) + '</span>' + esc(w.slice(1));
-      el.proofLine.appendChild(b);
-    });
-    // ⚠️ and the space after the LAST word, which is where an end mark goes
-    el.proofLine.appendChild(gapBtn(c.words.length));
-    el.proofNote.textContent = '';
-    el.proofTask.textContent = c.steps[0].ask;
-  }
-  function marksTap(ev, c){
-    if (state.answered) return;
-    unlock();
-    /* ⚠️ `job`, never `step`. `step` is the function that advances the round,
-       and shadowing it here would leave the card sitting there for ever. The
-       file has a note about exactly this sort of collision; it is worth one
-       more. */
-    var job = c.steps[markStep];
-    if (!job) return;
-    var want = job.do === 'ins' ? '.gp' : '.pw';
-    var hit = ev.target.closest(want);
-    if (!hit){
-      /* Tapping a word when a space is wanted is not a wrong answer, it is not
-         having read the instruction, so it says so and costs nothing. */
-      el.proofNote.textContent = job.do === 'ins'
-        ? 'Tap the SPACE between two words, not the word.'
-        : 'Tap the WORD this time.';
-      return;
-    }
-    var i = parseInt(hit.getAttribute(job.do === 'ins' ? 'data-g' : 'data-i'), 10);
-    if (i !== job.at){
-      // one miss a card, however many goes it takes, same rule as the writing
-      if (state.tries === 0) bump(false, true);
-      state.tries++;
-      sfx.wrong();
-      hit.classList.add('no');
-      el.proofNote.textContent = state.tries >= 2
-        ? (c.why || 'Read it again slowly.')
-        : 'Not there. Have another look.';
-      return;
-    }
-    sfx.right();
-    if (job.do === 'ins'){
-      hit.classList.add('set');
-      hit.innerHTML = '<span class="ins"><b>' + esc(job.mark) + '</b>\u2227</span>';
-      /* ⭐ AND THE COMMA IS STRUCK OUT, because the whole of a run-on fix is
-         that the comma comes out and a period goes in. Leaving it sitting
-         there would teach him a sentence can have both. */
-      if (job.cut >= 0){
-        var prev = el.proofLine.querySelector('.pw[data-i="' + job.cut + '"]');
-        var pw = prev && c.words[job.cut];
-        // the comma is on the END of that word, and only it gets the line
-        if (pw && pw.slice(-1) === ','){
-          prev.innerHTML = '<span class="l1">' + esc(pw.charAt(0)) + '</span>'
-                         + esc(pw.slice(1, -1)) + '<span class="cut">,</span>';
-        }
-      }
-    } else {
-      hit.classList.add('capped');
-      hit.innerHTML = '<span class="l1">' + esc(job.fix.charAt(0)) + '</span>'
-                    + esc(job.fix.slice(1));
-    }
-    el.proofNote.textContent = job.say;
-    markStep++;
-    if (markStep < c.steps.length){ el.proofTask.textContent = c.steps[markStep].ask; return; }
-    state.answered = true;
-    if (state.tries === 0) bump(true); else { clearCard(true); chaseNudge(true); }
-    if (state.caught) return;
-    clearTimeout(advanceId);
-    advanceId = setTimeout(step, 2600);
-  }
+  /* 🔴 THE TAPPED VERSION OF THIS CARD IS GONE, an hour after it shipped.
+     Andrew: "instead of tapping, can he do it just like his paper where he
+     draws it?" Leaving both in would be two ways to answer the same card and
+     the easy one would win. See the drawing box further down. */
   function paintProof(c){
-    if (isMarks(c)) return paintMarks(c);
     el.proofLine.innerHTML = '';
     c.words.forEach(function(w, i){
       var b = document.createElement('button');
@@ -11128,7 +11300,6 @@
   el.proofLine.addEventListener('click', function(ev){
     var c = card();
     if (!isProof(c)) return;
-    if (isMarks(c)) return marksTap(ev, c);
     var b = ev.target.closest('.pw'); if (!b) return;
     if (state.answered) return;
     unlock();
@@ -11188,7 +11359,7 @@
 
     /* Spelling decides per card: the words are written, the two worksheet
        questions are tapped, and both can turn up in the same round. */
-    var writing = isWord(c) && !isTeach(c) && !isProof(c), tapping = isTask(c);
+    var writing = isWord(c) && !isTeach(c) && !isProof(c) && !isMarks(c), tapping = isTask(c);
     /* The stack is painted before the panel below it, because a sum is a
        writing card whose PROMPT happens to live outside the writing panel. */
     if (isSum(c)){
@@ -11217,6 +11388,7 @@
     document.body.classList.toggle('clocking', anyClock(c));
     document.body.classList.toggle('telling', isClockSay(c));
     document.body.classList.toggle('proofing', isProof(c));
+    document.body.classList.toggle('marking', isMarks(c));
     if (isClockSay(c)){
       /* The hands are already there and are not his to move: this card asks
          what they SAY. Drawn from the answer rather than from his ink.
@@ -11241,6 +11413,11 @@
       paintClock(c);
       requestAnimationFrame(function(){ if (card() === c) paintClock(c); });
       setClockNote(clockAsk(c) + 'Draw both hands from the middle.');
+      el.grade.classList.remove('on');
+      el.nextBtn.style.display = 'none';
+      el.hint.textContent = '';
+    } else if (isMarks(c)){
+      paintMarkCard(c);
       el.grade.classList.remove('on');
       el.nextBtn.style.display = 'none';
       el.hint.textContent = '';
@@ -12231,6 +12408,11 @@
   }
   function inkKey(c){
     if (isTrace(c)) return c.w + ':' + c.pass;
+    /* ⚠️ Keyed by the SENTENCE, which is what he marked. There is no answer
+       word on a marking card to key it by, and two sentences of the same kind
+       would otherwise overwrite each other on the page. Trimmed, because a
+       page key is capped at 40 characters on the way to the server. */
+    if (isMarks(c)) return 'mk:' + c.kind + ':' + c.t.slice(0, 28);
     if (isClockSay(c)) return 'said:' + c.h + ':' + c.m;
     /* ⚠️ Keyed by the PROBLEM, not the answer. Two different sums can come out
        the same and would overwrite each other on the page. */
