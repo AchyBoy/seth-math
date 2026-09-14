@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.27">
+<meta name="x-cards-version" content="5.28">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10024,7 +10024,17 @@
       var r = node.getBoundingClientRect();
       return (r.width > 2 && r.height > 2) ? 1 : 0;
     };
-    if (box(el.writeBox) || box(el.choices) || box(el.card)) return;
+    /* ⚠️ A CARD THAT TAKES THE WHOLE SCREEN IS NOT AN EMPTY ONE. The exercise
+       on a marking, proofreading, teaching, clock or sum card lives in its own
+       panel and the CSS hides the stage underneath it ON PURPOSE, so asking
+       only the card, the answer buttons and the writing pad called every one of
+       those blank. It happened for real on 2026-09-13: eight marking cards, a
+       red bar painted over his lesson every 1.2 seconds, and fourteen identical
+       BLANK lines that pushed the whole rest of the trail out and put the red
+       box on the home screen. The panels are content too, so ask them. */
+    var panels = [el.writeBox, el.choices, el.card, el.inkBox, el.markBox,
+                  el.proofBox, el.teachBox, el.clockBox, el.mathBox];
+    for (var pi = 0; pi < panels.length; pi++){ if (panels[pi] && box(panels[pi])) return; }
     var printMQ = '?';
     try { printMQ = window.matchMedia('print').matches ? 'YES' : 'no'; } catch(e){}
     showBoom('Nothing on screen. body=[' + document.body.className + ']'
