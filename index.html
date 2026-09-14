@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.29">
+<meta name="x-cards-version" content="5.30">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -575,6 +575,33 @@
   /* a ring round a word that is spelled wrong */
   .pw.ringed{color:var(--red);box-shadow:0 0 0 3px var(--red) inset;border-radius:999px;
     padding-left:12px;padding-right:12px}
+  /* ⭐ DID HE READ THE DIRECTIONS (Andrew, 2026-09-13: "someway to make sure he
+     read the directions. Maybe a pop up with options"). It is the first thing
+     on the card and the pad is not there yet, so the only way past it is to
+     read the line above it and say what the mark is going to be. Nothing here
+     is scored: getting it wrong costs a second tap and shows the direction
+     again, which is the whole point of it. */
+  .ask{display:none}
+  body.marking.asking .ask{display:block}
+  /* ⚠️ #markSaid TOO. It is the "did you get it?" row of the card BEFORE this
+     one, and the panel is reused card to card: without this the gate came up
+     with I got it / Missed it sitting under the options, offering to score a
+     card he has not been allowed to start. */
+  body.marking.asking #markCv,body.marking.asking #markRow,
+  body.marking.asking #markSaid,
+  body.marking.asking #markTask,body.marking.asking #markNote{display:none}
+  .ask .aq{font-size:15px;font-weight:700;color:var(--muted);text-align:center;
+    margin:14px 2px 10px;letter-spacing:.02em;text-transform:uppercase}
+  .dch{display:block;width:100%;text-align:left;border:2px solid var(--line);
+    border-radius:18px;background:#fff;padding:14px 16px;font-family:inherit;
+    font-size:17px;font-weight:600;color:var(--ink);line-height:1.35;margin:0 0 8px;
+    box-shadow:0 4px 0 #ded8cc;transition:transform .1s ease,box-shadow .1s ease,
+    background .2s ease,border-color .2s ease,color .2s ease}
+  .dch:active{transform:translateY(3px);box-shadow:0 1px 0 #ded8cc}
+  .dch.good{background:var(--green);border-color:var(--green);color:#fff;
+    box-shadow:0 4px 0 var(--green-dark)}
+  .dch.bad{background:var(--red);border-color:var(--red);color:#fff;
+    box-shadow:0 4px 0 #b93f38;animation:shake .45s}
   .mark{display:none}
   body.marking .mark{display:block;max-width:900px;margin:8px auto auto}
   body.marking .screen.on{justify-content:flex-start}
@@ -1740,6 +1767,16 @@
          ⚠️ A SIBLING of the writing panel, never inside it. .wpanel is
          display:none unless body.write and this is not a writing card. -->
     <div class="mark" id="markBox">
+      <!-- ⚠️ INSIDE the mark panel, not over it. An overlay would have to be
+           taken down by hand on every path out of a card, and the blank-screen
+           watchdog measures this panel: a card that hides its own canvas still
+           has this on screen, so it is never mistaken for an empty one. -->
+      <div class="ask" id="markAsk">
+        <p class="ptask" id="markAskTask"></p>
+        <p class="aq" id="markAskQ">So what are you going to draw?</p>
+        <div id="markAskOpts"></div>
+        <p class="cnote" id="markAskNote"></p>
+      </div>
       <p class="ptask" id="markTask"></p>
       <canvas id="markCv"></canvas>
       <p class="cnote" id="markNote"></p>
@@ -3542,7 +3579,14 @@
              why: kind === 'runon'
                ? 'Read it out loud. Where you would stop for breath is where the first '
                  + 'sentence ends.'
-               : 'A comma is a small stop inside a sentence, not the end of one.' };
+               : kind === 'commafront'
+               ? 'The comma goes where the front part ends and the sentence proper starts.'
+               /* 🔴 HIS OWN FAULT, SAID BACK TO HIM. Off the ink of 2026-09-13: he
+                  marked around the "and" and again after the last word twice in one
+                  night, so the line that used to say what a comma IS now says the
+                  one rule he is breaking. */
+               : 'Count the items. Every one takes a comma EXCEPT the last. "and" is not '
+                 + 'an item, and nothing goes between the last word and the period.' };
   }
   /* 🔴 HIS TWO OFF QUIZ 2 FIRST, then five more of the same shape. Written WITH
      the comma in, exactly as his page prints them, and the builder takes it
@@ -3563,17 +3607,42 @@
      3: a list of three or more, and a word or two at the front of a sentence.
      Written with the commas in and taken back out by the builder, same as the
      run-ons, so nothing here is counted by hand. */
-  var COMMA_LINES = [
+  /* 🔴 SPLIT IN TWO ON 2026-09-13, off his own ink. One night of these said
+     the two shapes are nothing like each other for him: the word at the FRONT
+     he half has, and a LIST he does not, and he gets a list wrong the same way
+     twice, a caret around "and" and another after the last item, which is a
+     comma before the period. One set called `commas` scored them together and
+     the round could never tell which was costing him. See the chip text.
+
+     ⚠️ The list pool is deliberately the longer one and carries a list of
+     FOUR as well, because "every item but the last" is the rule he is missing
+     and a list of three can be got right by copying the shape. */
+  var COMMA_LIST_LINES = [
     'We saw lions, tigers, and bears at the zoo.',
     'He packed a book, a torch, and a sandwich.',
-    'Yes, I will help you carry it.',
     'The frog is green, brown, and gold.',
+    'She fed the dog, the cat, and the goldfish.',
+    'My brother likes apples, oranges, and grapes.',
+    'The wolf pups played, rolled, and slept.',
+    'We packed apples, pears, plums, and grapes.',
+    'The elf owl hunts moths, beetles, and crickets.',
+    'My sister found a ladybug, a snail, and a feather.',
+    'Gray wolves hunt deer, elk, and moose.',
+    'He wants a bike, a skateboard, and a tent.',
+    'The tadpoles swim, hatch, and climb out.'
+  ];
+  /* A word or two at the front, then the comma. He is 1 for 2 on these. */
+  var COMMA_FRONT_LINES = [
+    'Yes, I will help you carry it.',
     'No, the elf owl is not the biggest one.',
     'Well, that was a long walk home.',
-    'She fed the dog, the cat, and the goldfish.',
     'After lunch, we went out to the barn.',
-    'My brother likes apples, oranges, and grapes.',
-    'Before the rain came, we brought the washing in.'
+    'Before the rain came, we brought the washing in.',
+    'No, the tadpoles are not frogs yet.',
+    'After school, we fed the goldfish.',
+    'Yes, the bus stops at the corner.',
+    'When the sun went down, the bats came out.',
+    'Well, that frog can sit in your hand.'
   ];
   /* ⚠️ IDS OF THEIR OWN, well clear of the spelling weeks and the maths units.
      An ask card files its ink under `c.u` exactly like an arithmetic one does,
@@ -3599,14 +3668,28 @@
       from: 'Quiz 2, sentences 14 and 15', lift: 1.4
     },
     {
-      /* ⚠️ NOT OFF A MARKED PAPER, and the only set here that is not. Quiz 2
-         did not ask for commas; Andrew did, and his book teaches both shapes.
-         `what` says so out loud rather than letting the chip imply his teacher
-         marked him on it. */
-      id: 405, kind: 'commas', title: 'Where the comma goes',
-      what: 'A caret and a comma, marked on the sentence. A list of three or more, and '
-          + 'a word or two at the front. ⚠️ Off his book rather than off a marked paper.',
-      from: 'Language 3, the comma lessons', lift: 0.6
+      /* ⚠️ NOT OFF A MARKED PAPER, and the only two sets here that are not.
+         Quiz 2 did not ask for commas; Andrew did, and his book teaches both
+         shapes. `what` says so out loud rather than letting the chip imply his
+         teacher marked him on it.
+         🔴 THE LIFT IS 2.2 BECAUSE OF 2026-09-13, not because of a paper: he
+         marked five of these and three came back wrong off the ink, all three
+         the same way. It wears off after three clean goes like every other
+         lift, so a week of getting it right takes it back down on its own. */
+      id: 405, kind: 'commas', title: 'A list of three or more',
+      what: 'A comma after every item EXCEPT the last, and "and" is not an item. He marks '
+          + 'around the "and" and then again after the last word, which is a comma before '
+          + 'the period. ⚠️ Off his book, and off his own ink on 13 September.',
+      from: 'Language 3, the comma lessons', lift: 2.2
+    },
+    {
+      /* ⚠️ ITS OWN SET SINCE 2026-09-13. Same mark, different job, and he is
+         not equally good at them: 1 of 2 on this shape and 1 of 3 on a list.
+         Scored together, the round could not see either. */
+      id: 406, kind: 'commafront', title: 'A word or two at the front',
+      what: 'Yes, No, Well, After lunch, Before the rain came. One caret and one comma, '
+          + 'where the front part ends and the sentence proper starts.',
+      from: 'Language 3, the comma lessons', lift: 1.2
     }
   ];
   /* ⚠️ WITHOUT REPLACEMENT, unlike the arithmetic generators. A sum is made up
@@ -3625,7 +3708,8 @@
      by reading this. */
   function langAskCards(u, n){
     var pool = u.kind === 'split' ? SPLIT_LINES
-             : u.kind === 'runon' ? RUNON_LINES : COMMA_LINES;
+             : u.kind === 'runon' ? RUNON_LINES
+             : u.kind === 'commafront' ? COMMA_FRONT_LINES : COMMA_LIST_LINES;
     var out = [], bag = [];
     while (out.length < n){
       if (!bag.length){ bag = pool.slice(); shuffle(bag); }
@@ -3725,6 +3809,7 @@
    'mathBox','sumStack','sumNote',
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'markBox','markCv','markTask','markNote','markUndo','markClear','markDone',
+   'markAsk','markAskTask','markAskQ','markAskOpts','markAskNote',
    'markRow','markSaid','markYes','markNo',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
@@ -4221,7 +4306,8 @@
                         they have to be named here or they show as the bare key. */
                      split: 'The subject and predicate line',
                      runon: 'Two sentences stuck together',
-                     commas: 'Where the comma goes' };
+                     commas: 'Commas in a list of three',
+                     commafront: 'The comma after the front part' };
   function isAskKey(k){ return k.slice(0, 2) === 'a:'; }
   function termByWord(w){
     for (var i = 0; i < STUDY.length; i++){
@@ -4971,11 +5057,13 @@
       el.watchList.appendChild(b);
     });
     el.watchBtn.innerHTML = '🏆 The A+ 100 Maker<small>'
-      + Math.min(n, LANG_FOCUS_CAP) + ' cards, weighted to what Quiz 2 came back marked on</small>';
+      + Math.min(n, LANG_FOCUS_CAP) + ' cards, weighted to Quiz 2 and to how his marking went</small>';
     el.watchNote.textContent = 'Every one of these is a question he actually lost marks on, '
-      + 'and each card says how to work it out rather than only whether he got it. The '
-      + 'abbreviation is checked for its capital letter now, because all eight of his were '
-      + 'written small. Tap one to see where it came from. Practice only, nothing here is scored.';
+      + 'and each card says how to work it out rather than only whether he got it. Commas in '
+      + 'a LIST carry the round tonight: he marked five comma sentences on 13 September and '
+      + 'three came back wrong off his own ink, all three the same way, so a list of three is '
+      + 'its own set now and the word at the front is another. Tap one to see where it came '
+      + 'from. Practice only, nothing here is scored.';
   }
   el.watchBtn.addEventListener('click', function(){
     if (sentenceNow()){
@@ -9688,8 +9776,93 @@
     markCur = null;
     markDraw(card());
   }
-  function paintMarkCard(c){
-    markInk = []; markCur = null; markShown = false;
+  /* =========================================================
+     ⭐ DID HE READ THE DIRECTIONS (Andrew, 2026-09-13: "someway to make sure
+     he read the directions. Maybe a pop up with options lol. Like nouns /
+     Circle / Underline / Draw a square").
+
+     🔴 IT IS NOT A HUNCH, IT IS ON THE PAGE. The first two comma cards of
+     13 September carry the RUN-ON's mark, three lines under a letter to make
+     it a capital, drawn straight after two run-on cards and then dropped. He
+     was not marking the wrong thing because he cannot do commas; he was
+     marking what the last card wanted.
+
+     So the direction comes up FIRST, with the pad not there yet, and the only
+     way to it is to say what the mark is going to be. ⚠️ NOTHING HERE IS
+     SCORED and a wrong pick costs one more tap: it shows the direction again,
+     which is the thing being taught. Asked on the first card of a round and
+     again whenever the KIND CHANGES, which is exactly where the carry-over
+     happens, rather than on all ten, because ten identical gates in a row
+     teach him to tap past it without reading.
+     ========================================================= */
+  var MARK_ACTS = {
+    commas:     'A caret \u2227 with a comma on it, everywhere a comma goes',
+    commafront: 'A caret \u2227 with a comma on it, everywhere a comma goes',
+    runon:      'A caret \u2227 with a period on it where the first sentence ends, '
+              + 'then three lines under the letter after it'
+  };
+  /* Real marks out of his own book, so a wrong pick is a mark that exists and
+     means something else, not a joke option. */
+  var MARK_DECOYS = [
+    'A circle round the word that is spelled wrong',
+    'A line under the whole subject part',
+    'A cross through a word that should not be there',
+    'A caret \u2227 with a comma on it, everywhere a comma goes',
+    'A box drawn round the first word'
+  ];
+  var MARK_CAP = 'Three lines under a letter, to make it a capital';
+  var askedKind = '';
+  function markAsked(reset){ if (reset) askedKind = ''; }
+  function needsAsk(c){ return !!MARK_ACTS[c.kind] && c.kind !== askedKind; }
+  function askOptions(c){
+    var right = MARK_ACTS[c.kind], out = [];
+    /* ⚠️ THE CAPITAL MARK IS ALWAYS THERE ON A COMMA CARD. It is the one he
+       actually drew on one, so it is the choice worth him turning down. */
+    if (c.kind !== 'runon') out.push(MARK_CAP);
+    var pool = MARK_DECOYS.filter(function(t){ return t !== right; });
+    shuffle(pool);
+    for (var i = 0; i < pool.length && out.length < 3; i++){
+      if (out.indexOf(pool[i]) === -1) out.push(pool[i]);
+    }
+    out.splice(Math.floor(Math.random() * (out.length + 1)), 0, right);
+    return { right: right, opts: out };
+  }
+  function showMarkAsk(c){
+    document.body.classList.add('asking');
+    el.markAskTask.textContent = c.steps.map(function(j){ return j.ask; })
+      .filter(Boolean).join('  ');
+    el.markAskNote.textContent = '';
+    var made = askOptions(c);
+    el.markAskOpts.innerHTML = '';
+    made.opts.forEach(function(t){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'dch';
+      b.textContent = t;
+      b.addEventListener('click', function(){
+        /* ⚠️ Guarded on the card AND on the gate still being up: a second tap
+           on the right answer while the pad is opening would open it twice. */
+        if (card() !== c || !document.body.classList.contains('asking')) return;
+        unlock();
+        if (t !== made.right){
+          b.className = 'dch bad';
+          sfx.wrong();
+          el.markAskNote.textContent = 'Not that mark. Read the direction again, at the top.';
+          return;
+        }
+        b.className = 'dch good';
+        sfx.tap();
+        askedKind = c.kind;
+        setTimeout(function(){
+          if (card() !== c) return;
+          document.body.classList.remove('asking');
+          openMarkPad(c);
+        }, 420);
+      });
+      el.markAskOpts.appendChild(b);
+    });
+  }
+  function openMarkPad(c){
     el.markRow.classList.remove('hide');
     el.markSaid.classList.add('hide');
     el.markTask.textContent = c.steps.map(function(j){ return j.ask; })
@@ -9700,8 +9873,19 @@
     /* ⚠️ Drawn again on the next frame. The class that gives the canvas its
        width goes on the body a moment before this, and measuring it before the
        layout has settled lays the sentence out to a 0px box. The clock card
-       has the same note and the same reason. */
+       has the same note and the same reason. ⚠️ AND THE GATE IS WHY THIS IS
+       ITS OWN FUNCTION: while the gate is up the canvas is display:none, so
+       drawing then would lay the sentence out to nothing. Nothing draws until
+       it is down. */
     requestAnimationFrame(function(){ if (card() === c) markDraw(c); });
+  }
+  function paintMarkCard(c){
+    markInk = []; markCur = null; markShown = false;
+    el.markRow.classList.remove('hide');
+    el.markSaid.classList.add('hide');
+    document.body.classList.remove('asking');
+    if (needsAsk(c)) showMarkAsk(c);
+    else openMarkPad(c);
   }
   /* ⭐ HIS INK IS KEPT WHATEVER HE SAYS, with the sentence it was drawn on, so
      it can be read back and scored properly later. That is the whole of "I can
@@ -11214,6 +11398,9 @@
     primeCheer();
     state.rounds = rounds || buildRounds();
     state.practice = !!isPractice;
+    /* Every round asks about the directions at least once per kind, however
+       well the last one went. */
+    markAsked(true);
     if (!state.dealt){ state.roundId = ''; state.answers = []; }
     state.marked = null;
     // Go again on a revision run has to repeat THAT set, not fall through to
@@ -11399,6 +11586,10 @@
     document.body.classList.toggle('telling', isClockSay(c));
     document.body.classList.toggle('proofing', isProof(c));
     document.body.classList.toggle('marking', isMarks(c));
+    /* ⚠️ The gate's class is only read alongside `marking`, but a card that is
+       not a marking card leaves it hanging on the body where the next one would
+       come up gated with nothing in it. Cleared here, where the kind is known. */
+    if (!isMarks(c)) document.body.classList.remove('asking');
     if (isClockSay(c)){
       /* The hands are already there and are not his to move: this card asks
          what they SAY. Drawn from the answer rather than from his ink.
