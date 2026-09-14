@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.30">
+<meta name="x-cards-version" content="5.31">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4174,6 +4174,11 @@
     if (!moved) return;
     try { localStorage.setItem(missKey(), JSON.stringify(record)); } catch(e){}
     paintTrouble();
+    /* ⚠️ AND THE FOCUS BLOCK. It is weighted off this record too, so a
+       correction that landed after the home screen was painted left the A+
+       chips saying last night's story. The round itself is built at the tap
+       and was always right; this is the part he can see. */
+    paintWatch();
   }
   /* 🔴 AND THE PAGE MARKS COME DOWN THE SAME WAY, which is the same bug one
      layer lower. A page only ever travelled UP from this device, so a word a
@@ -13387,7 +13392,16 @@
      had not been re-adopted since. Ask again whenever he comes back to the
      front, and never while a card is up, so a round is left alone. */
   document.addEventListener('visibilitychange', function(){
-    if (!document.hidden && me.token && !el.play.classList.contains('on')) fetchChecks();
+    if (document.hidden || !me.token || el.play.classList.contains('on')) return;
+    fetchChecks();
+    /* ⚠️ AND THE RECORD, for the same reason one layer down. It only travels up
+       on an ANSWERED CARD, so a correction made anywhere else was invisible
+       here until he played one, and the focus round is built out of it: the
+       night his comma marking was trued up from his ink, the A+ round would
+       still have been weighted off his own self-marking until he had answered
+       something. Posting what this device holds brings back whatever the
+       server overrode. */
+    saveRecord();
   });
   /* ⭐ THE VERDICT IS THE LAST WORD, AND THE RECORD IS MADE TO MATCH IT. It
      used to be written the other way round, as "right undoes the miss", which
