@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.28">
+<meta name="x-cards-version" content="5.29">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13188,6 +13188,16 @@
       paintFlags();
     });
   }
+  /* 🔴 AND IT HAS TO BE ASKED AGAIN. The queue is server only on purpose, but
+     it was fetched in one place: the routine that adopts a player. So a word
+     settled anywhere else stayed on his screen until the app was opened fresh.
+     On 2026-09-13 the bar said SIX were waiting for a grown-up when one was:
+     four had been marked the night before and one that evening, and the iPad
+     had not been re-adopted since. Ask again whenever he comes back to the
+     front, and never while a card is up, so a round is left alone. */
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden && me.token && !el.play.classList.contains('on')) fetchChecks();
+  });
   /* ⭐ THE VERDICT IS THE LAST WORD, AND THE RECORD IS MADE TO MATCH IT. It
      used to be written the other way round, as "right undoes the miss", which
      was true while every row in here came from the checker turning a word
