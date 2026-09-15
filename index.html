@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.38">
+<meta name="x-cards-version" content="5.39">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4073,10 +4073,27 @@
     }
     return sylCut(String(c.w));
   }
+  /* 🔴 A CHUNK HAS TO BE SAYABLE OR THE VOICE SPELLS IT OUT. Andrew, listening
+     to it on 14 September: "it says driz, then literally says zle like zee el
+     ee". A reader handed a chunk with no sayable vowel in it reads the letters
+     instead, so the one help aimed at his worst fault was teaching him a chunk
+     that does not exist.
+
+     ⚠️ THE REWRITE IS FOR THE VOICE ONLY. Nothing on screen changes: the chips,
+     the printed sheet and the "It is driz·zle" line all keep the real spelling.
+     This is how the word is actually SAID when you say it slowly, driz-zul,
+     strug-gul, la-dee-bug, which is the whole point of the spelling voice. */
+  function saySayable(part){
+    var low = String(part).toLowerCase();
+    if (/[^aeiouy]le$/.test(low)) return part.slice(0, -2) + 'ul';   // zle -> zul
+    if (/[^aeiou]y$/.test(low)) return part.slice(0, -1) + 'ee';     // dy  -> dee
+    if (!/[aeiouy]/.test(low)) return part + 'uh';                   // a chunk with no vowel
+    return part;
+  }
   function saySpelled(c){
     var parts = sylParts(c);
     if (!parts.length) return false;
-    return speak(parts.join(', '), 0.55);   // the commas are the pauses
+    return speak(parts.map(saySayable).join(', '), 0.55);   // the commas are the pauses
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
