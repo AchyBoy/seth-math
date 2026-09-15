@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.40">
+<meta name="x-cards-version" content="5.41">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -482,6 +482,11 @@
      one syllable word kept its In parts button until this line existed. Same
      trap as the buttons .hide silently did nothing to before v3.3. */
   .wsay.hide{display:none}
+  .wpartrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
+  .wpartrow.hide{display:none}
+  .wpart{border:2px solid var(--blue);border-radius:999px;background:#fff;color:var(--blue);
+    font:inherit;font-size:15px;font-weight:700;padding:8px 14px;min-width:44px;cursor:pointer}
+  .wpart:active{transform:scale(.94)}
 
   .wmark{min-height:30px;text-align:center;font-size:26px;font-weight:600;
     letter-spacing:.06em;line-height:1.2}
@@ -1832,6 +1837,13 @@
              different button twice to reach is a help nobody reaches twice. -->
         <button type="button" class="wsay" id="wParts">🔤 Hear it in parts</button>
       </div>
+      <!-- ⭐ ONE BUTTON PER PART (Andrew: "make them each have their own buttons,
+           straw, ber, ry ... so he can hear each one individually"). While the
+           word is hidden they are numbered, because a row of buttons reading
+           Straw Ber Ry is the answer sitting on the card. The moment the word
+           IS on screen, after a peek or with the answer, they wear their own
+           syllables, which is when saying them is teaching rather than telling. -->
+      <div class="wpartrow hide" id="wPartRow"></div>
     </div>
     <p class="wtask hide" id="wTask"></p>
     <button type="button" class="helpbtn hide" id="helpBtn">🤔 How do I work it out?</button>
@@ -3848,7 +3860,7 @@
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
-   'writeBox','wClue','wWord','wText','wBlank','wMean','wSay','wParts','wMark','wTask','wInput','wHint','wPeek','wCheck',
+   'writeBox','wClue','wWord','wText','wBlank','wMean','wSay','wParts','wPartRow','wMark','wTask','wInput','wHint','wPeek','wCheck',
    'teachBox','teachKind','teachWhat','teachSpot','teachMark','helpBtn',
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
@@ -12290,6 +12302,11 @@
     el.wWord.classList.toggle('shown', !!on);
     el.wWord.classList.toggle('gone', !on);
     el.wBlank.textContent = on ? '' : (blanks || '');
+    /* ⚠️ The part buttons wear numbers while it is hidden and their own
+       syllables once it is not, so they are repainted HERE rather than only on
+       a new card: a peek changes what they are allowed to say. */
+    var c = card();
+    if (c && isWord(c)) paintParts(c);
   }
   function hideWordSoon(w, ms){
     clearTimeout(peekId);
@@ -12368,6 +12385,7 @@
     state.tries = 0; sayAgain = 0;
     el.wSay.textContent = '\uD83D\uDD0A Hear it again';   // a new card, a new first press
     el.wParts.classList.toggle('hide', !(isWord(c) && !isDef(c) && sylParts(c).length > 1));
+    paintParts(c);
     clearTimeout(peekId);
     el.wInput.value = '';
     el.wInput.className = 'winput';
@@ -12826,6 +12844,25 @@
     saySpelled(c);
     focusWrite();
   });
+  /* Each part on its own button, so a part he cannot hold can be heard again
+     by itself instead of sitting through the whole word. */
+  function paintParts(c){
+    var parts = (isWord(c) && !isDef(c)) ? sylParts(c) : [];
+    el.wPartRow.classList.toggle('hide', parts.length < 2);
+    el.wPartRow.innerHTML = '';
+    if (parts.length < 2) return;
+    var open = el.wWord.classList.contains('shown');
+    parts.forEach(function(part, i){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wpart';
+      b.textContent = open ? part : String(i + 1);
+      b.addEventListener('click', function(){
+        unlock(); speak(saySayable(part), 0.55); focusWrite();
+      });
+      el.wPartRow.appendChild(b);
+    });
+  }
   el.wSay.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
