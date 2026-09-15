@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.41">
+<meta name="x-cards-version" content="5.42">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4087,8 +4087,55 @@
     }
     return null;
   }
+  /* =========================================================
+     🔴 EVERY WORD ON HIS LISTS, CHECKED BY HAND (Andrew, 2026-09-14: "can you
+     check all everytime please", after hearing slippery read out as "slip,
+     pay, re").
+
+     The splitter is a good guess and a guess is not good enough once a voice
+     is reading the chunks out loud. It cut ho·me·work, lunc·hbox, fle·xi·ble,
+     hays·tack and slip·pe·ry, because it knows nothing about where one word
+     ends and the next begins, and nothing about which vowels are short. So
+     every multi-syllable word in SPELLING was printed with its split and read
+     through; the ones below are the ones it got wrong. Everything not listed
+     here is the splitter's answer, which was right.
+
+     ⚠️ This is the DISPLAY split as well as the spoken one. The chips, the
+     printed sheet and the "It is driz·zle" line all read it, so a correction
+     here fixes what he sees and what he hears in one place. */
+  var SYL_FIX = {
+    airplane: ['air','plane'], axle: ['ax','le'], balanced: ['bal','anced'],
+    boiling: ['boil','ing'], brownie: ['brown','ie'], butterfly: ['but','ter','fly'],
+    centennial: ['cen','ten','ni','al'], collectible: ['col','lect','i','ble'],
+    contemporary: ['con','tem','po','rar','y'], cookie: ['cook','ie'],
+    corruptible: ['cor','rupt','i','ble'], creative: ['cre','a','tive'],
+    Daniel: ['Dan','iel'], decade: ['dec','ade'], electricity: ['e','lec','tric','i','ty'],
+    energy: ['en','er','gy'], epoch: ['ep','och'], Exodus: ['Ex','o','dus'],
+    firefly: ['fire','fly'], flexible: ['flex','i','ble'], fulcrum: ['ful','crum'],
+    Genesis: ['Gen','e','sis'], gravity: ['grav','i','ty'], haystack: ['hay','stack'],
+    homework: ['home','work'], irresponsible: ['ir','re','spon','si','ble'],
+    lunchbox: ['lunch','box'], macaroni: ['mac','a','ro','ni'],
+    Mayflower: ['May','flow','er'], Mediterranean: ['Med','i','ter','ra','ne','an'],
+    millennium: ['mil','len','ni','um'], miracle: ['mir','a','cle'],
+    northeast: ['north','east'], notebook: ['note','book'], Nothing: ['Noth','ing'],
+    olive: ['ol','ive'], omnipotent: ['om','nip','o','tent'],
+    omnipresent: ['om','ni','pres','ent'], parable: ['par','a','ble'],
+    Pilgrims: ['Pil','grims'], Plymouth: ['Plym','outh'], punctual: ['punc','tu','al'],
+    relative: ['rel','a','tive'], Samoset: ['Sam','o','set'], Saturday: ['Sat','ur','day'],
+    scarecrow: ['scare','crow'], Separatists: ['Sep','a','ra','tists'],
+    simultaneously: ['si','mul','ta','ne','ous','ly'], skateboard: ['skate','board'],
+    slippery: ['slip','per','y'], spelling: ['spell','ing'], submersible: ['sub','mers','i','ble'],
+    terrarium: ['ter','rar','i','um'], terrier: ['ter','ri','er'], toiled: ['toiled'],
+    uncoordinated: ['un','co','or','di','nat','ed'], ungracious: ['un','gra','cious'],
+    unreliable: ['un','re','li','a','ble'], unresolved: ['un','re','solved'],
+    unseasonable: ['un','sea','son','a','ble'], untrustworthy: ['un','trust','wor','thy'],
+    valuable: ['val','u','a','ble'], venison: ['ven','i','son'], weather: ['weath','er'],
+    weathervane: ['weath','er','vane']
+  };
   function sylParts(c){
     if (!c || !c.w) return [];
+    var fixed = SYL_FIX[String(c.w)] || SYL_FIX[String(c.w).toLowerCase()];
+    if (fixed) return fixed.slice();
     var halves = sylHalves(c);
     if (halves){
       var a = String(c.w).slice(0, halves[0].length), b = String(c.w).slice(halves[0].length);
@@ -4106,17 +4153,49 @@
      the printed sheet and the "It is driz·zle" line all keep the real spelling.
      This is how the word is actually SAID when you say it slowly, driz-zul,
      strug-gul, la-dee-bug, which is the whole point of the spelling voice. */
-  function saySayable(part){
+  /* ⚠️ THE -le REWRITE IS A WORD ENDING, NOT ANY CHUNK THAT ENDS IN le. Applied
+     to every chunk it turned the START of flexible, fle, into "ful", so the
+     word was read out as ful, xi, bul. It only ever belongs on the last one. */
+  function saySayable(part, last){
     var low = String(part).toLowerCase();
-    if (/[^aeiouy]le$/.test(low)) return part.slice(0, -2) + 'ul';   // zle -> zul
-    if (/[^aeiou]y$/.test(low)) return part.slice(0, -1) + 'ee';     // dy  -> dee
-    if (!/[aeiouy]/.test(low)) return part + 'uh';                   // a chunk with no vowel
+    if (last && low.length >= 3 && /[^aeiouy]le$/.test(low)) return part.slice(0, -2) + 'ul';
+    if (last && low === 'y') return 'ee';                                    // slip-per-y
+    if (last && low === 'ie') return 'ee';                                   // cook-ie
+    /* ⚠️ TWO LETTERS ONLY. A longer chunk ending in y is a word in its own
+       right and keeps its sound: but·ter·fly is not but, ter, flee. */
+    /* ⚠️ y ANYWHERE, i ONLY AT THE END. la·dy·bug reads la, die, bug without the
+       first half, and Bi·ble reads Bee, bul with the second half let loose. */
+    if (low.length === 2 && /^[^aeiou]y$/.test(low)) return part.charAt(0) + 'ee';
+    if (last && low.length === 2 && /^[^aeiou]i$/.test(low)) return part.charAt(0) + 'ee';
+    if (!/[aeiouy]/.test(low)) return part + 'uh';                           // no vowel at all
     return part;
   }
-  function saySpelled(c){
+  /* The handful the rules above still land wrongly on, said the way a person
+     would say them slowly. Same length as the real split, always, because the
+     part buttons are numbered off it. */
+  var SAY_FIX = {
+    collie:   ['col','lee'],
+    prairie:  ['prai','ree'],
+    disciple: ['dis','sigh','pul'],
+    bountiful:['boun','tuh','ful'],
+    valuable: ['val','you','uh','bul'],
+    Bible:    ['By','bul'],
+    terrier:  ['ter','ree','er'],
+    millennium:['mil','len','nee','um'],
+    centennial:['cen','ten','nee','al'],
+    Puritans: ['Pu','ree','tans'],
+    untrustworthy:['un','trust','wor','thee']
+  };
+  function sayParts(c){
     var parts = sylParts(c);
+    var over = SAY_FIX[String(c.w)] || SAY_FIX[String(c.w).toLowerCase()];
+    if (over && over.length === parts.length) return over.slice();
+    return parts.map(function(p, i){ return saySayable(p, i === parts.length - 1); });
+  }
+  function saySpelled(c){
+    var parts = sayParts(c);
     if (!parts.length) return false;
-    return speak(parts.map(saySayable).join(', '), 0.55);   // the commas are the pauses
+    return speak(parts.join(', '), 0.55);   // the commas are the pauses
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
@@ -12858,7 +12937,7 @@
       b.className = 'wpart';
       b.textContent = open ? part : String(i + 1);
       b.addEventListener('click', function(){
-        unlock(); speak(saySayable(part), 0.55); focusWrite();
+        unlock(); speak(sayParts(c)[i] || part, 0.55); focusWrite();
       });
       el.wPartRow.appendChild(b);
     });
