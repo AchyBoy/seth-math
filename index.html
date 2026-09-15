@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.39">
+<meta name="x-cards-version" content="5.40">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -477,6 +477,11 @@
     display:none;align-items:center;gap:8px}
   .wsay:active{transform:scale(.96)}
   body.listening .wsay{display:inline-flex}
+  .wsayrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  /* ⚠️ `body.listening .wsay` is more specific than the generic .hide, so a
+     one syllable word kept its In parts button until this line existed. Same
+     trap as the buttons .hide silently did nothing to before v3.3. */
+  .wsay.hide{display:none}
 
   .wmark{min-height:30px;text-align:center;font-size:26px;font-weight:600;
     letter-spacing:.06em;line-height:1.2}
@@ -1820,7 +1825,13 @@
            not: his sheet prints the word and its meaning side by side and the
            job is getting both onto the line in his own hand. -->
       <p class="wmean hide" id="wMean"></p>
-      <button type="button" class="wsay" id="wSay">🔊 Hear it again</button>
+      <div class="wsayrow">
+        <button type="button" class="wsay" id="wSay">🔊 Hear it again</button>
+        <!-- ⭐ ITS OWN BUTTON, not the second press of another one. Andrew asked
+             for it by name the night he found it, and a help you have to press a
+             different button twice to reach is a help nobody reaches twice. -->
+        <button type="button" class="wsay" id="wParts">🔤 Hear it in parts</button>
+      </div>
     </div>
     <p class="wtask hide" id="wTask"></p>
     <button type="button" class="helpbtn hide" id="helpBtn">🤔 How do I work it out?</button>
@@ -3837,7 +3848,7 @@
    'timesBlock','timesVal','timesUp','timesDown','timesNote',
    'readsBlock','readsList','readsNote','clearReads',
    'writeBlock','writeOpts','writeNote','extraOpts','defOpts','defNote','ver',
-   'writeBox','wClue','wWord','wText','wBlank','wMean','wSay','wMark','wTask','wInput','wHint','wPeek','wCheck',
+   'writeBox','wClue','wWord','wText','wBlank','wMean','wSay','wParts','wMark','wTask','wInput','wHint','wPeek','wCheck',
    'teachBox','teachKind','teachWhat','teachSpot','teachMark','helpBtn',
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
@@ -12356,6 +12367,7 @@
     var mode = (sum || tell) ? 'copy' : (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
     state.tries = 0; sayAgain = 0;
     el.wSay.textContent = '\uD83D\uDD0A Hear it again';   // a new card, a new first press
+    el.wParts.classList.toggle('hide', !(isWord(c) && !isDef(c) && sylParts(c).length > 1));
     clearTimeout(peekId);
     el.wInput.value = '';
     el.wInput.className = 'winput';
@@ -12804,11 +12816,16 @@
      will do, so the spelling voice is offered rather than hidden, and it is
      still his to ask for rather than something the card does to him. */
   function saySayLabel(c){
-    var spellable = isWord(c) && !isDef(c) && sylParts(c).length > 1;
-    var turn = sayAgain % 3;
-    el.wSay.textContent = (spellable && turn === 1)
-      ? '\uD83D\uDD24 Hear it in parts' : '\uD83D\uDD0A Hear it again';
+    /* the parts have their own button now, so this one keeps its own name */
+    el.wSay.textContent = '\uD83D\uDD0A Hear it again';
+    el.wParts.classList.toggle('hide', !(isWord(c) && !isDef(c) && sylParts(c).length > 1));
   }
+  el.wParts.addEventListener('click', function(){
+    unlock();
+    var c = card(); if (!isWord(c)) return;
+    saySpelled(c);
+    focusWrite();
+  });
   el.wSay.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
