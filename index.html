@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.31">
+<meta name="x-cards-version" content="5.32">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4766,7 +4766,14 @@
            under `~try` and again under `~<epoch>`, so one wrong go can be two or
            three marked slots: counting them said "wrong both times he wrote it"
            about appear, which he wrote as apear and then got right. */
-        r.why = r.got ? 'the checker read \u201c' + r.got + '\u201d'
+        /* \u2b50 A GROWN-UP'S READING BEATS A COUNT OF GOES. When somebody has
+           actually read the ink and said what went wrong, that sentence is the
+           whole point of doing the word again, and it is truer than anything
+           inferred from how many times he wrote it: `missed` is set from
+           state.tries, so a word he fixed himself still counts as missed and
+           was being told "wrong both times he tried it". */
+        r.why = (r.slot && r.slot.note) ? r.slot.note
+          : r.got ? 'the checker read \u201c' + r.got + '\u201d'
           : (r.last && r.last.missed)
             ? (r.bad > 1 ? 'wrong both times he tried it.' : 'this one came back wrong.')
             : 'wrong the first time, right on the second. One more to be sure.';
