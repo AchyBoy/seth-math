@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.43">
+<meta name="x-cards-version" content="5.44">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3840,6 +3840,9 @@
     { w: 'Plymouth',      view: 'newengland', at: MAP_TOWNS.Plymouth.at }
   ];
 
+  /* said the way a person says it, not the way the code spells it */
+  var MAP_VIEW_NAME = { world: 'world', europe: 'Europe', caribbean: 'Caribbean',
+                        atlantic: 'Atlantic', newengland: 'New England' };
   var MAP_UNIT = 601, MAP_N = 12;
   /* ⚠️ TWELVE A ROUND, NOT ALL TWENTY THREE. A round he does not finish teaches
      him nothing, and the ones he keeps missing are worth more goes than the
@@ -4612,6 +4615,15 @@
   // 's:ck:duck' is a sound card, '7×8' is a times card
   function isSoundKey(k){ return k.slice(0, 2) === 's:'; }
   function isWordKey(k){ return k.slice(0, 2) === 'w:'; }
+  /* 🔴 A NEW PREFIX NEEDS A LINE IN ALL FOUR OF THESE, or it shows on the
+     finish screen and on Keeps missing these as the bare key: the first map
+     round ended with a list reading "g:North America, g:Jamestown". Same trap
+     the arithmetic kinds carry a note about. */
+  function isMapKey(k){ return k.slice(0, 2) === 'g:'; }
+  function placeByName(w){
+    for (var i = 0; i < MAP_PLACES.length; i++) if (MAP_PLACES[i].w === w) return MAP_PLACES[i];
+    return null;
+  }
   // 'w:praise' back to the card it came off, whichever unit that was
   function spellByWord(w){
     // this child's own weeks first, so a word two lists happen to share comes
@@ -4670,6 +4682,7 @@
   }
   // what shows on the chip
   function prettyKey(k){
+    if (isMapKey(k)) return k.slice(2);
     if (isMathKey(k)) return MATH_NAMES[k.slice(2)] || k.slice(2);
     if (isTermKey(k) || isAskKey(k)) return k.slice(2);
     if (isWordKey(k)) return k.slice(2);
@@ -4679,6 +4692,11 @@
   }
   // what shows when you tap it open
   function keyAnswer(k){
+    /* the answer to "where is it" is the map, which does not fit on a chip */
+    if (isMapKey(k)){
+      var pl = placeByName(k.slice(2));
+      return pl ? 'on the ' + (MAP_VIEW_NAME[pl.view] || pl.view) + ' map' : '';
+    }
     if (isMathKey(k)) return '';       // a generated sum has no one answer to show
     if (isTermKey(k)){ var tc = termByWord(k.slice(2)); return tc ? tc.m : ''; }
     if (isAskKey(k)) return '';        // the question it answered is not kept
@@ -4692,6 +4710,11 @@
     return (p[0] * p[1]) ? String(p[0] * p[1]) : '';
   }
   function keyToCard(k){
+    if (isMapKey(k)){
+      var pl = placeByName(k.slice(2));
+      return pl ? { k: 'gm', w: pl.w, view: pl.view, poly: pl.poly || null, at: pl.at || null,
+                    fill: pl.fill || 0, u: MAP_UNIT, from: 'History, the maps in his book' } : null;
+    }
     if (isMathKey(k)) return null;     // nothing to rebuild, they are made fresh
     if (isTermKey(k)) return termByWord(k.slice(2));
     if (isAskKey(k)) return null;      // nothing to rebuild a tapped question from
