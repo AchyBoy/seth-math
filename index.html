@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.46">
+<meta name="x-cards-version" content="5.48">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3854,7 +3854,9 @@
   /* said the way a person says it, not the way the code spells it */
   var MAP_VIEW_NAME = { world: 'world', europe: 'Europe', caribbean: 'Caribbean',
                         atlantic: 'Atlantic', newengland: 'New England' };
-  var MAP_UNIT = 601, MAP_N = 12;
+  /* His test is the coloured place and four answers, so that is every card.
+     MAP_FIND turns the other direction back on, see mapCards. */
+  var MAP_UNIT = 601, MAP_N = 12, MAP_FIND = false;
   /* ⚠️ TWELVE A ROUND, NOT ALL TWENTY THREE. A round he does not finish teaches
      him nothing, and the ones he keeps missing are worth more goes than the
      ones he has. Ranked off his own record, worst first, then shuffled so the
@@ -3865,15 +3867,25 @@
       return { pl: pl, s: r.m * 2 - r.h * 0.5 + Math.random() * 0.3 };
     });
     scored.sort(function(a, b){ return b.s - a.s; });
-    /* ⚠️ BOTH DIRECTIONS, alternating, so neither is the one he has drilled.
-       Andrew, 2026-09-15: "I believe he just needs to know what the country is,
-       the rest colours them also, he just needs to get the name right". His
-       book does point a line at a coloured place and name it, so naming is at
-       least as likely to be what the test asks as finding. Same places, same
-       maps, asked the other way round. */
-    var out = scored.slice(0, MAP_N).map(function(x, i){
+    /* 🔴 THE TEST IS THE COLOURED PLACE AND FOUR ANSWERS (Andrew, 2026-09-15:
+       "the test is the colored locations, and its multiple choice"). So that is
+       the card he gets, and the shape of his paper is the shape of the round.
+
+       ⭐ FINDING IT IS THE HARDER VERSION, AND IT IS EARNED. A place he has
+       named right twice with nothing against it is asked the other way round
+       instead: the map with nothing coloured, find it yourself. Naming is
+       recognising, finding is knowing, and there is no sense asking him to do
+       the second before he can do the first. */
+    var out = scored.slice(0, MAP_N).map(function(x){
+      var r = record['g:' + x.pl.w] || { m: 0, h: 0 };
+      /* ⚠️ PARKED, NOT DELETED (Andrew: "so no finding it, I would keep that in
+         back pocket though but for now it's not needed"). Turn MAP_FIND on and
+         a place he has named right twice with nothing against it is asked the
+         other way round instead: the map with nothing coloured, find it
+         yourself. Everything it needs is still here and still drawn. */
+      var earned = MAP_FIND && r.h >= 2 && r.m === 0;
       return { k: 'gm', w: x.pl.w, view: x.pl.view, poly: x.pl.poly || null,
-               at: x.pl.at || null, fill: x.pl.fill || 0, name: i % 2 === 1,
+               at: x.pl.at || null, fill: x.pl.fill || 0, name: !earned,
                u: MAP_UNIT, from: 'History, the maps in his book' };
     });
     shuffle(out);
