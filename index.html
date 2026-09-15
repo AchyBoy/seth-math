@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.35">
+<meta name="x-cards-version" content="5.36">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4837,9 +4837,65 @@
     return day === y ? 'yesterday' : 'on ' + day;
   }
   function pad2(n){ return (n < 10 ? '0' : '') + n; }
+  /* =========================================================
+     ⭐ LANGUAGE GETS ONE TOO (Andrew, 2026-09-14: "he does his a plus test,
+     whatever he misses goes into a special test").
+
+     🔴 SPELLING HAS HAD THIS SINCE 4.x AND LANGUAGE NEVER DID. The block was
+     written for words and for sums, so a comma card he got wrong went nowhere:
+     the round ended, the mark was on his page, and nothing ever put that
+     sentence in front of him again. On a night when he marked one comma
+     sentence wrong and one run-on wrong, "do these again" showed him a
+     spelling word.
+
+     ⚠️ THE CARD IS REBUILT THROUGH `markCard`, NOT COPIED. The page keeps the
+     sentence with its punctuation TAKEN OUT plus the gap each mark belongs in,
+     so the comma is put back where the steps say and the builder makes the card
+     again from that. Anything else is a second copy of the instructions, the
+     reason line and the direction gate, which would drift the first time one of
+     them is edited. A run-on keeps its comma on screen, so it needs nothing
+     putting back.
+     ========================================================= */
+  function langSetById(id){
+    for (var i = 0; i < LANG_SETS.length; i++) if (LANG_SETS[i].id === id) return LANG_SETS[i];
+    return null;
+  }
+  function langRebuild(slot, u){
+    var m = slot.mark;
+    if (!m || !m.text || !(m.steps || []).length) return null;
+    var kind = m.kind || u.kind;
+    if (kind === 'runon') return markCard(m.text, u, 'runon');
+    var out = m.text.split(' ');
+    m.steps.slice().sort(function(a, b){ return b.at - a.at; }).forEach(function(st){
+      if (st.do === 'ins' && st.at > 0 && out[st.at - 1]) out[st.at - 1] += ',';
+    });
+    return markCard(out.join(' '), u, kind);
+  }
+  function langNow(){ return state.subject === 'sentence'; }
+  function langMissed(){
+    var mine = pages.filter(function(pg){ return !!langSetById(pg.unit) && pageWritten(pg); })
+                    .sort(function(a, b){ return (b.at || 0) - (a.at || 0); });
+    if (!mine.length) return { day: '', rows: [] };
+    var day = mine[0].day, rows = [];
+    mine.forEach(function(pg){
+      if (pg.day !== day) return;
+      var u = langSetById(pg.unit), words = pg.words || {};
+      Object.keys(words).forEach(function(key){
+        var slot = words[key];
+        if (!slot || !slot.missed || !slot.mark) return;
+        var c = langRebuild(slot, u);
+        if (!c) return;
+        rows.push({ title: slot.mark.text, card: c, w: key,
+                    why: slot.note || u.title });
+      });
+    });
+    return { day: day, rows: rows };
+  }
   function paintAgain(){
-    if (!spellingNow() && !againMath()){ el.againBlock.classList.add('hide'); return; }
-    var found = lastMissed();
+    if (!spellingNow() && !againMath() && !langNow()){
+      el.againBlock.classList.add('hide'); return;
+    }
+    var found = langNow() ? langMissed() : lastMissed();
     el.againBlock.classList.toggle('hide', !found.rows.length);
     if (!found.rows.length) return;
     el.againList.innerHTML = '';
@@ -4854,17 +4910,28 @@
          from, so the sum goes on it and what it comes to does not. On a
          spelling word the syllables are safe: they are the word he is being
          asked to write and he can already see it. */
-      var right = againMath() ? (mathById(r.pg.unit) || {}).title || ''
+      /* ⚠️ A sentence has no syllables to show and no answer that fits on a
+         chip. What it gets instead is the sentence itself, which is the only
+         thing that says WHICH one he is being sent back to. */
+      var right = langNow() ? ''
+                : againMath() ? (mathById(r.pg.unit) || {}).title || ''
                               : sylParts({ w: r.w, u: r.card.u, k: 'w' }).join('\u00b7');
       b.innerHTML = '<span class="mkey">' + esc(r.title) + '</span>'
-        + '<span class="ans">' + esc(right) + ' \u2014 ' + esc(r.why) + '</span>';
+        + '<span class="ans">' + (right ? esc(right) + ' \u2014 ' : '') + esc(r.why) + '</span>';
       el.againList.appendChild(b);
     });
-    var n = found.rows.length, thing = againMath() ? 'question' : 'word';
-    el.againBtn.innerHTML = (againMath() ? '\uD83D\uDD22' : '\u270F\uFE0F')
+    var n = found.rows.length,
+        thing = againMath() ? 'question' : langNow() ? 'sentence' : 'word';
+    el.againBtn.innerHTML = (againMath() ? '\uD83D\uDD22' : langNow() ? '\uD83D\uDCDD' : '\u270F\uFE0F')
       + ' Do these again<small>'
       + n + ' ' + thing + (n === 1 ? ' he got wrong ' : 's he got wrong ')
       + daySaid(found.day) + '</small>';
+    if (langNow()){
+      el.againNote.textContent = 'The very sentences he marked wrong, marked again, and the '
+        + 'card checks the marks itself now rather than asking him whether he got it. It '
+        + 'clears itself as he gets them.';
+      return;
+    }
     el.againNote.textContent = againMath()
       ? 'The very same questions he got wrong, not others like them, and each one says how '
         + 'to do it rather than only whether he got it. It clears itself as he gets them.'
@@ -4873,7 +4940,7 @@
         + 'it again fixes either. It clears itself as he gets them.';
   }
   el.againBtn.addEventListener('click', function(){
-    var rows = lastMissed().rows;
+    var rows = (langNow() ? langMissed() : lastMissed()).rows;
     if (!rows.length) return;
     var cards = rows.map(function(r){ return r.card; });
     shuffle(cards);
@@ -4932,9 +4999,15 @@
     shuffle(clean);
     return { hot: hot, clean: clean };
   }
-  var DBL_WHY = 'Careful. Some of these have a letter written TWICE and some do not, '
-              + 'and a doubled letter sounds exactly the same as one. Say it in beats, '
-              + 'decide, then write it.';
+  /* ⚠️ PLAIN WORDS, AND NOT A TRICK THAT DOES NOT WORK. This said "say it in
+     beats", which Andrew read and could not follow either, and it was the wrong
+     advice anyway: saying it in beats finds a syllable he has missed, and a
+     doubled letter makes NO sound at all, so listening harder cannot find one.
+     The card says that out loud, gives him a word he already knows the look of,
+     and tells him the only thing that does work, which is picturing it. */
+  var DBL_WHY = 'Some of these words have a letter written twice, like the two p letters '
+              + 'in happy, and some have none at all. Two of a letter sound exactly the '
+              + 'same as one, so listening will not tell you. Picture the word, then write it.';
   function dblCards(){
     var pool = dblPool();
     if (pool.hot.length < 3) return [];
@@ -4952,21 +5025,52 @@
     shuffle(out);
     return out;
   }
+  /* ⭐ THE SAME IDEA ON LANGUAGE, and the same purple button (Andrew: "just
+     like the double letter lesson thing"). His comma fault is not commas: on
+     14 September he put one after "wolves", which is the line between who the
+     sentence is about and what they do, and got both list commas right. So the
+     round deals list sentences and subject-part sentences TOGETHER and makes
+     him decide which boundary he is looking at, a comma or a line. */
+  function trapCards(){
+    var lists = langSetById(405), split = langSetById(402);
+    if (!lists || !split) return [];
+    var out = langAskCards(lists, 6).concat(langAskCards(split, 4));
+    shuffle(out);
+    return out;
+  }
+  function ruleRound(){
+    if (spellingNow()) return {
+      cards: dblCards, label: 'Is any letter doubled?',
+      btn: '\uD83D\uDD01 Is any letter doubled?',
+      sub: function(n){ return n + ' words, and some of them have no doubled letter at all'; },
+      note: 'The one fault under most of his misses: a letter written twice makes no sound '
+          + 'of its own, so he writes one. Nothing about listening can fix that, which is why '
+          + 'the card tells him to picture the word instead. Every word here is read out and '
+          + 'written by hand, and the card never says which sort it is. Practice only, '
+          + 'nothing here is scored.' };
+    if (langNow()) return {
+      cards: trapCards, label: 'A comma, or the subject line?',
+      btn: '\u270F\uFE0F A comma, or the subject line?',
+      sub: function(n){ return n + ' sentences, and only some of them want a comma'; },
+      note: 'His comma misses are not about commas. He puts one between who the sentence '
+          + 'is about and what they do, which is where the subject line goes and where no '
+          + 'comma ever goes, and gets the commas in the list right. So the two come up in '
+          + 'one round and he has to say which boundary he is looking at. Practice only, '
+          + 'nothing here is scored.' };
+    return null;
+  }
   function paintDouble(){
-    var n = spellingNow() ? dblCards().length : 0;
+    var r = ruleRound(), n = r ? r.cards().length : 0;
     el.dblBlock.classList.toggle('hide', !n);
     if (!n) return;
-    el.dblBtn.innerHTML = '\uD83D\uDD01 Is any letter doubled?<small>'
-      + n + ' words, and some of them have no doubled letter at all</small>';
-    el.dblNote.textContent = 'The one fault under most of his misses: a letter written '
-      + 'twice that sounds exactly like a letter written once, so he writes one. Every '
-      + 'word here is read out and written by hand, and the card never says which sort '
-      + 'it is. Practice only, nothing here is scored.';
+    el.dblBtn.innerHTML = r.btn + '<small>' + r.sub(n) + '</small>';
+    el.dblNote.textContent = r.note;
   }
   el.dblBtn.addEventListener('click', function(){
-    var cards = dblCards();
+    var r = ruleRound(); if (!r) return;
+    var cards = r.cards();
     if (!cards.length) return;
-    startRun([{ label: 'Is any letter doubled?', cards: cards }], true);
+    startRun([{ label: r.label, cards: cards }], true);
   });
   function paintWatch(){
     /* 🔴 GRAMMAR FIRST, and it does not go through a picker. The three Lesson
