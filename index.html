@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.44">
+<meta name="x-cards-version" content="5.46">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -497,6 +497,12 @@
   #mapCv{width:100%;max-width:760px;border-radius:16px;border:2px solid var(--line);
     background:#cfe2ef;touch-action:manipulation;cursor:pointer}
   #mapAsk{font-size:20px;font-weight:800;color:var(--ink,#20242e)}
+  #mapOpts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:760px}
+  #mapOpts:empty{display:none}
+  #mapOpts button{border:2px solid var(--line);background:#fff;border-radius:999px;
+    font:inherit;font-size:17px;font-weight:700;padding:11px 18px;cursor:pointer}
+  #mapOpts button.good{background:var(--green);border-color:var(--green);color:#fff}
+  #mapOpts button.bad{background:var(--red);border-color:var(--red);color:#fff}
 
   .wmark{min-height:30px;text-align:center;font-size:26px;font-weight:600;
     letter-spacing:.06em;line-height:1.2}
@@ -1832,6 +1838,11 @@
     <div class="mapbox" id="mapBox">
       <p class="ptask" id="mapAsk"></p>
       <canvas id="mapCv"></canvas>
+      <!-- ⭐ THE OTHER DIRECTION. His book points a line at a place and names
+           it, so the test is as likely to colour one in and ask what it is as
+           to ask him to find it. Both are the same twenty three places and the
+           same five maps; knowing it one way round is not knowing it. -->
+      <div id="mapOpts"></div>
       <p class="cnote" id="mapNote"></p>
     </div>
     <div class="teach" id="teachBox">
@@ -3854,9 +3865,15 @@
       return { pl: pl, s: r.m * 2 - r.h * 0.5 + Math.random() * 0.3 };
     });
     scored.sort(function(a, b){ return b.s - a.s; });
-    var out = scored.slice(0, MAP_N).map(function(x){
+    /* ⚠️ BOTH DIRECTIONS, alternating, so neither is the one he has drilled.
+       Andrew, 2026-09-15: "I believe he just needs to know what the country is,
+       the rest colours them also, he just needs to get the name right". His
+       book does point a line at a coloured place and name it, so naming is at
+       least as likely to be what the test asks as finding. Same places, same
+       maps, asked the other way round. */
+    var out = scored.slice(0, MAP_N).map(function(x, i){
       return { k: 'gm', w: x.pl.w, view: x.pl.view, poly: x.pl.poly || null,
-               at: x.pl.at || null, fill: x.pl.fill || 0,
+               at: x.pl.at || null, fill: x.pl.fill || 0, name: i % 2 === 1,
                u: MAP_UNIT, from: 'History, the maps in his book' };
     });
     shuffle(out);
@@ -4024,7 +4041,7 @@
    'clockBox','clockCv','clockNote','clockUndo','clockDone',
    'markBox','markCv','markTask','markNote','markUndo','markClear','markDone',
    'markAsk','markAskTask','markAskQ','markAskOpts','markAskNote',
-   'markRow','markSaid','markYes','markNo','mapBox','mapCv','mapAsk','mapNote',
+   'markRow','markSaid','markYes','markNo','mapBox','mapCv','mapAsk','mapNote','mapOpts',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
    'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
@@ -4988,7 +5005,17 @@
      every arithmetic set keeps one: a word that drops off the list the moment
      he gets it right is a word nobody ever checks again, and Andrew asked for
      one or two to verify he has not slipped back. */
-  var WATCH_N = 10, WATCH_KEEP = 2;
+  /* 🔴 FIVE ON A SCHOOL NIGHT, TEN AT THE WEEKEND (2026-09-14). Ten was
+     costing him the last five: on the 14th he was still sharp at word five and
+     by word ten, at half past ten at night, he was losing words he had had
+     twenty minutes earlier. A round he finishes while he can still think is
+     worth more than a longer one he finishes tired.
+     ⚠️ Sunday to Thursday is a school night here, Friday and Saturday are not,
+     and the count is read when the block is painted so it follows the clock
+     rather than whenever the page was last loaded. */
+  function schoolNight(){ var d = new Date().getDay(); return d !== 5 && d !== 6; }
+  function watchN(){ return schoolNight() ? 5 : 10; }
+  var WATCH_KEEP = 2;
   function watchWords(u){
     var pred = {};
     (u.watch || []).forEach(function(row){ pred[row[0]] = row[1]; });
@@ -4999,8 +5026,9 @@
     });
     // worst first, and among equals the one he has been asked least often
     scored.sort(function(a, b){ return b.s - a.s || a.seen - b.seen; });
-    var need = scored.slice(0, WATCH_N - WATCH_KEEP);
-    var rest = scored.slice(WATCH_N - WATCH_KEEP);
+    var n = watchN();
+    var need = scored.slice(0, n - WATCH_KEEP);
+    var rest = scored.slice(n - WATCH_KEEP);
     // the steadiest of what is left, so the check is on something he really has
     rest.sort(function(a, b){ return a.s - b.s; });
     return need.concat(rest.slice(0, WATCH_KEEP));
@@ -5478,7 +5506,9 @@
       el.watchList.appendChild(b);
     });
     el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
-      + picked.length + ' words off list ' + u.unit + ', picked again tonight</small>';
+      + picked.length + ' words off list ' + u.unit
+      + (schoolNight() ? ', picked again tonight. Five on a school night.'
+                       : ', picked again tonight') + '</small>';
     el.watchNote.textContent = 'Ten off this week\u2019s list, picked again every night from '
       + 'what he has actually been missing, with a lift for the ones most likely to catch him. '
       + 'The last two are words he has already got right, in to check he has not slipped back. '
@@ -10568,29 +10598,34 @@
       g.fillStyle = '#7a6a4f'; g.fill();
       g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke();
     });
-    if (mapShown && c.at){
+    var lit = mapShown || c.name;     // a naming card is coloured in from the start
+    if (lit && c.at){
       var a = P(c.at);
       g.beginPath(); g.arc(a[0], a[1], 8, 0, 6.284);
       g.fillStyle = '#e0524a'; g.fill();
       g.strokeStyle = '#a83b31'; g.lineWidth = 3; g.stroke();
       g.beginPath(); g.arc(a[0], a[1], 17, 0, 6.284); g.stroke();
-      g.font = '800 17px ui-rounded, "Nunito", system-ui, sans-serif';
-      g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#fff';
-      g.strokeText(c.w, a[0], a[1] - 24);
-      g.fillStyle = '#20242e'; g.fillText(c.w, a[0], a[1] - 24);
-      g.textAlign = 'left';
+      if (mapShown){
+        g.font = '800 17px ui-rounded, "Nunito", system-ui, sans-serif';
+        g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#fff';
+        g.strokeText(c.w, a[0], a[1] - 24);
+        g.fillStyle = '#20242e'; g.fillText(c.w, a[0], a[1] - 24);
+        g.textAlign = 'left';
+      }
     }
-    if (mapShown && c.poly){
+    if (lit && c.poly){
       mapPoly(g, c.poly, P);
       g.fillStyle = 'rgba(224,82,74,.85)'; g.fill();
       g.strokeStyle = '#a83b31'; g.lineWidth = 2.5; g.stroke();
       var mid = mapMid(c.poly, P);
-      g.font = '800 17px ui-rounded, "Nunito", system-ui, sans-serif';
-      g.textAlign = 'center';
-      g.lineWidth = 4; g.strokeStyle = '#fff';
-      g.strokeText(c.w, mid[0], mid[1] - 14);
-      g.fillStyle = '#20242e'; g.fillText(c.w, mid[0], mid[1] - 14);
-      g.textAlign = 'left';
+      if (mapShown){
+        g.font = '800 17px ui-rounded, "Nunito", system-ui, sans-serif';
+        g.textAlign = 'center';
+        g.lineWidth = 4; g.strokeStyle = '#fff';
+        g.strokeText(c.w, mid[0], mid[1] - 14);
+        g.fillStyle = '#20242e'; g.fillText(c.w, mid[0], mid[1] - 14);
+        g.textAlign = 'left';
+      }
     }
   }
   function mapMid(poly, P){
@@ -10619,18 +10654,66 @@
     var mid = mapMid(poly, P);
     return Math.abs(pt[0] - mid[0]) < 26 && Math.abs(pt[1] - mid[1]) < 26;
   }
+  /* The wrong answers come off the SAME view. "Is that Cuba or Hispaniola" is
+     the question; "is that Cuba or Pennsylvania" is not. */
+  function mapChoices(c){
+    var here = MAP_PLACES.filter(function(pl){ return pl.view === c.view && pl.w !== c.w; })
+                         .map(function(pl){ return pl.w; });
+    /* ⚠️ The decoy towns are keyed NewYork and read NewYork on a button unless
+       somebody puts the space back. */
+    Object.keys(MAP_TOWNS).forEach(function(t){
+      var w = t.replace(/([a-z])([A-Z])/g, '$1 $2');
+      if (MAP_TOWNS[t].view === c.view && w !== c.w) here.push(w);
+    });
+    if (c.view === 'caribbean') here = here.concat(['Jamaica', 'Puerto Rico', 'Florida']);
+    if (c.view === 'newengland') here = here.concat(['Boston', 'Cape Cod', 'Plymouth']);
+    var seen = {}, pool = [];
+    here.forEach(function(w){ if (w !== c.w && !seen[w]){ seen[w] = 1; pool.push(w); } });
+    shuffle(pool);
+    var out = pool.slice(0, 3);
+    out.splice(Math.floor(Math.random() * (out.length + 1)), 0, c.w);
+    return out;
+  }
   function paintMapCard(c){
     mapShown = false;
-    el.mapAsk.textContent = 'Where is ' + c.w + '?';
-    el.mapNote.textContent = 'Tap it on the map.';
-    el.mapNote.className = 'cnote';
+    el.mapOpts.innerHTML = '';
+    if (c.name){
+      el.mapAsk.textContent = 'What is the red one?';
+      el.mapNote.textContent = 'Tap its name.';
+      el.mapNote.className = 'cnote';
+      mapChoices(c).forEach(function(w){
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = w;
+        b.addEventListener('click', function(){
+          if (mapShown || state.answered) return;
+          unlock();
+          var right = (w === c.w);
+          b.className = right ? 'good' : 'bad';
+          mapShown = true; mapDraw(c);
+          state.answered = true;
+          el.mapNote.textContent = right ? 'Yes. That is ' + c.w + '.'
+                                         : 'No, that is ' + c.w + '.';
+          el.mapNote.className = 'cnote ' + (right ? 'good' : 'bad');
+          if (right) sfx.right(); else sfx.wrong();
+          bump(right);
+          if (state.caught) return;
+          clearTimeout(advanceId);
+          advanceId = setTimeout(step, right ? 1000 : 2400);
+        });
+        el.mapOpts.appendChild(b);
+      });
+    } else {
+      el.mapAsk.textContent = 'Where is ' + c.w + '?';
+      el.mapNote.textContent = 'Tap it on the map.';
+      el.mapNote.className = 'cnote';
+    }
     mapDraw(c);
     // the canvas is sized off a box the layout has only just made
     requestAnimationFrame(function(){ if (card() === c) mapDraw(c); });
   }
   el.mapCv.addEventListener('click', function(ev){
     var c = card();
-    if (!isMap(c) || mapShown || state.answered) return;
+    if (!isMap(c) || c.name || mapShown || state.answered) return;
     unlock();
     var box = el.mapCv.getBoundingClientRect();
     var pt = [ev.clientX - box.left, ev.clientY - box.top];
@@ -12272,8 +12355,46 @@
     state.roundMissed = []; state.roundStartedAt = Date.now(); state.roundLogged = false;
   }
   function card(){ return state.queue[0]; }
+  /* =========================================================
+     🔴 GETTING IT RIGHT IS NOT PROOF THAT HE KNOWS IT (2026-09-14).
+
+     Measured, not guessed: on the night of the 14th he wrote strawberry
+     correctly at 10:16 and wrong at 10:26, and struggle correctly at 10:12 and
+     wrong at 10:29. Nothing was unlearned in fourteen minutes. The word was
+     never his in the first place; it was still in his head from the last time
+     he saw it, and the round took his answer and removed the card.
+
+     So a word he gets right comes BACK, four cards later in the same round. A
+     second right, with other words in between, is worth something the first
+     one is not. A second wrong tells us tonight what ninety minutes and three
+     teams of agents had to work out afterwards.
+
+     ⚠️ ONCE ONLY, and never on the miss path: a word he got wrong already
+     comes round again, and asking it a third time is a punishment rather than
+     a check. ⚠️ The round total grows by one when a card comes back, so the
+     count on screen stays honest about how many he will be asked. */
+  var RECHECK_AFTER = 4;
+  function wantsRecheck(c){
+    return !!(c && !c.recheck && isWord(c) && !isDef(c) && !isTeach(c)
+              && !isProof(c) && !isMarks(c) && !isSum(c) && spellingNow());
+  }
   function clearCard(correct){
-    if (correct || !chaseOn()){ state.queue.shift(); state.cleared++; }
+    if (correct || !chaseOn()){
+      var done = state.queue[0];
+      state.queue.shift(); state.cleared++;
+      if (correct && wantsRecheck(done) && state.queue.length){
+        var again = {};
+        for (var k in done) if (done.hasOwnProperty(k)) again[k] = done[k];
+        again.recheck = 1;
+        /* its own ink key, so the page keeps BOTH goes and the spaced one can
+           be read against the first rather than replacing it */
+        again.n = (done.n || 1) + 100;
+        again.from = 'a second go';
+        again.why = 'You had this one a minute ago. Write it again, on your own.';
+        state.queue.splice(Math.min(RECHECK_AFTER, state.queue.length), 0, again);
+        state.total++;
+      }
+    }
     else state.queue.push(state.queue.shift());
   }
 
@@ -13568,6 +13689,9 @@
        the same and would overwrite each other on the page. */
     if (isSum(c)) return c.op === 'roman' ? 'roman:' + c.roman : c.ops.join(c.op);
     if (isClock(c)) return 'clock:' + c.h + ':' + c.m;
+    /* ⚠️ A SPACED SECOND GO IS ITS OWN ROW. Keyed the same as the first it
+       would overwrite the very thing it exists to compare against. */
+    if (c.recheck) return c.w + '~again';
     return (isDef(c) ? 'def:' : '') + c.w + (c.n > 1 ? '#' + c.n : '');
   }
 
