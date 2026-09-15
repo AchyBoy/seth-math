@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.36">
+<meta name="x-cards-version" content="5.37">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4981,6 +4981,64 @@
     for (i = 1; i < s.length; i++) if (s.charAt(i) === s.charAt(i - 1)) return true;
     return false;
   }
+  /* ⭐ AND IT SAYS WHY THE LETTER IS THERE TWICE (Andrew, 2026-09-14: "can it
+     explain why it has 2 m's for summer etc"). Shown WITH the answer, never
+     before it, so it teaches without giving the card away.
+
+     🔴 THE RULE IS REAL BUT IT IS NOT UNIVERSAL, so these are written per word
+     rather than generated. Most of them are the short vowel being held short,
+     and the test a child can actually do is take one letter out and hear the
+     vowel go long: sumer, slipery, splater. But `appear` is ap put on the
+     front of pear and has nothing to do with the vowel, `football` brought its
+     two l letters in from ball, and `cross` is the old rule about s, f and l
+     doubling at the end of a short word. A generated sentence would tell him
+     the wrong thing about a third of his own list. */
+  var DBL_SAY = {
+    summer:      'sum\u00b7mer. With one m it would be sumer, and the u would say its own name, like super.',
+    butter:      'but\u00b7ter. With one t it would be buter, and the u would go long, like tutor.',
+    copper:      'cop\u00b7per. With one p it would be coper, and the o would say its own name.',
+    slippery:    'slip\u00b7per\u00b7y. With one p it would be slipery, and the i would go long, like spidery.',
+    splatter:    'splat\u00b7ter. With one t it would be splater, and the a would say its own name, like later.',
+    scribble:    'scrib\u00b7ble. A short vowel before \u00b7le doubles the letter in front of it: bubble, little, scribble.',
+    drizzle:     'driz\u00b7zle. Same as scribble: a short vowel before \u00b7le doubles the letter, bubble, little, drizzle.',
+    brittle:     'brit\u00b7tle. Short i, so two t letters before the \u00b7le.',
+    struggle:    'strug\u00b7gle. Short u, so two g letters before the \u00b7le.',
+    collie:      'col\u00b7lie. The two l letters keep the o short. One l would make colie, and the o would go long.',
+    balloon:     'bal\u00b7loon. The two l letters keep the a short, and then oo makes its own long sound.',
+    pulley:      'pul\u00b7ley. The two l letters keep the u short.',
+    terrier:     'ter\u00b7ri\u00b7er. The two r letters keep the first e short.',
+    terrain:     'ter\u00b7rain. The two r letters keep the e short.',
+    Holland:     'Hol\u00b7land. The two l letters keep the o short.',
+    succotash:   'suc\u00b7co\u00b7tash. The two c letters keep the u short.',
+    giraffes:    'gi\u00b7raffe. A short a before ff, the same as off and stiff.',
+    appear:      'ap\u00b7pear. This one is not about the vowel. It is ap put on the front of pear, so there is a p for each part.',
+    annoy:       'an\u00b7noy. Not about the vowel either: an on the front, then noy.',
+    strawberry:  'straw + berry. The two r letters belong to berry, ber\u00b7ry, where they keep the e short.',
+    butterfly:   'butter + fly, and butter is but\u00b7ter, so its two t letters come along.',
+    football:    'foot + ball. Ball ends in two l letters, and joining the words does not take one away.',
+    windmill:    'wind + mill. Mill ends in two l letters, and joining the words does not take one away.',
+    spelling:    'spell + ing. Spell already has two l letters, so they are both still there.',
+    cross:       'a short word ending in s after a short vowel takes two of them, like miss, glass, off and ball.',
+    crosswalk:   'cross + walk, and cross already has two s letters.',
+    Mediterranean:'Med\u00b7i\u00b7ter\u00b7ra\u00b7ne\u00b7an. The two r letters keep the e in ter short, the same as terrain and terrier.',
+    terrarium:   'ter\u00b7rar\u00b7i\u00b7um. The two r letters keep the first e short, like terrain.',
+    intelligible:'in\u00b7tel\u00b7li\u00b7gi\u00b7ble. The two l letters keep the e in tel short.',
+    centennial:  'cen\u00b7ten\u00b7ni\u00b7al. The two n letters keep the e in ten short.',
+    millennium:  'mil\u00b7len\u00b7ni\u00b7um. Two l letters keep the i short, and two n letters keep the second e short.',
+    wheelbarrow: 'wheel + barrow. The two r letters belong to barrow, bar\u00b7row, where they keep the a short.',
+    corruptible: 'cor + rupt. Not about the vowel: cor goes on the front and rupt follows, so there is an r for each part.',
+    collectible: 'col + lect. Not about the vowel either: col on the front, then lect.',
+    irresponsible:'ir + responsible. Not about the vowel: ir goes on the front, and responsible already starts with r.',
+    efficient:   'ef + ficient. Not about the vowel: ef on the front, then ficient.'
+  };
+  function dblWhyWord(w){
+    var pair = dblPair(w);
+    if (!pair) return 'no letter written twice in this one. Every sound has its own letter.';
+    var said = DBL_SAY[w];
+    if (said) return said;
+    return 'two ' + pair.charAt(0) + ' letters, and the second one makes no sound of its own. '
+         + 'This is one to know by looking.';
+  }
   var DBL_N = 10, DBL_CLEAN = 4;
   function dblPool(){
     var hot = [], clean = [], seen = {};
@@ -5020,7 +5078,9 @@
          round and would otherwise still be on the word next time it is dealt
          anywhere else. */
       out.push({ k: c.k, w: c.w, s: c.s, m: c.m, u: c.u,
-                 from: 'the doubling round', why: DBL_WHY });
+                 from: 'the doubling round', why: DBL_WHY,
+                 /* read out with the answer, so it explains rather than tells */
+                 dblSay: c.w + ': ' + dblWhyWord(c.w) });
     });
     shuffle(out);
     return out;
@@ -14855,7 +14915,9 @@
        who wrote the remainder correctly would be marked wrong off it. */
     if (isSum(c)) setSumNote('The answer is ' + cardAnswer(c) + '. Did they get it?', '');
     if (isClockSay(c)) setClockNote('It is ' + clockSaid(c) + '. Did they get it?', '');
-    setWHint(why || 'Check every letter. Did you get it?', '');
+    /* ⭐ The one moment the spelling is already in front of him is the only
+       moment this can be said without giving the card away. */
+    setWHint(c.dblSay || why || 'Check every letter. Did you get it?', '');
     el.inkGrade.classList.add('on');
     el.inkRow.classList.add('hide');
   }
