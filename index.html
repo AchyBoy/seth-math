@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.34">
+<meta name="x-cards-version" content="5.35">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -763,6 +763,12 @@
     background:#e0a021;color:#fff;font:inherit;font-size:19px;font-weight:800;
     padding:18px 16px;margin:0 0 12px;cursor:pointer}
   #watchBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
+  /* Purple, so three lesson buttons on one screen are never mistaken for each
+     other: blue is the homework, gold is the test, this is the one rule. */
+  #dblBtn{display:block;width:100%;border:none;border-radius:20px;
+    background:#6b4fc4;color:#fff;font:inherit;font-size:19px;font-weight:800;
+    padding:18px 16px;margin:0 0 12px;cursor:pointer}
+  #dblBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
   #moreBtn{display:block;width:100%;border:2px solid var(--line);background:#fff;
     border-radius:16px;font:inherit;font-size:15px;font-weight:700;padding:13px 16px;
     margin:0 0 18px;cursor:pointer}
@@ -1199,6 +1205,14 @@
     <button type="button" id="againBtn"></button>
     <div class="misses" id="againList"></div>
     <p class="note" id="againNote"></p>
+  </div>
+
+  <!-- The one fault under three of tonight's misses: a letter written twice
+       that he cannot hear. No chips on this block on purpose, since naming the
+       words would be naming the answers. -->
+  <div class="block hide" id="dblBlock">
+    <button type="button" id="dblBtn"></button>
+    <p class="note" id="dblNote"></p>
   </div>
 
   <!-- Not the red pen. These are the words on this week's list that the same
@@ -3813,7 +3827,7 @@
    'markRow','markSaid','markYes','markNo',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','againBlock','againList','againBtn','againNote','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -4865,6 +4879,95 @@
     shuffle(cards);
     startRun([{ label: 'The ones he got wrong', cards: cards }], true);
   });
+  /* =========================================================
+     ⭐ THE DOUBLING ROUND (2026-09-14).
+
+     🔴 ONE FAULT IS UNDER THREE OF TONIGHT'S MISSES, and it is not the three
+     words. Told the p was missing from splatter he wrote splater, told the i
+     was missing from slippery he wrote slipery, and on both the letter he
+     dropped was the second half of a doubled consonant. He can hold one
+     correction at a time, and while he is spending it, the doubling falls out.
+     That is the thing to practise: not splatter, not slippery, but the rule
+     that a letter can be written twice and sound exactly the same as once.
+
+     ⚠️ SOME OF THEM DO NOT HAVE ONE. A round where every word is doubled
+     teaches him to double everything, so four words with no repeated letter at
+     all come along and the card never says which sort it is dealing. That is
+     the whole exercise: decide, then write.
+
+     ⚠️ NO CHIPS UNDER THE BUTTON, unlike the other blocks. Naming the words
+     here would name the answers. */
+  function dblPair(w){
+    var s = String(w).toLowerCase(), i;
+    for (i = 1; i < s.length; i++){
+      if (s.charAt(i) === s.charAt(i - 1) && 'bcdfghjklmnpqrstvwxz'.indexOf(s.charAt(i)) > -1){
+        return s.charAt(i) + s.charAt(i);
+      }
+    }
+    return '';
+  }
+  /* ⚠️ A decoy has to have NO repeated letter of any sort. cookie and Hawaii
+     have a doubled vowel, which you CAN hear, so they answer the question
+     neither way and would just be unfair. */
+  function dblAny(w){
+    var s = String(w).toLowerCase(), i;
+    for (i = 1; i < s.length; i++) if (s.charAt(i) === s.charAt(i - 1)) return true;
+    return false;
+  }
+  var DBL_N = 10, DBL_CLEAN = 4;
+  function dblPool(){
+    var hot = [], clean = [], seen = {};
+    liveUnits().forEach(function(u){
+      unitWords(u).forEach(function(w){
+        if (seen[w]) return;
+        seen[w] = 1;
+        var r = record['w:' + w] || { m: 0, h: 0 };
+        var row = { w: w, s: r.m * 2 - r.h * 0.5, seen: r.m + r.h };
+        if (dblPair(w)) hot.push(row);
+        else if (!dblAny(w)) clean.push(row);
+      });
+    });
+    // worst first, and among equals the one he has been asked least often
+    hot.sort(function(a, b){ return b.s - a.s || a.seen - b.seen; });
+    shuffle(clean);
+    return { hot: hot, clean: clean };
+  }
+  var DBL_WHY = 'Careful. Some of these have a letter written TWICE and some do not, '
+              + 'and a doubled letter sounds exactly the same as one. Say it in beats, '
+              + 'decide, then write it.';
+  function dblCards(){
+    var pool = dblPool();
+    if (pool.hot.length < 3) return [];
+    var take = pool.hot.slice(0, DBL_N - DBL_CLEAN).concat(pool.clean.slice(0, DBL_CLEAN));
+    var out = [];
+    take.forEach(function(row){
+      var c = spellByWord(row.w);
+      if (!c) return;
+      /* A copy, never the card off the list: `why` and `from` belong to this
+         round and would otherwise still be on the word next time it is dealt
+         anywhere else. */
+      out.push({ k: c.k, w: c.w, s: c.s, m: c.m, u: c.u,
+                 from: 'the doubling round', why: DBL_WHY });
+    });
+    shuffle(out);
+    return out;
+  }
+  function paintDouble(){
+    var n = spellingNow() ? dblCards().length : 0;
+    el.dblBlock.classList.toggle('hide', !n);
+    if (!n) return;
+    el.dblBtn.innerHTML = '\uD83D\uDD01 Is any letter doubled?<small>'
+      + n + ' words, and some of them have no doubled letter at all</small>';
+    el.dblNote.textContent = 'The one fault under most of his misses: a letter written '
+      + 'twice that sounds exactly like a letter written once, so he writes one. Every '
+      + 'word here is read out and written by hand, and the card never says which sort '
+      + 'it is. Practice only, nothing here is scored.';
+  }
+  el.dblBtn.addEventListener('click', function(){
+    var cards = dblCards();
+    if (!cards.length) return;
+    startRun([{ label: 'Is any letter doubled?', cards: cards }], true);
+  });
   function paintWatch(){
     /* 🔴 GRAMMAR FIRST, and it does not go through a picker. The three Lesson
        19 sets are not lessons he can tick, and `state.lessons` was saved
@@ -5475,6 +5578,7 @@
       : 'Start ' + count + ' cards';
     paintPick();
     paintAgain();
+    paintDouble();
     paintWatch();
     paintTrouble();
   }
