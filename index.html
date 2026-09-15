@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.33">
+<meta name="x-cards-version" content="5.34">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9931,6 +9931,103 @@
   /* ⭐ HIS INK IS KEPT WHATEVER HE SAYS, with the sentence it was drawn on, so
      it can be read back and scored properly later. That is the whole of "I can
      have you score it when he's done": nothing here judges a caret. */
+  /* =========================================================
+     ⭐ THE MARKING CARD MARKS ITSELF (2026-09-14).
+
+     🔴 HE CANNOT SEE HIS OWN EXTRA COMMA. On the 14th he marked "Gray wolves
+     hunt deer elk and moose" with a caret after wolves, which is the line
+     between who the sentence is about and what they do, and commas after deer
+     and elk, which are right. Then he was asked "did you get it?" and said
+     yes, because the two he was thinking about WERE there. A round built on
+     his own yes cannot see a mark he did not mean to count.
+
+     ⚠️ AND THIS IS NOT THE AI CHECKER COMING BACK. That was dropped in v5.04
+     for being wrong half the time about his handwriting. Nothing here reads
+     handwriting: the card already knows which GAP each mark belongs in and the
+     layout already knows where every word sits on the canvas, so this is
+     arithmetic on x and y. It says "there is a mark after wolves" only when
+     there is ink after wolves.
+
+     ⚠️ WHAT IT COUNTS. A stroke within 34px across and 46px down of where a
+     mark belongs IS that mark, however wobbly, and several strokes can land on
+     one (the three capital lines are three strokes and one mark). A stroke
+     near nothing is an extra, and it is named by the word it sits after. Specks
+     of one or two points are ignored, which is what a rested pen leaves. The
+     old "did you get it?" is still there and still the fallback, but only when
+     the sentence has not been laid out yet, which is the one case where there
+     is genuinely nothing to measure against.
+     ========================================================= */
+  var MARK_DX = 34, MARK_DY = 46;          // how near a mark has to be, in px
+  function markMid(st){
+    var x = 0, y = 0;
+    for (var i = 0; i < st.length; i++){ x += st[i][0]; y += st[i][1]; }
+    return { x: x / st.length, y: y / st.length, n: st.length };
+  }
+  /* Where each mark the teacher makes lands on the canvas, and what to call it
+     if it is not there. A caret is drawn under the ruled line, the three
+     capital lines under the letter, so both sit below the baseline. */
+  function markWants(c, L){
+    var out = [];
+    c.steps.forEach(function(job){
+      if (job.do === 'ins'){
+        var at = markGapAt(L, job.at); if (!at) return;
+        out.push({ job: job, x: at.x, y: at.y + 14, dx: MARK_DX, hit: 0,
+                   miss: job.mark === '.'
+                     ? 'the caret with the period, where the first sentence ends'
+                     : 'a comma after ' + (c.words[job.at - 1] || 'the first word') });
+      } else {
+        var bx = markBoxOf(L, job.at); if (!bx) return;
+        out.push({ job: job, x: bx.x + Math.min(bx.width, 18) / 2, y: bx.y + 18, hit: 0,
+                   dx: Math.max(MARK_DX, bx.width),
+                   miss: 'the three lines under the ' + job.fix.charAt(0)
+                       + ', to make it a capital' });
+      }
+    });
+    return out;
+  }
+  /* The word a stray mark sits after, so the card can name it rather than
+     saying "somewhere". */
+  function markAfterWord(c, L, p){
+    var best = '', bd = 1e9;
+    for (var g = 1; g <= c.words.length; g++){
+      var at = markGapAt(L, g); if (!at) continue;
+      var d = Math.abs(at.x - p.x) + Math.abs(at.y + 14 - p.y) * 2;
+      if (d < bd){ bd = d; best = c.words[g - 1] || ''; }
+    }
+    return best.replace(/[.,]$/, '');
+  }
+  function markCheck(c){
+    var L = c._L; if (!L || !markInk.length) return null;
+    var want = markWants(c, L);
+    if (!want.length) return null;
+    var extra = [], i, j;
+    for (i = 0; i < markInk.length; i++){
+      var st = markInk[i];
+      if (st.length < 3) continue;                 // a speck, not a mark
+      var p = markMid(st), near = null;
+      for (j = 0; j < want.length; j++){
+        var w = want[j];
+        if (Math.abs(p.x - w.x) <= w.dx && Math.abs(p.y - w.y) <= MARK_DY){
+          if (!near || Math.abs(p.x - w.x) < Math.abs(p.x - near.x)) near = w;
+        }
+      }
+      if (near) near.hit++;
+      else extra.push(p);
+    }
+    var missed = want.filter(function(w){ return !w.hit; });
+    if (!missed.length && !extra.length){
+      return { right: true, say: 'Right. Every mark where it goes, and nothing extra.' };
+    }
+    var lines = [];
+    missed.forEach(function(w){ lines.push('Missing: ' + w.miss + '.'); });
+    extra.forEach(function(p){
+      var after = markAfterWord(c, L, p);
+      lines.push(after ? 'You marked after \u201c' + after + '\u201d, and nothing goes there.'
+                       : 'There is a mark where nothing goes.');
+    });
+    return { right: false, say: lines.join('  ') };
+  }
+
   function markKeep(c, missed){
     var L = c._L || markLayout(c, 700, 26);
     keepInk(c, missed, markInk, L.w, L.h);
@@ -9960,9 +10057,22 @@
     markShown = true;
     markDraw(c);
     el.markRow.classList.add('hide');
+    /* ⭐ THE CARD SAYS WHAT IT CAN SEE, and only hands the question back when
+       it cannot see. A mark he did not mean to make is the one thing he can
+       never catch himself, so where every mark is accounted for the card says
+       so and moves on; where it cannot place what he drew, the old yes-or-no
+       is still there. */
+    var v = markCheck(c);
+    el.markNote.className = 'cnote';
+    if (v){
+      el.markSaid.classList.add('hide');
+      el.markNote.textContent = v.say + (v.right ? '' : '  In red is how his teacher marks it.');
+      clearTimeout(advanceId);
+      advanceId = setTimeout(function(){ markSaid(v.right); }, v.right ? 1100 : 3200);
+      return;
+    }
     el.markSaid.classList.remove('hide');
     el.markNote.textContent = 'In red is how his teacher marks it. Did you get it?';
-    el.markNote.className = 'cnote';
   });
   function markSaid(right){
     var c = card(); if (!isMarks(c) || !markShown || state.answered) return;
