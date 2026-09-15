@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.37">
+<meta name="x-cards-version" content="5.38">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12338,6 +12338,7 @@
        above the pad and the answer is what he is working out. */
     var mode = (sum || tell) ? 'copy' : (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
     state.tries = 0; sayAgain = 0;
+    el.wSay.textContent = '\uD83D\uDD0A Hear it again';   // a new card, a new first press
     clearTimeout(peekId);
     el.wInput.value = '';
     el.wInput.className = 'winput';
@@ -12777,6 +12778,20 @@
      WRITTEN. ⚠️ Third rather than first on purpose: on a dictation night the
      reading he is given has to be the one his teacher gives, so the spelling
      way is help he goes and asks for. */
+  /* 🔴 AND THE BUTTON HAS TO SAY WHICH PRESS THIS IS. The spelling voice has
+     been here since the syllable splitter was built and nobody knew: Andrew
+     sat beside him on 14 September watching him write Saterday and asked
+     "maybe saying it the way it's spelled?", which the second press has always
+     done, behind a label that said "Hear it again" every time. A feature
+     nobody can find is not a feature. The button now names what the NEXT press
+     will do, so the spelling voice is offered rather than hidden, and it is
+     still his to ask for rather than something the card does to him. */
+  function saySayLabel(c){
+    var spellable = isWord(c) && !isDef(c) && sylParts(c).length > 1;
+    var turn = sayAgain % 3;
+    el.wSay.textContent = (spellable && turn === 1)
+      ? '\uD83D\uDD24 Hear it in parts' : '\uD83D\uDD0A Hear it again';
+  }
   el.wSay.addEventListener('click', function(){
     unlock();
     var c = card(); if (!isWord(c)) return;
@@ -12785,6 +12800,7 @@
     if (turn === 1) sayCard(c, true);
     else if (turn === 2 && !isDef(c) && sylParts(c).length > 1) saySpelled(c);
     else sayCard(c);
+    saySayLabel(c);
     focusWrite();
   });
   el.wPeek.addEventListener('click', function(){
