@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.32">
+<meta name="x-cards-version" content="5.33">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4139,6 +4139,8 @@
         .then(function(res){
           if (!res || !res.data) return;
           takeFixes(res.data.fixed);
+          /* the sentence first, so the repaint the marks trigger already has it */
+          takePageNotes(res.data.notes);
           takePageFixes(res.data.pages);
         });
     }, 1500);
@@ -4189,6 +4191,33 @@
 
      ⚠️ Only the slots the server names, and only the `missed` flag on them.
      The ink is his and is never touched from here. */
+  /* \u2b50 WHY IT WAS WRONG, IN THE WORDS OF WHOEVER READ HIS INK. A mark
+     puts the word back in front of him; this is the bit that teaches. It
+     rides down beside the marks on the same call, and it is only ever laid
+     ON the local page: nothing on the device writes `note`, so there is no
+     copy of his that this could be trampling.
+     \u26a0 No pushPage here, unlike the marks. The server re-lays a note on
+     every page it receives, so sending the page back to prove it arrived
+     would be a few hundred KB of ink to say nothing. */
+  function takePageNotes(notes){
+    if (!notes || typeof notes !== 'object') return;
+    var moved = 0;
+    Object.keys(notes).forEach(function(pid){
+      var rows = notes[pid];
+      if (!rows || typeof rows !== 'object') return;
+      var pg = null;
+      for (var i = 0; i < pages.length; i++) if (pages[i].id === pid) pg = pages[i];
+      if (!pg || !pg.words) return;
+      Object.keys(rows).forEach(function(k){
+        var slot = pg.words[k];
+        if (!slot || typeof rows[k] !== 'string' || slot.note === rows[k]) return;
+        slot.note = rows[k]; moved++;
+      });
+    });
+    if (!moved) return;
+    savePages();
+    paintHome();
+  }
   function takePageFixes(fix){
     if (!fix || typeof fix !== 'object') return;
     var touched = {}, moved = 0;
