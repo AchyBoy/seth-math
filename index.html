@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.48">
+<meta name="x-cards-version" content="5.49">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11200,16 +11200,40 @@
       return (r.width > 2 && r.height > 2) ? 1 : 0;
     };
     /* ⚠️ A CARD THAT TAKES THE WHOLE SCREEN IS NOT AN EMPTY ONE. The exercise
-       on a marking, proofreading, teaching, clock or sum card lives in its own
-       panel and the CSS hides the stage underneath it ON PURPOSE, so asking
+       on a marking, proofreading, teaching, clock, sum or MAP card lives in its
+       own panel and the CSS hides the stage underneath it ON PURPOSE, so asking
        only the card, the answer buttons and the writing pad called every one of
        those blank. It happened for real on 2026-09-13: eight marking cards, a
        red bar painted over his lesson every 1.2 seconds, and fourteen identical
        BLANK lines that pushed the whole rest of the trail out and put the red
-       box on the home screen. The panels are content too, so ask them. */
-    var panels = [el.writeBox, el.choices, el.card, el.inkBox, el.markBox,
-                  el.proofBox, el.teachBox, el.clockBox, el.mathBox];
-    for (var pi = 0; pi < panels.length; pi++){ if (panels[pi] && box(panels[pi])) return; }
+       box on the home screen. The panels are content too, so ask them.
+
+       🔴 AND THE LIST OF PANELS IS NOT WRITTEN BY HAND ANY MORE. It was, and it
+       went wrong a SECOND time on 2026-09-15: the maps subject renders into
+       #mapBox with its own #mapOpts buttons, nobody came back to add it here,
+       and the red bar went over a perfectly good Italy card. The fix for "I
+       forgot to add the new one to the list" is to stop keeping a list. Every
+       content panel is a direct child of the play screen, so ask the DOM: what
+       is not the fixed chrome is content, and the thirteenth subject is covered
+       the day somebody adds it.
+
+       ⚠️ The chase LANE is chrome on purpose. It is on screen for the whole of
+       a chase round whatever the card is doing, so counting it as content would
+       mean the watchdog could never fire during a chase, which is exactly when
+       a blank card is hardest to describe down the phone.
+
+       ⚠️ A box alone is not content either: an empty .stage can still measure a
+       few pixels of padding. It has to carry something you could look at. */
+    var isChrome = function(node){
+      return node.classList.contains('top') || node.classList.contains('pips')
+          || node.classList.contains('track') || node.classList.contains('lane');
+    };
+    var kids = el.play.children;
+    for (var pi = 0; pi < kids.length; pi++){
+      var k = kids[pi];
+      if (isChrome(k) || !box(k)) continue;
+      if (k.querySelector('canvas,button,input,img') || (k.textContent || '').trim()) return;
+    }
     var printMQ = '?';
     try { printMQ = window.matchMedia('print').matches ? 'YES' : 'no'; } catch(e){}
     showBoom('Nothing on screen. body=[' + document.body.className + ']'
