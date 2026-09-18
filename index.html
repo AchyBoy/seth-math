@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.51">
+<meta name="x-cards-version" content="5.52">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -415,9 +415,17 @@
   /* Four prose answers need the room more than a one line question does, so the
      split between the card and the buttons goes the other way here. */
   body.choice.asking .choices{grid-template-rows:repeat(4,1fr);flex:2}
+  /* ⚠️ And the words sit in the MIDDLE of the button. The four answers stretch
+     to fill the screen here, so a short one had its text pinned to the top of
+     a tall box with a hand's width of white under it. */
   body.asking .ch{font-size:16px;font-weight:600;padding:12px 14px;line-height:1.3;
-    text-align:left;border-radius:16px}
-  body.asking .q{font-size:clamp(19px,5.2vw,26px);font-weight:600;line-height:1.3}
+    text-align:left;border-radius:16px;display:flex;align-items:center}
+  /* ⚠️ AND IT NEEDS THE PADDING. A one line sum has nothing to run into; a
+     wrapped question sat hard against both edges of the card, which nobody had
+     seen because the class was being taken off again before it reached the
+     screen. Same 20px the verse card uses for the same reason. */
+  body.asking .q{font-size:clamp(19px,5.2vw,26px);font-weight:600;line-height:1.3;
+    padding:0 20px}
   .a{font-size:clamp(64px,22vw,120px);font-weight:700;color:var(--blue);line-height:1}
   .qsmall{font-size:20px;font-weight:500;color:var(--muted);margin-bottom:14px}
 
@@ -2888,6 +2896,32 @@
         ['observe',    'ob-serve, and the e on the end says nothing']
       ],
 
+      /* 🔴 WHAT ANDREW WATCHED HIM MISS, list read out and written on paper on
+         the evening of 2026-09-17: "make his focus test on those words".
+
+         This is NOT `marked` and NOT `watch`, and the three are deliberately
+         three things:
+           marked  what his TEACHER's red pen wrote on a test that came home
+           watch   MY guess at what will catch him, written before he sits down
+           paper   what a grown-up SAW him get wrong, sitting beside him
+         A guess and an observation must never end up in the same field, which
+         is the whole reason `watch` exists apart from `marked`.
+
+         ⭐ SIX OF THE SEVEN ARE NOT THIS SHEET'S RULE. List 5 is the silent e
+         after v and he wrote above, olive, glove and captive correctly at the
+         table; what caught him was the long words at the bottom of the list
+         with a quiet syllable or a letter you never hear. observe is the only
+         one off the rule half. Same fault as unit 3, see the note on that
+         week's marks. */
+      paper: [
+        ['skateboard', 'skate + board, two whole words joined, and skate keeps its e'],
+        ['friendship', 'friend has an i in it that says nothing: fri·end, then ship'],
+        ['arithmetic', 'a·rith·me·tic, four beats, and the middle two are the quiet ones'],
+        ['science',    'sci says s. The c is in there and you never hear it'],
+        ['history',    'his·to·ry, three beats, and the middle o is the one that goes'],
+        ['adjective',  'ad·jec·tive, three beats, and a silent e on the end'],
+        ['observe',    'ob·serve, and the e on the end says nothing. No English word ends in v']
+      ],
       compounds: [
         ['play','ground'], ['skate','board'], ['cross','walk'], ['friend','ship']
       ]
@@ -5031,7 +5065,7 @@
   function watchUnit(){
     if (state.subject !== 'spelling' || state.units.length !== 1) return null;
     var u = unitById(state.units[0]);
-    return (u && (u.watch || []).length) ? u : null;
+    return (u && ((u.watch || []).length || (u.paper || []).length)) ? u : null;
   }
   /* 🔴 ARITHMETIC NEEDS THE SAME BUTTON. The three sets built off his Lesson
      19 paper were invisible: the picker that ticks them lives behind "Study
@@ -5070,7 +5104,30 @@
   function schoolNight(){ var d = new Date().getDay(); return d !== 5 && d !== 6; }
   function watchN(){ return schoolNight() ? 5 : 10; }
   var WATCH_KEEP = 2;
+  /* 🔴 A REAL PAPER BEATS THE RANKING (Andrew, 2026-09-17: "make his focus
+     test on those words"). Everything below this line is a way of GUESSING
+     which of the week's twenty are worth his evening, off the app's own record
+     and my predictions. `paper` is not a guess: somebody sat beside him and
+     watched him get these wrong. So when a week has one, the focus round is
+     that list and nothing else.
+
+     ⚠️ ALL OF THEM, not five. The five on a school night rule exists because
+     ten was costing him the last five; seven he is known to be missing is a
+     different thing from ten picked by a ranking, and dropping two of them
+     would be dropping two words we KNOW he cannot spell.
+     ⚠️ And no steady checks either. WATCH_KEEP puts two words he has already
+     got right into a ranked round so nothing disappears unchecked; a paper
+     list is somebody's answer to what tonight is for. */
   function watchWords(u){
+    if ((u.paper || []).length){
+      return u.paper.map(function(row){
+        var r = record['w:' + row[0]] || { m: 0, h: 0 };
+        return { w: row[0], why: row[1] || '', seen: r.m + r.h, s: 0, paper: 1 };
+      });
+    }
+    return rankedWatchWords(u);
+  }
+  function rankedWatchWords(u){
     var pred = {};
     (u.watch || []).forEach(function(row){ pred[row[0]] = row[1]; });
     var scored = unitWords(u).map(function(w){
@@ -5863,11 +5920,23 @@
         + esc(watchWhy(u, row)) + '</span>';
       el.watchList.appendChild(b);
     });
+    /* ⚠️ Two different rounds wear this button and they must not describe
+       each other. A paper list is a fixed set somebody watched him get wrong;
+       the ranked one is picked fresh every night. Saying "picked again
+       tonight" over seven words off Thursday's paper would be the app
+       claiming something untrue about where they came from. */
+    var off = (u.paper || []).length;
     el.watchBtn.innerHTML = '\uD83C\uDFC6 The A+ 100 Maker<small>'
       + picked.length + ' words off list ' + u.unit
-      + (schoolNight() ? ', picked again tonight. Five on a school night.'
-                       : ', picked again tonight') + '</small>';
-    el.watchNote.textContent = 'Ten off this week\u2019s list, picked again every night from '
+      + (off ? ', the ones he got wrong on paper'
+        : schoolNight() ? ', picked again tonight. Five on a school night.'
+                        : ', picked again tonight') + '</small>';
+    el.watchNote.textContent = off
+      ? 'The words a grown-up sat and watched him get wrong writing this list out on '
+        + 'paper, all of them, and nothing else. Not the app\u2019s guess and not the red '
+        + 'pen: somebody was there. Tap one to see what goes wrong in it. Practice only, '
+        + 'nothing here is scored.'
+      : 'Ten off this week\u2019s list, picked again every night from '
       + 'what he has actually been missing, with a lift for the ones most likely to catch him. '
       + 'The last two are words he has already got right, in to check he has not slipped back. '
       + 'Tap one to see why it is in. Practice only, nothing here is scored.';
@@ -11363,7 +11432,7 @@
      is being asked is which group it is in, not how to spell it, and the
      writing card right behind it is the one that counts. */
   function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'x'
-                                     || c.k === 'qa' || c.k === 'g')); }
+                                     || c.k === 'qa' || c.k === 'g' || c.k === 've')); }
   /* ⭐ WRITTEN, NOT TAPPED (Andrew's call). They shipped as four buttons, which
      marked itself honestly enough, but it is not the exercise: on the sheet he
      WRITES Dec. in the blank. Four buttons also quietly hand him the answer
@@ -11421,6 +11490,7 @@
     /* ⚠️ The WORD, not the question. The question is the same on every card
        of the round and lives in the band above it, where four family
        buttons can sit under the word he is actually reading. */
+    if (c && c.k === 've') return c.q;
     if (c && c.k === 'g') return c.word;
     if (c && c.k === 'm') return namedAsk(c.kind);
     if (c && c.k === 'x') return c.ask || 'Which word breaks the rule?';
@@ -12777,6 +12847,61 @@
      a check. ⚠️ The round total grows by one when a card comes back, so the
      count on screen stays honest about how many he will be asked. */
   var RECHECK_AFTER = 4;
+  /* =========================================================
+     ✒️ WHY IS THERE AN e ON THE END? (Andrew, 2026-09-17: "make sure a pop up
+     ask every time there's a ve why did you put an e at the end of it? A few
+     random choices, silly, and one because English words don't end in v so we
+     add e".)
+
+     List 5 is that one rule and twelve of its twenty words carry it, so the
+     word he has just written IS the lesson. It comes up as a card of its own
+     rather than a box over the pad, for the reason the proof, sum and mark
+     panels all carry a note about: .wpanel is display:none unless body.write
+     and anything reaching into it from outside comes up with no box. A card
+     gets the choice machinery, the marking and the layout for free.
+
+     🔴 AFTER THE WORD, NEVER BEFORE IT. "Why did you put an e at the end" says
+     out loud that there is an e at the end, so asked first it would spell half
+     the word for him. It is spliced in behind the word the moment that card
+     leaves, which is also the one moment the spelling is still on screen.
+
+     ⚠️ NOT ON A SEALED TEST NIGHT. Nothing is shown there on purpose, and this
+     would tell him the word he just wrote blind ends in ve.
+
+     ⚠️ ONCE PER WORD PER ROUND. A word written three times is three cards, and
+     the same question three times in ten minutes is a round he stops reading
+     rather than a rule he learns. */
+  var VE_RIGHT = 'Because English words do not end in v, so we add an e.';
+  /* ⚠️ Every one of these has to be plainly, cheerfully wrong. A silly answer
+     that is half true is just a second right answer, which is the trap the
+     rule breaker cards and the blends distractors both carry notes about. */
+  var VE_SILLY = [
+    'Because the v was lonely and wanted a friend.',
+    'Because every word has to have an e in it somewhere.',
+    'Because the e makes the word look longer.',
+    'Because the e is saving a seat for the next letter.',
+    'Because you get a point for every e you write.',
+    'Because the v is too tired to be last.',
+    'Because the e tells you to shout the word.',
+    'Because the v would fall off the end of the line.'
+  ];
+  function veWord(c){
+    return !!(c && c.k === 'w' && c.w && /ve$/.test(String(c.w).toLowerCase()));
+  }
+  function veCard(done){
+    if (!spellingNow() || sealedNight() || !veWord(done)) return null;
+    var w = done.w;
+    if (!state.veAsked) state.veAsked = {};
+    if (state.veAsked[w]) return null;
+    state.veAsked[w] = 1;
+    var silly = VE_SILLY.slice();
+    shuffle(silly);
+    var opts = silly.slice(0, 3).concat([VE_RIGHT]);
+    shuffle(opts);
+    return { k: 've', q: w + '  \u2014  why is there an e on the end?',
+             w: VE_RIGHT, opts: opts, u: done.u,
+             from: 'the v rule', why: VE_RIGHT };
+  }
   function wantsRecheck(c){
     return !!(c && !c.recheck && isWord(c) && !isDef(c) && !isTeach(c)
               && !isProof(c) && !isMarks(c) && !isSum(c) && spellingNow());
@@ -12785,6 +12910,11 @@
     if (correct || !chaseOn()){
       var done = state.queue[0];
       state.queue.shift(); state.cleared++;
+      /* ✒️ The v rule, asked about the word that has just this second left the
+         pad. Right or wrong, because the question is about the spelling rather
+         than about how he did. */
+      var vq = veCard(done);
+      if (vq){ state.queue.splice(0, 0, vq); state.total++; }
       if (correct && wantsRecheck(done) && state.queue.length){
         var again = {};
         for (var k in done) if (done.hasOwnProperty(k)) again[k] = done[k];
@@ -12839,6 +12969,7 @@
     state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
     state.missed = []; state.caught = false; state.lastScore = null; state.sealed = 0;
+    state.veAsked = {};
     written = 0; lastCheer = -99;
     state.startedAt = Date.now();
     /* One id for the whole sitting, so the grown-ups history gathers the three
@@ -12970,11 +13101,18 @@
     el.famBand.classList.toggle('hide', !band);
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
-    document.body.classList.toggle('wordy', isSound(c) || (isTask(c) && c.k !== 'qa'));
+    /* ⚠️ A 've' card is prose like a comprehension question, so it is not
+       wordy either. Both rules land on .q with the same weight and `asking`
+       only wins on source order, which is not a thing to leave a layout
+       resting on. */
+    document.body.classList.toggle('wordy',
+      isSound(c) || (isTask(c) && c.k !== 'qa' && c.k !== 've'));
     document.body.classList.toggle('versey', isVerse(c) || isDealt(c));
     /* A comprehension question and its four answers are prose, so the question
        comes down to reading size and the buttons go into one column. */
-    document.body.classList.toggle('asking', !!(c && c.k === 'qa'));
+    /* ⚠️ A 've' card is prose the same way a comprehension question is: the
+       answers are whole sentences and four of them will not sit two abreast. */
+    document.body.classList.toggle('asking', !!(c && (c.k === 'qa' || c.k === 've')));
     /* ⚠️ A dealt card is a verse too. This keyed off the old card's own shape
        (r and t), and a server dealt one carries text and opts instead, so a
        whole verse rendered at times-tables size - eighty four pixels, over the
@@ -13017,7 +13155,15 @@
     /* ⚠️ The gate's class is only read alongside `marking`, but a card that is
        not a marking card leaves it hanging on the body where the next one would
        come up gated with nothing in it. Cleared here, where the kind is known. */
-    if (!isMarks(c)) document.body.classList.remove('asking');
+    /* 🔴 AND IT MUST NOT TAKE THE CLASS OFF A CARD THAT JUST ASKED FOR IT.
+       This ran after the toggle above and removed `asking` from every card
+       that is not a marking card, which is every comprehension question there
+       has ever been: they have been laid out as two fat buttons of prose since
+       the day the class was written, and nothing says so on any screen. Same
+       shape as the `.hide` lie in v3.3 and the duplicate id on Go again. */
+    if (!isMarks(c) && !(c && (c.k === 'qa' || c.k === 've'))){
+      document.body.classList.remove('asking');
+    }
     if (isClockSay(c)){
       /* The hands are already there and are not his to move: this card asks
          what they SAY. Drawn from the answer rather than from his ink.
