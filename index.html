@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.52">
+<meta name="x-cards-version" content="5.53">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -615,6 +615,23 @@
      read the line above it and say what the mark is going to be. Nothing here
      is scored: getting it wrong costs a second tap and shows the direction
      again, which is the whole point of it. */
+  /* ✒️ The v rule popup. Above the lane, the card and the pad, below nothing. */
+  .pop{position:fixed;inset:0;z-index:60;display:none;align-items:center;
+    justify-content:center;background:rgba(32,36,46,.55);padding:18px}
+  .pop.on{display:flex}
+  .popbox{background:#fff;border-radius:22px;padding:20px 18px;width:100%;
+    max-width:460px;box-shadow:0 18px 44px rgba(0,0,0,.3)}
+  .popq{font-size:21px;font-weight:700;line-height:1.3;text-align:center;margin-bottom:15px}
+  .popopts{display:grid;gap:9px}
+  .popopt{font:inherit;font-size:16px;font-weight:600;text-align:left;line-height:1.3;
+    padding:14px;border-radius:16px;border:2px solid var(--line);background:#fff;
+    color:var(--ink);cursor:pointer}
+  .popopt.good{background:var(--green);border-color:var(--green);color:#fff}
+  .popopt.bad{background:var(--red);border-color:var(--red);color:#fff}
+  .popopt.dim{opacity:.4}
+  .popsay{margin-top:13px;font-size:15px;font-weight:600;line-height:1.35;
+    text-align:center;color:var(--muted)}
+  .popsay:empty{display:none}
   .ask{display:none}
   body.marking.asking .ask{display:block}
   /* ⚠️ #markSaid TOO. It is the "did you get it?" row of the card BEFORE this
@@ -1963,6 +1980,26 @@
        top of it, so the field is the screen rather than a picture of one. The
        canvas is its own layer underneath; the question, the score, the chase
        and the two thumbs are ordinary flow above it. -->
+  <!-- ✒️ THE v RULE, ASKED ON THE WORD HE HAS JUST WRITTEN (Andrew,
+       2026-09-17: "so the word is olive, he clicks done, a pop up with the
+       question pops up before moving on to next word").
+
+       ⚠️ position:fixed and a child of the BODY, not of the writing panel.
+       Everything else on this screen is a panel that is display:none unless
+       its own body class is on, which is the trap the proof, sum, clock and
+       mark boxes all carry notes about; a popup that has to appear over any of
+       them cannot live inside one.
+       ⚠️ AND IT IS TAKEN DOWN ON EVERY PATH OUT. That is the one cost of an
+       overlay over a panel, written down here because the mark panel chose not
+       to pay it: paintCard, finish and quitting all close it. -->
+  <div class="pop" id="vePop">
+    <div class="popbox">
+      <p class="popq" id="vePopQ"></p>
+      <div class="popopts" id="vePopOpts"></div>
+      <p class="popsay" id="vePopSay"></p>
+    </div>
+  </div>
+
   <div class="range" id="range"><canvas id="rangeCv"></canvas></div>
   <div class="prompt" id="shootQ">1 × 1</div>
   <span class="wind" id="windTag">calm</span>
@@ -4132,7 +4169,7 @@
    'markRow','markSaid','markYes','markNo','mapBox','mapCv','mapAsk','mapNote','mapOpts',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','sortBlock','sortBtn','sortNote','famBand','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','sortBlock','sortBtn','sortNote','famBand','vePop','vePopQ','vePopOpts','vePopSay','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -11432,7 +11469,7 @@
      is being asked is which group it is in, not how to spell it, and the
      writing card right behind it is the one that counts. */
   function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'x'
-                                     || c.k === 'qa' || c.k === 'g' || c.k === 've')); }
+                                     || c.k === 'qa' || c.k === 'g')); }
   /* ⭐ WRITTEN, NOT TAPPED (Andrew's call). They shipped as four buttons, which
      marked itself honestly enough, but it is not the exercise: on the sheet he
      WRITES Dec. in the blank. Four buttons also quietly hand him the answer
@@ -11490,7 +11527,6 @@
     /* ⚠️ The WORD, not the question. The question is the same on every card
        of the round and lives in the band above it, where four family
        buttons can sit under the word he is actually reading. */
-    if (c && c.k === 've') return c.q;
     if (c && c.k === 'g') return c.word;
     if (c && c.k === 'm') return namedAsk(c.kind);
     if (c && c.k === 'x') return c.ask || 'Which word breaks the rule?';
@@ -12851,26 +12887,31 @@
      ✒️ WHY IS THERE AN e ON THE END? (Andrew, 2026-09-17: "make sure a pop up
      ask every time there's a ve why did you put an e at the end of it? A few
      random choices, silly, and one because English words don't end in v so we
-     add e".)
+     add e", and then, when the first go made it a card of its own: "no not
+     like that, so the word is olive, he clicks done, a pop up with the
+     question pops up before moving on to next word".)
 
-     List 5 is that one rule and twelve of its twenty words carry it, so the
-     word he has just written IS the lesson. It comes up as a card of its own
-     rather than a box over the pad, for the reason the proof, sum and mark
-     panels all carry a note about: .wpanel is display:none unless body.write
-     and anything reaching into it from outside comes up with no box. A card
-     gets the choice machinery, the marking and the layout for free.
+     🔴 SO IT IS A POPUP OVER THE WORD, NOT THE NEXT CARD. The difference is
+     the whole of what he asked for twice: the word he has just written stays
+     on the screen underneath and the question is asked about THAT, rather than
+     the screen changing and a new question arriving about a word that is gone.
+     `step` is where it goes, because the note over it is already true: every
+     card leaves through there, whatever marked it, so it is the one place that
+     sees a word finish however it finished.
 
      🔴 AFTER THE WORD, NEVER BEFORE IT. "Why did you put an e at the end" says
-     out loud that there is an e at the end, so asked first it would spell half
-     the word for him. It is spliced in behind the word the moment that card
-     leaves, which is also the one moment the spelling is still on screen.
+     out loud that there IS an e at the end, so asked first it would spell half
+     the word for him.
 
      ⚠️ NOT ON A SEALED TEST NIGHT. Nothing is shown there on purpose, and this
-     would tell him the word he just wrote blind ends in ve.
+     would tell him the word he wrote blind ends in ve.
 
      ⚠️ ONCE PER WORD PER ROUND. A word written three times is three cards, and
      the same question three times in ten minutes is a round he stops reading
-     rather than a rule he learns. */
+     rather than a rule he learns.
+
+     ⚠️ Nothing here is scored. It is a rule being taught on the back of a word
+     he has already been marked on, the same as the doubling round's why line. */
   var VE_RIGHT = 'Because English words do not end in v, so we add an e.';
   /* ⚠️ Every one of these has to be plainly, cheerfully wrong. A silly answer
      that is half true is just a second right answer, which is the trap the
@@ -12885,10 +12926,11 @@
     'Because the e tells you to shout the word.',
     'Because the v would fall off the end of the line.'
   ];
+  var veOwed = null;
   function veWord(c){
     return !!(c && c.k === 'w' && c.w && /ve$/.test(String(c.w).toLowerCase()));
   }
-  function veCard(done){
+  function veAsk(done){
     if (!spellingNow() || sealedNight() || !veWord(done)) return null;
     var w = done.w;
     if (!state.veAsked) state.veAsked = {};
@@ -12898,10 +12940,60 @@
     shuffle(silly);
     var opts = silly.slice(0, 3).concat([VE_RIGHT]);
     shuffle(opts);
-    return { k: 've', q: w + '  \u2014  why is there an e on the end?',
-             w: VE_RIGHT, opts: opts, u: done.u,
-             from: 'the v rule', why: VE_RIGHT };
+    return { w: w, opts: opts };
   }
+  /* ⚠️ ONE WAY IN AND ONE WAY OUT. An overlay has to be taken down by hand on
+     every path out of a card, which is exactly why the mark panel put its own
+     question INSIDE itself. This one is closed here, and `veClose` is called
+     from paintCard, finish and quitting as well, so there is no route that
+     leaves it hanging over the next thing. */
+  function veClose(){
+    veOwed = null;
+    el.vePop.classList.remove('on');
+    el.vePopSay.textContent = '';
+  }
+  function veShow(ask){
+    /* 🔴 THE BAND IS THE ANSWER. On a grouped round the ·ve family's band reads
+       "No English word ends in v, so an e goes on the end of it", sitting two
+       inches above a question asking exactly that, with the right answer as one
+       of four buttons. It comes down while the question is up; paintCard sets
+       it again for the next card. */
+    el.famBand.classList.add('hide');
+    el.vePopQ.textContent = ask.w + '  \u2014  why is there an e on the end?';
+    el.vePopSay.textContent = '';
+    el.vePopOpts.innerHTML = '';
+    ask.opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'popopt';
+      b.setAttribute('data-v', o);
+      b.textContent = o;
+      el.vePopOpts.appendChild(b);
+    });
+    el.vePop.classList.add('on');
+  }
+  el.vePopOpts.addEventListener('click', function(ev){
+    var b = ev.target.closest('.popopt'); if (!b) return;
+    unlock();
+    if (b.disabled) return;
+    var right = b.getAttribute('data-v') === VE_RIGHT;
+    var all = el.vePopOpts.querySelectorAll('.popopt');
+    for (var i = 0; i < all.length; i++){
+      all[i].disabled = true;
+      if (all[i].getAttribute('data-v') === VE_RIGHT) all[i].classList.add('good');
+      else if (all[i] === b) all[i].classList.add('bad');
+      else all[i].classList.add('dim');
+    }
+    right ? sfx.right() : sfx.wrong();
+    /* The rule is said out loud either way. Getting it right and being told why
+       he is right is the half of this that teaches. */
+    el.vePopSay.textContent = right
+      ? 'That is it. No English word ends in v.'
+      : 'No English word ends in v, so we put an e on the end of it.';
+    setTimeout(function(){
+      veClose();
+      step();
+    }, right ? 1500 : 2600);
+  });
   function wantsRecheck(c){
     return !!(c && !c.recheck && isWord(c) && !isDef(c) && !isTeach(c)
               && !isProof(c) && !isMarks(c) && !isSum(c) && spellingNow());
@@ -12910,11 +13002,11 @@
     if (correct || !chaseOn()){
       var done = state.queue[0];
       state.queue.shift(); state.cleared++;
-      /* ✒️ The v rule, asked about the word that has just this second left the
-         pad. Right or wrong, because the question is about the spelling rather
-         than about how he did. */
-      var vq = veCard(done);
-      if (vq){ state.queue.splice(0, 0, vq); state.total++; }
+      /* ✒️ The v rule, owed on the word that has just this second left the
+         pad. It is not queued as a card: `step` holds the screen where it is
+         and pops the question over it. Right or wrong, because the question is
+         about the spelling rather than about how he did. */
+      veOwed = veAsk(done) || veOwed;
       if (correct && wantsRecheck(done) && state.queue.length){
         var again = {};
         for (var k in done) if (done.hasOwnProperty(k)) again[k] = done[k];
@@ -12970,6 +13062,7 @@
     state.streak = 0; state.bestStreak = 0;
     state.missed = []; state.caught = false; state.lastScore = null; state.sealed = 0;
     state.veAsked = {};
+    veClose();        // a new run owes nothing from the last one
     written = 0; lastCheer = -99;
     state.startedAt = Date.now();
     /* One id for the whole sitting, so the grown-ups history gathers the three
@@ -13082,6 +13175,7 @@
 
   function paintCard(){
     toTop();
+    veClose();          // nothing of the last word's may hang over this one
     var c = card();
     var text = cardFace(c);
     var answer = cardAnswer(c);
@@ -13101,18 +13195,11 @@
     el.famBand.classList.toggle('hide', !band);
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
-    /* ⚠️ A 've' card is prose like a comprehension question, so it is not
-       wordy either. Both rules land on .q with the same weight and `asking`
-       only wins on source order, which is not a thing to leave a layout
-       resting on. */
-    document.body.classList.toggle('wordy',
-      isSound(c) || (isTask(c) && c.k !== 'qa' && c.k !== 've'));
+    document.body.classList.toggle('wordy', isSound(c) || (isTask(c) && c.k !== 'qa'));
     document.body.classList.toggle('versey', isVerse(c) || isDealt(c));
     /* A comprehension question and its four answers are prose, so the question
        comes down to reading size and the buttons go into one column. */
-    /* ⚠️ A 've' card is prose the same way a comprehension question is: the
-       answers are whole sentences and four of them will not sit two abreast. */
-    document.body.classList.toggle('asking', !!(c && (c.k === 'qa' || c.k === 've')));
+    document.body.classList.toggle('asking', !!(c && c.k === 'qa'));
     /* ⚠️ A dealt card is a verse too. This keyed off the old card's own shape
        (r and t), and a server dealt one carries text and opts instead, so a
        whole verse rendered at times-tables size - eighty four pixels, over the
@@ -13161,9 +13248,7 @@
        has ever been: they have been laid out as two fat buttons of prose since
        the day the class was written, and nothing says so on any screen. Same
        shape as the `.hide` lie in v3.3 and the duplicate id on Go again. */
-    if (!isMarks(c) && !(c && (c.k === 'qa' || c.k === 've'))){
-      document.body.classList.remove('asking');
-    }
+    if (!isMarks(c) && !(c && c.k === 'qa')) document.body.classList.remove('asking');
     if (isClockSay(c)){
       /* The hands are already there and are not his to move: this card asks
          what they SAY. Drawn from the answer rather than from his ink.
@@ -17008,6 +17093,11 @@
     // every card leaves through here, whatever marked it, so this is the one
     // place a save belongs rather than six call sites that will drift apart
     saveRun();
+    /* ✒️ THE WORD HE JUST WROTE IS STILL ON THE SCREEN. paintCard has not run,
+       so nothing has changed underneath: the question goes over the top of the
+       word it is about, which is the whole of what was asked for. Answering it
+       comes back through here with nothing owed. */
+    if (veOwed){ veShow(veOwed); return; }
     if (state.queue.length){ paintCard(); return; }
     breaking = true;
     // round cleared
@@ -17132,6 +17222,7 @@
   }
 
   function finish(){
+    veClose();        // quitting on a ·ve word must not leave the question up
     dropSaved();      // it is finished; there is nothing to pick up
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
     hushVoice(); clearTimeout(peekId);
