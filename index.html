@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.49">
+<meta name="x-cards-version" content="5.50">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -795,6 +795,20 @@
     background:#6b4fc4;color:#fff;font:inherit;font-size:19px;font-weight:800;
     padding:18px 16px;margin:0 0 12px;cursor:pointer}
   #dblBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
+  /* Green, and the fourth lesson button on this screen. Blue is the homework,
+     gold is the test, purple is the one rule, and this one is the sort. */
+  #sortBtn{display:block;width:100%;border:none;border-radius:20px;
+    background:#17876a;color:#fff;font:inherit;font-size:19px;font-weight:800;
+    padding:18px 16px;margin:0 0 12px;cursor:pointer}
+  #sortBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
+  /* The family band. It sits at the TOP of the play screen and outside every
+     panel, for the reason the proof box carries a note about: .wpanel is
+     display:none unless body.write, and half the cards this has to appear
+     over are not writing cards. */
+  .famband{display:block;max-width:520px;margin:0 auto 10px;padding:9px 14px;
+    border-radius:14px;background:#e4f3ee;border:2px solid #17876a;color:#125f4b;
+    font-size:14px;font-weight:700;line-height:1.35;text-align:center}
+  .famband.hide{display:none}
   #moreBtn{display:block;width:100%;border:2px solid var(--line);background:#fff;
     border-radius:16px;font:inherit;font-size:15px;font-weight:700;padding:13px 16px;
     margin:0 0 18px;cursor:pointer}
@@ -1239,6 +1253,18 @@
   <div class="block hide" id="dblBlock">
     <button type="button" id="dblBtn"></button>
     <p class="note" id="dblNote"></p>
+  </div>
+
+  <!-- 🧩 His teacher's own suggestion, passed on 2026-09-17: group similar
+       words together, scribble and slippery, that kind of thing. This is the
+       word sort. The week's list splits into families off the spelling itself,
+       he says which family the word is in, and then he writes it. A word that
+       fits two of the families on offer is left OUT rather than marked wrong
+       for picking the other one, which is the same rule the rule breaker
+       cards and the blends distractors are built on. -->
+  <div class="block hide" id="sortBlock">
+    <button type="button" id="sortBtn"></button>
+    <p class="note" id="sortNote"></p>
   </div>
 
   <!-- Not the red pen. These are the words on this week's list that the same
@@ -1739,6 +1765,10 @@
   </div>
 
   <div class="pips hide" id="pips"></div>
+
+  <!-- 🧩 What this run of words has in common. Cleared on any card that
+       has no family, so it can never hang over the next one. -->
+  <p class="famband hide" id="famBand"></p>
 
   <div class="track hidden" id="track"><div class="fill" id="fill"></div></div>
 
@@ -4056,7 +4086,7 @@
    'markRow','markSaid','markYes','markNo','mapBox','mapCv','mapAsk','mapNote','mapOpts',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','sortBlock','sortBtn','sortNote','famBand','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -5488,6 +5518,310 @@
     if (!cards.length) return;
     startRun([{ label: r.label, cards: cards }], true);
   });
+
+  /* =========================================================
+     🧩 THE WORD SORT, AND THE WEEK DEALT IN FAMILIES (2026-09-17).
+
+     Andrew, passing on what his teacher suggested: "group similar words
+     together. So scribble, slipper, that kind of thing."
+
+     The families are worked out off the SPELLING, not written by hand, so a
+     new week is still one entry in SPELLING and gets them for free. Two things
+     come out of that:
+
+       1. 🧩 a sort round. The word comes up, he says which family it belongs
+          in, and then he writes it.
+       2. the ordinary week's cards DEALT in those families, with a band over
+          the card naming what this run of words has in common.
+
+     🔴 NEVER TWO RIGHT ANSWERS, which is the trap the rule breaker cards and
+     the blends distractors both carry notes about. butterfly is two words
+     joined AND has a doubled t; collie ends in ·ie AND has a doubled l. A word
+     that fits more than one of the families being OFFERED is left out of the
+     sort altogether rather than marked wrong for the family he did not pick.
+
+     ⚠️ AND NOT ON TEST NIGHT (Andrew's call). A band reading "these all double
+     a letter" over a word being read aloud to him is half the answer, so the
+     grouping is practice only and the test stays shuffled and silent.
+
+     ⚠️ `beats` is how a family sits INSIDE another one without that counting
+     as two answers: scribble doubles the letter before ·le, which also makes
+     it a doubled letter and also a word ending in ·le, and those are not three
+     different answers. The particular one wins.
+     ========================================================= */
+  /* 🔴 A DAY OF THE WEEK IS NOT AN ay WORD, and unit 2 is where that showed.
+     All seven of Sunday to Saturday end in ay, so they matched two families at
+     once, both families came out with nothing clean in them, and the biggest
+     group on his sheet fell out of the sort altogether. Naming a month, a day
+     or a season is the most particular thing a word on these lists does, so it
+     beats every pattern underneath it. */
+  var FAM_GENERAL = ['dblle','ible','omni','terr','un','ie','barei','aimid','ayend',
+                     'oimid','oyend','le','ves','ve','dge','ge','dbl','cmp'];
+  var FAMILIES = [
+    { id: 'dblle', beats: ['le', 'dbl'],
+      label: 'a doubled letter, then ·le',
+      band: 'Every one of these doubles the letter before ·le, like bubble and little.',
+      test: function(lw){ return /([bcdfghjklmnpqrstvwxz])\1le$/.test(lw); } },
+    { id: 'ible', beats: ['le', 'dbl'],
+      label: 'ends in ·ible',
+      band: 'Every one of these ends in ·ible, which means it can be done.',
+      test: function(lw){ return /ible$/.test(lw); } },
+    { id: 'omni', beats: [],
+      label: 'starts with omni·',
+      band: 'Every one of these starts with omni·, and omni means all.',
+      test: function(lw){ return /^omni/.test(lw); } },
+    { id: 'terr', beats: ['dbl'],
+      label: 'has terr in it',
+      band: 'Every one of these has terr in it, and terr means earth.',
+      test: function(lw){ return lw.indexOf('terr') !== -1; } },
+    { id: 'un', beats: [],
+      label: 'starts with un·',
+      band: 'Every one of these starts with un·, which means not.',
+      test: function(lw){ return /^un[a-z][a-z]/.test(lw); } },
+    { id: 'ie', beats: [],
+      label: 'ends in ·ie',
+      band: 'Every one of these ends in ·ie. English words do not like ending in i, '
+          + 'so an e goes on the end.',
+      test: function(lw){ return /ie$/.test(lw); } },
+    { id: 'barei', beats: [],
+      label: 'ends in i',
+      band: 'Every one of these keeps a bare i on the end, which English only allows '
+          + 'when the word came from another language.',
+      test: function(lw){ return /i$/.test(lw); } },
+    { id: 'aimid', beats: [],
+      label: 'ai in the middle',
+      band: 'Every one of these has ai in the MIDDLE, which is where ai belongs.',
+      test: function(lw){ return lw.indexOf('ai') !== -1 && !/ai$/.test(lw); } },
+    { id: 'ayend', beats: [],
+      label: 'ay on the end',
+      band: 'Every one of these ends in ay, which is where ay belongs.',
+      test: function(lw){ return /ay$/.test(lw); } },
+    { id: 'oimid', beats: [],
+      label: 'oi in the middle',
+      band: 'Every one of these has oi in the MIDDLE, which is where oi belongs.',
+      test: function(lw){ return lw.indexOf('oi') !== -1 && !/oi$/.test(lw); } },
+    { id: 'oyend', beats: [],
+      label: 'oy on the end',
+      band: 'Every one of these ends in oy, which is where oy belongs.',
+      test: function(lw){ return /oy$/.test(lw); } },
+    { id: 'le', beats: [],
+      label: 'ends in ·le',
+      band: 'Every one of these ends in ·le, and that last bit still needs a written '
+          + 'vowel even though you barely say it.',
+      test: function(lw){ return /[a-z]le$/.test(lw); } },
+    { id: 'ves', beats: ['ve'],
+      label: 'ends in ·ves',
+      band: 'Every one of these ends in ·ves. On its own the word ended in f or fe, '
+          + 'and the f turns into a v before the es.',
+      test: function(lw){ return /ves$/.test(lw); } },
+    { id: 've', beats: [],
+      label: 'ends in ·ve',
+      band: 'Every one of these ends in ·ve. No English word ends in v, so an e goes '
+          + 'on the end of it.',
+      test: function(lw){ return /ve$/.test(lw); } },
+    { id: 'dge', beats: ['ge'],
+      label: 'ends in ·dge',
+      band: 'Every one of these ends in ·dge, which is what a short vowel takes before '
+          + 'the j sound.',
+      test: function(lw){ return /dge$/.test(lw); } },
+    { id: 'ge', beats: [],
+      label: 'ends in ·ge',
+      band: 'Every one of these ends in ·ge, where the g says j.',
+      test: function(lw){ return /[a-z]ge$/.test(lw); } },
+    /* ⚠️ CONSONANTS ONLY, the same rule the doubling round is built on: cookie
+       and Hawaii carry a doubled vowel you can actually hear, so they are not
+       this. dblPair is the one thing that answers it. */
+    { id: 'dbl', beats: [],
+      label: 'a letter written twice',
+      band: 'Every one of these has a letter written twice, and you only hear it once.',
+      test: function(lw, w){ return !!dblPair(w); } },
+    /* ⚠️ A compound beats the doubling, because the doubling is not the
+       word's own: butterfly is butter and fly, and butter already had its two
+       t letters before anything was joined to it. DBL_SAY says exactly that
+       about all five of them. */
+    { id: 'cmp', beats: ['dbl'],
+      label: 'two words joined',
+      band: 'Every one of these is two whole words pushed together, and neither of them '
+          + 'loses a letter on the way.',
+      test: function(lw, w, u){
+        return (u.compounds || []).some(function(pr){
+          return String(pr[0] + pr[1]).toLowerCase() === lw;
+        });
+      } },
+    /* The three NAMED lists are families as well, and they are the reason the
+       capital gets marked in red. Written out rather than generated, because a
+       season does NOT take a capital and the band would have told him it did. */
+    { id: 'n:month', beats: FAM_GENERAL,
+      label: 'names a month',
+      band: 'These all name a month, so every one of them starts with a capital letter.',
+      test: function(lw, w){ return MONTHS.indexOf(w) !== -1; } },
+    { id: 'n:day', beats: FAM_GENERAL,
+      label: 'names a day of the week',
+      band: 'These all name a day of the week, so every one of them starts with a capital letter.',
+      test: function(lw, w){ return DAYS.indexOf(w) !== -1; } },
+    { id: 'n:season', beats: FAM_GENERAL,
+      label: 'names a season',
+      band: 'These all name a season.',
+      test: function(lw, w){ return SEASONS.indexOf(w) !== -1; } }
+  ];
+  function famById(id){
+    for (var i = 0; i < FAMILIES.length; i++) if (FAMILIES[i].id === id) return FAMILIES[i];
+    return null;
+  }
+  var FAM_MIN = 3;      // fewer than this on the sheet and it is not a family
+  var FAM_KEEP = 2;     // fewer than this left over once the overlaps go, and it is dropped
+  var FAM_ASK = 4;      // and never more than four buttons on one card
+
+  /* 🔴 THE TWO COUNTS ARE NOT THE SAME TEST. A family is OFFERED on how many
+     of the week's words MATCH it, and kept on how many match it and nothing
+     else. Dropping one gives its overlaps back: with terr gone, terrarium
+     stops being both terr and a doubled letter and becomes simply a doubled
+     letter, so the whole thing is worked out again until nothing more falls
+     out. That is why this is a loop and not two passes. */
+  function famSplit(u){
+    var words = unitWords(u), raw = {}, live = [];
+    FAMILIES.forEach(function(f){
+      raw[f.id] = words.filter(function(w){
+        return f.test(String(w).toLowerCase(), w, u);
+      });
+      if (raw[f.id].length >= FAM_MIN) live.push(f.id);
+    });
+    for (var pass = 0; pass <= FAMILIES.length; pass++){
+      if (!live.length) break;
+      var of = {}, clean = {};
+      live.forEach(function(id){ clean[id] = []; });
+      words.forEach(function(w){
+        var got = live.filter(function(id){ return raw[id].indexOf(w) !== -1; });
+        var beaten = {};
+        got.forEach(function(id){
+          (famById(id).beats || []).forEach(function(b){ beaten[b] = 1; });
+        });
+        got = got.filter(function(id){ return !beaten[id]; });
+        if (got.length === 1){ of[w] = got[0]; clean[got[0]].push(w); }
+      });
+      var short = live.filter(function(id){ return clean[id].length < FAM_KEEP; });
+      if (!short.length) return { live: live, clean: clean, of: of };
+      live = live.filter(function(id){ return short.indexOf(id) === -1; });
+    }
+    return { live: [], clean: {}, of: {} };
+  }
+  /* The families he is actually asked about, biggest first so the four that
+     make the card are the four the sheet is really built on, then put back in
+     table order. ⚠️ The button ORDER is the same on every card of the round on
+     purpose: it is a sorting board, not a quiz, and moving the groups about
+     under him would make it one. */
+  function famAsked(sp){
+    var order = sp.live.slice().sort(function(a, b){
+      return sp.clean[b].length - sp.clean[a].length;
+    }).slice(0, FAM_ASK);
+    return FAMILIES.filter(function(f){ return order.indexOf(f.id) !== -1; })
+                   .map(function(f){ return f.id; });
+  }
+  var SORT_N = 12;
+  /* 🔴 THE WEEK HE IS ON, not every week that is open. The doubling round
+     pools across all of them because a doubled letter is a doubled letter
+     whatever sheet it came off; a family is not, it is worked out from the
+     list in front of him, and pooling four weeks dealt a 96 card round whose
+     buttons changed underneath him halfway through. Same units the ordinary
+     Start deals. */
+  function sortCards(){
+    var pairs = [];
+    state.units.map(unitById).filter(Boolean).forEach(function(u){
+      var sp = famSplit(u);
+      if (sp.live.length < 2) return;
+      var ask = famAsked(sp);
+      if (ask.length < 2) return;
+      var labels = ask.map(function(id){ return famById(id).label; });
+      var rows = [];
+      ask.forEach(function(id){
+        sp.clean[id].forEach(function(w){ rows.push({ w: w, f: id }); });
+      });
+      shuffle(rows);
+      rows.forEach(function(r){
+        var f = famById(r.f), c = spellByWord(r.w);
+        if (!c) return;
+        pairs.push([
+          { k: 'g', word: r.w, w: f.label, opts: labels.slice(), u: u.id,
+            band: '🧩 Which group does this one go in?',
+            /* shown only when he picks the wrong group, the same way the rule
+               breaker card explains itself */
+            from: 'the word sort', why: r.w + ': ' + f.band },
+          /* Sorting it is half of it. The other half is writing it, which is
+             what the proof round does with a misspelling and for the same
+             reason: the last thing he does with the word is spell it. */
+          { k: 'w', w: c.w, s: c.s || '', m: c.m || '', u: c.u, n: 1,
+            after: true, band: f.band }
+        ]);
+      });
+    });
+    shuffle(pairs);
+    var out = [];
+    pairs.slice(0, SORT_N).forEach(function(pr){ out.push(pr[0], pr[1]); });
+    return out;
+  }
+  function paintSort(){
+    var show = spellingNow() && !groupKit(), n = 0;
+    if (show) sortCards().forEach(function(c){ if (c.k === 'g') n++; });
+    el.sortBlock.classList.toggle('hide', n < 4);
+    if (n < 4) return;
+    el.sortBtn.innerHTML = '🧩 Put them into groups<small>' + n
+      + ' words, and he says which group each one is in before he writes it</small>';
+    el.sortNote.textContent = 'His teacher’s idea: similar words go together. The '
+      + 'week’s list splits into families off the spelling itself, so scribble sits '
+      + 'with the other doubled letters and cookie with the other ·ie words, and he '
+      + 'says which family the word is in before he writes it. A word that fits two of '
+      + 'the families on offer is left out rather than marked wrong for picking the '
+      + 'other one. Practice only, nothing here is scored.';
+  }
+  el.sortBtn.addEventListener('click', function(){
+    var cards = sortCards();
+    if (!cards.length) return;
+    startRun([{ label: 'Which group does it go in?', cards: cards }], true);
+  });
+  /* ⭐ AND THE ORDINARY WEEK DEALT THE SAME WAY. Similar words come one after
+     another instead of the flat shuffle, and the band says what they share.
+     ⚠️ GROUPED INSIDE EACH GO, never across them. A word written three times
+     is three separate cards carrying n, and gathering by family alone would
+     have stacked all three of scribble together, which is the one thing the
+     separate cards exist to stop.
+     ⚠️ A MEANING CARD IS NOT GROUPED, it is only given its word's band. pairUp
+     puts it straight back behind its own word afterwards, so grouping it as
+     well would move it twice. */
+  function famGroup(cards, u){
+    var sp = famSplit(u);
+    if (sp.live.length < 2){ shuffle(cards); return cards; }
+    var order = [], bag = {};
+    cards.forEach(function(c){
+      var n = c.n || 1;
+      if (order.indexOf(n) === -1){ order.push(n); bag[n] = []; }
+      bag[n].push(c);
+    });
+    var out = [];
+    order.forEach(function(n){
+      var groups = {}, ids = [], rest = [];
+      bag[n].forEach(function(c){
+        var id = c.w ? sp.of[c.w] : '';
+        if (id && c.k === 'd'){ c.fam = id; c.band = famById(id).band; rest.push(c); return; }
+        if (!id || c.k !== 'w'){ rest.push(c); return; }
+        if (!groups[id]){ groups[id] = []; ids.push(id); }
+        groups[id].push(c);
+      });
+      shuffle(ids);
+      ids.forEach(function(id){
+        var g = groups[id], band = famById(id).band;
+        shuffle(g);
+        g.forEach(function(c){ c.fam = id; c.band = band; });
+        out = out.concat(g);
+      });
+      shuffle(rest);
+      out = out.concat(rest);
+    });
+    return out;
+  }
+  /* ⚠️ THE DECK IS BUILT BEFORE startRun SETS state.testing, so the grouping
+     cannot read it. A test night says so on the way in and puts it back on the
+     way out, or the next ordinary Start would inherit the answer. */
+  var dealingTest = false;
   function paintWatch(){
     /* 🔴 GRAMMAR FIRST, and it does not go through a picker. The three Lesson
        19 sets are not lessons he can tick, and `state.lessons` was saved
@@ -6101,6 +6435,7 @@
     paintPick();
     paintAgain();
     paintDouble();
+    paintSort();
     paintWatch();
     paintTrouble();
   }
@@ -7948,16 +8283,26 @@
     var picked = state.units.slice().sort(function(a, b){ return a - b; });
     if (state.shuffle && state.timer === 'chase') shuffle(picked);
     var rounds = [];
+    /* 🧩 Similar words together, which is what his teacher asked for. Off on a
+       test night, and off when he has asked for the sheet's own order, since
+       gathering the families would be reordering the very thing he turned the
+       shuffle off to keep. */
+    var group = state.shuffle && !dealingTest;
     picked.forEach(function(n){
       var u = unitById(n); if (!u) return;
       var cards = unitCards(u);
-      if (state.shuffle) shuffle(cards);
+      if (group) cards = famGroup(cards, u);
+      else if (state.shuffle) shuffle(cards);
       rounds.push({ label: 'Unit ' + u.unit, table: u.unit, cards: pairUp(cards) });
     });
     if (timerKind() !== 'chase'){
       var all = [];
       rounds.forEach(function(r){ all = all.concat(r.cards); });
-      if (state.shuffle) shuffle(all);
+      /* ⚠️ NOT reshuffled once they are grouped. This merge used to shuffle
+         everything flat, which would scatter the families it had just
+         gathered. Two weeks picked at once then come one week at a time,
+         which is the same thing the band on the card says. */
+      if (state.shuffle && !group) shuffle(all);
       return [{ label: '', table: 0, cards: pairUp(all) }];
     }
     return rounds;
@@ -11000,7 +11345,13 @@
   /* 'qa' is a comprehension question off a history or science chapter. It is
      tapped for the reason in the note over STUDY: what it tests is whether he
      read the chapter, so hand writing the answer would be testing his wrist. */
-  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'x' || c.k === 'qa')); }
+  /* 'g' is a word sort card: the WORD is the face and the family is the
+     answer, so it rides the same choice machinery as the worksheet
+     questions and, like them, is not drilled on the misses record. What he
+     is being asked is which group it is in, not how to spell it, and the
+     writing card right behind it is the one that counts. */
+  function isTask(c){ return !!(c && (c.k === 'm' || c.k === 'c' || c.k === 'x'
+                                     || c.k === 'qa' || c.k === 'g')); }
   /* ⭐ WRITTEN, NOT TAPPED (Andrew's call). They shipped as four buttons, which
      marked itself honestly enough, but it is not the exercise: on the sheet he
      WRITES Dec. in the blank. Four buttons also quietly hand him the answer
@@ -11055,6 +11406,10 @@
        the whole play screen and dropped the round back to 1 × 1. */
     if (c && c.k === 'qt') return c.w;
     if (isTeach(c)) return SENTENCE_KINDS[c.kind].example;
+    /* ⚠️ The WORD, not the question. The question is the same on every card
+       of the round and lives in the band above it, where four family
+       buttons can sit under the word he is actually reading. */
+    if (c && c.k === 'g') return c.word;
     if (c && c.k === 'm') return namedAsk(c.kind);
     if (c && c.k === 'x') return c.ask || 'Which word breaks the rule?';
     if (c && c.k === 'c') return c.a + ' + ?';
@@ -12594,6 +12949,13 @@
       + (state.dealt && !chaseOn() ? '  📖 studying' : '');
     el.q.textContent = text;
     el.qsmall.textContent = text;
+    /* 🧩 What this run of words has in common, or on a sort card the one
+       question the whole round asks. Cleared on any card without a family so
+       it can never hang over the next one, and never on a test night: naming
+       the family over a word being read aloud to him is half the answer. */
+    var band = (!state.testing && c && c.band) ? c.band : '';
+    el.famBand.textContent = band;
+    el.famBand.classList.toggle('hide', !band);
     el.a.textContent = answer;
     // sounds and their words are words, not big numerals, so ease the size off
     document.body.classList.toggle('wordy', isSound(c) || (isTask(c) && c.k !== 'qa'));
@@ -14134,7 +14496,10 @@
     saveSettings();
     paintHome();
     unlock();
-    startRun(buildRounds(), false, true);
+    dealingTest = true;
+    var rounds = buildRounds();
+    dealingTest = false;
+    startRun(rounds, false, true);
   }
   function redCount(){
     var n = 0;
