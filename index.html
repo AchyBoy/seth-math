@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.50">
+<meta name="x-cards-version" content="5.51">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -795,10 +795,14 @@
     background:#6b4fc4;color:#fff;font:inherit;font-size:19px;font-weight:800;
     padding:18px 16px;margin:0 0 12px;cursor:pointer}
   #dblBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
-  /* Green, and the fourth lesson button on this screen. Blue is the homework,
-     gold is the test, purple is the one rule, and this one is the sort. */
+  /* 🔴 NOT GREEN, which is what it shipped as for an hour. Five lesson buttons
+     sit on this screen and every one of them has to be told apart at a glance:
+     blue is the homework, GREEN is Get me ready for the test (`.night`, var
+     --green), gold is the A+ 100 Maker, purple is the one rule, so the sort
+     gets the fifth colour. The band over the card wears it too, so the two
+     halves of the same idea look like one thing. */
   #sortBtn{display:block;width:100%;border:none;border-radius:20px;
-    background:#17876a;color:#fff;font:inherit;font-size:19px;font-weight:800;
+    background:#b03a8c;color:#fff;font:inherit;font-size:19px;font-weight:800;
     padding:18px 16px;margin:0 0 12px;cursor:pointer}
   #sortBtn small{display:block;font-size:13px;font-weight:600;opacity:.95;margin-top:3px}
   /* The family band. It sits at the TOP of the play screen and outside every
@@ -806,7 +810,7 @@
      display:none unless body.write, and half the cards this has to appear
      over are not writing cards. */
   .famband{display:block;max-width:520px;margin:0 auto 10px;padding:9px 14px;
-    border-radius:14px;background:#e4f3ee;border:2px solid #17876a;color:#125f4b;
+    border-radius:14px;background:#fbeaf5;border:2px solid #b03a8c;color:#7d2462;
     font-size:14px;font-weight:700;line-height:1.35;text-align:center}
   .famband.hide{display:none}
   #moreBtn{display:block;width:100%;border:2px solid var(--line);background:#fff;
@@ -1987,7 +1991,15 @@
     </div>
 
     <button type="button" class="again hide" id="printBtn">🖨 Print this sheet</button>
-    <button type="button" class="again" id="againBtn">Go again</button>
+    <!-- 🔴 `replayBtn`, and it used to be a SECOND id="againBtn". The home
+         screen's "ones he got wrong" button already had that id, so
+         getElementById answered with the HOME one for both: this button had no
+         click handler at all and did nothing, the home one carried two and
+         started its deck twice over, and every line in finish() that set the
+         button's words was writing them onto a button on another screen.
+         Same shape as the `.hide` lie in v3.3, a toggle that silently does
+         nothing, and nothing warns you. -->
+    <button type="button" class="again" id="replayBtn">Go again</button>
     <button type="button" class="link" id="changeBtn">Home</button>
   </div>
 </div>
@@ -4120,7 +4132,7 @@
    'card','q','qsmall','a','choices','hint','grade','gotIt','missedIt','nextBtn','toast',
    'range','shootQ','rangeCv','windTag','pad','knob','fireBtn',
    'spkHome','spkPlay','doneEmoji','doneTitle','doneRing','doneCards','doneStreak','doneTime',
-   'missBox','missList','studyMissed','againBtn','changeBtn'
+   'missBox','missList','studyMissed','replayBtn','changeBtn'
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
   /* =========================================================
@@ -12826,7 +12838,7 @@
     sheetPage = null;      // nothing written this round yet, so nothing to offer
     state.right = 0; state.wrong = 0;
     state.streak = 0; state.bestStreak = 0;
-    state.missed = []; state.caught = false; state.lastScore = null;
+    state.missed = []; state.caught = false; state.lastScore = null; state.sealed = 0;
     written = 0; lastCheer = -99;
     state.startedAt = Date.now();
     /* One id for the whole sitting, so the grown-ups history gathers the three
@@ -13300,11 +13312,32 @@
      app is comparing two strings rather than reading handwriting, which it
      does not get wrong. */
   function markLocked(){ return sentenceNow(); }
+  /* 🔴 A SEALED TEST NIGHT (Andrew, 2026-09-17, after asking two questions I
+     had to go and check: "does he have access to peekaboo" and "can you just
+     say done and then mark it wrong, and then it will show him the word?").
+
+     Both were yes. The test night ran in listen mode, where Peek is not
+     hidden, so 👀 flashed the whole word and read it out; and Done revealed
+     the word and offered I got it / Missed it, so he never even had to mark
+     himself wrong to see it. The only thing in the way was the empty pad
+     guard, which one squiggle answers. It was a practice round wearing the
+     test's settings.
+
+     So on a test night, and nowhere else: no Peek, no 🤖, and Done keeps the
+     word HIDDEN and moves on. Nothing about a word is marked during the run.
+     His writing goes on the page and is marked afterwards off the ink, which
+     is what a test is.
+
+     ⚠️ Hear it again and Hear it in parts STAY. Those are the dictation
+     itself, not a way round it.
+     ⚠️ The tapped worksheet questions are still marked, because there the app
+     genuinely knows the answer and nobody is marking their own paper. */
+  function sealedNight(){ return !!state.testing; }
   function paintAiBtn(){
     // gone rather than dead: a locked button a child can keep tapping is worse
     // than no button, and the way out is to stop the round and change it at home
     el.inkAi.classList.toggle('hide',
-      !me.token || markLocked() || state.manual || isTrace(card()));
+      !me.token || markLocked() || state.manual || sealedNight() || isTrace(card()));
     el.inkAi.classList.toggle('dim', !state.autoMark);
     el.inkAi.textContent = state.autoMark ? '\uD83E\uDD16 Reading on' : '\uD83E\uDD16 Reading off';
   }
@@ -13474,8 +13507,11 @@
       : (c.m ? c.m : (mode === 'copy' ? c.s : ''));
     el.wClue.textContent = clue || '';
     el.wClue.classList.toggle('hide', !clue);
-    el.wPeek.classList.toggle('hide', mode === 'copy');
-    el.inkPeek.classList.toggle('hide', mode === 'copy');
+    /* ⚠️ AND OFF ON A TEST NIGHT. It is only ever hidden in copy mode, where
+       the word is on screen anyway, and a test night runs in LISTEN mode, so
+       it sat on the pad flashing the whole word and reading it aloud. */
+    el.wPeek.classList.toggle('hide', mode === 'copy' || sealedNight());
+    el.inkPeek.classList.toggle('hide', mode === 'copy' || sealedNight());
     document.body.classList.toggle('hand', penFor(c));
     document.body.classList.toggle('tracing', pen);
     el.inkGrade.classList.remove('on');
@@ -13838,6 +13874,7 @@
   });
   el.wPeek.addEventListener('click', function(){
     unlock();
+    if (sealedNight()) return;
     var c = card(); if (!isWord(c)) return;
     showWord(true);
     hideWordSoon(c.w, PEEK_FLASH);
@@ -14302,6 +14339,13 @@
     });
     return { work: work.length, all: all, rest: all - work.length, times: t, cards: cards };
   }
+  /* ⚠️ SAID ON THE BUTTON, because it is the difference between this and
+     every other round and he is the one deciding whether to tap it. It used to
+     read "He marks his own goes", which stopped being true the night the test
+     was sealed. */
+  var SEALED_SAYS = 'No peeking, no marking and the word is never shown: he writes it, '
+    + 'it is kept, and the next one comes. His writing goes on the page for you to mark '
+    + 'afterwards.';
   function paintNight(){
     var plan = nightPlan();
     var show = state.subject === 'spelling' && !groupKit() && !!plan;
@@ -14330,13 +14374,14 @@
       + (plan.work === 0
       ? 'Tap what the red pen marked on his paper, just below, and this sets the rest up '
         + 'and starts. Nothing tapped yet, so it would deal all ' + plan.all + ' words once, '
-        + testWriteWords() + ', written by hand, no timer.'
+        + testWriteWords() + ', written by hand, no timer. '
+        + SEALED_SAYS
       : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
         + (state.defs ? ', and each vocabulary word is followed by a screen to copy what it means' : '')
         + '. ' + plan.cards + ' cards, '
-        + testWriteWords() + ', written by hand, no timer. He marks his own goes and his '
-        + 'writing goes on the page for you to read. Nothing to set up.');
+        + testWriteWords() + ', written by hand, no timer. ' + SEALED_SAYS
+        + ' Nothing to set up.');
   }
   /* ⭐ THERE ARE TWO TESTS A WEEK, AND THE PRACTICE IS THE NIGHT BEFORE EACH
      (Andrew, 3 September 2026). The TRIAL is on the Wednesday, and making 100
@@ -15641,6 +15686,7 @@
      new card: he is learning the shapes, not fixing one word. */
   el.inkPeek.addEventListener('click', function(){
     unlock();
+    if (sealedNight()) return;
     var c = card(); if (!isWord(c)) return;
     if (state.write === 'listen') sayCard(c, true);
     showWord(true);
@@ -15990,8 +16036,39 @@
        is asking how it was written, which no transcription can answer: a badly
        formed God still reads as God. Marked here, off the strokes. */
     if (isTrace(c)){ markHand(c); return; }
+    if (sealedNight()){ sealDone(c); return; }
     askTheChecker(c);
   });
+
+  /* 🔴 THE WORD DOES NOT COME UP. Every other way out of the pad ends in
+     showWord(true), because every other way out asks him to mark his own go
+     and he cannot do that against a word he cannot see. A test night does not
+     ask him, so it must not show him.
+
+     ⚠️ NOT clearCard. A sealed word is neither right nor wrong, and
+     clearCard(true) would deal it a SECOND time four cards later off
+     wantsRecheck: that spaced second go is a practice idea and a test asks
+     each word once. The queue is moved on by hand instead.
+
+     ⚠️ Nothing is bumped, so nothing reaches the misses record, the score or
+     the coins. logRound already gives up on a round where nothing was
+     answered, so a sealed night writes no run row either: the PAGE is the
+     record, and it is already on the server by the time this returns. */
+  function sealDone(c){
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    keepInk(c, false);
+    state.answered = true;
+    state.sealed = (state.sealed || 0) + 1;
+    el.inkGrade.classList.remove('on');
+    el.inkAsk.classList.remove('on');
+    el.inkRow.classList.add('hide');
+    sfx.tap();
+    setWHint('Kept for the sheet. Nothing is marked tonight.', 'good');
+    state.queue.shift(); state.cleared++;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, 700);
+  }
 
   function keepInk(c, missed, strokes, w, h){
     var pg = currentPage(c.u || 0), key = inkKey(c), had = pg.words[key];
@@ -16930,7 +17007,7 @@
     // bookkeeping applies to it: no self-reported run, no local score.
     if (state.dealt){
       show('done');
-      el.againBtn.textContent = 'Another subject';
+      el.replayBtn.textContent = 'Another subject';
       el.doneEmoji.textContent = ''; el.doneTitle.textContent = 'Handing it in';
       el.doneStreak.textContent = ''; el.doneTime.textContent = '';
       markDealtRound();
@@ -16952,7 +17029,7 @@
         ? 'Caught during ' + round().label : 'Caught';   // not lowercased: "one god" read badly
       el.doneStreak.textContent = graded
         ? state.right + ' right, ' + state.wrong + ' missed' : '';
-      el.againBtn.textContent = 'Try again';
+      el.replayBtn.textContent = 'Try again';
     } else {
       var pct = graded ? Math.round(state.right / graded * 100) : 0;
       el.doneEmoji.textContent = chaseOn() ? pair().runner : (pct === 100 ? '🎉' : '');
@@ -16967,7 +17044,22 @@
           + ' (' + sc.score.base + ' of 1000'
           + (state.subject === 'times' ? ' on the ' + sc.score.table + 's' : '') + ')'
         : state.bestStreak >= 3 ? 'Best streak ' + state.bestStreak + ' in a row' : '';
-      el.againBtn.textContent = 'Go again';
+      el.replayBtn.textContent = 'Go again';
+    }
+    /* 🔴 A SEALED TEST NIGHT HAS TWO HALVES and the screen has to say both.
+       The tapped worksheet questions ARE marked, so without this a night of
+       twenty unmarked words came up "Perfect! 3 / 3, 100% right" off the three
+       compound questions, which reads exactly like a test score and is not
+       one. */
+    if (state.sealed){
+      el.doneEmoji.textContent = '\uD83D\uDCDD';
+      el.doneTitle.textContent = 'Test written';
+      el.doneRing.textContent = '';
+      el.doneCards.textContent = state.sealed
+        + (state.sealed === 1 ? ' word written, not marked' : ' words written, not marked')
+        + (graded ? '  ·  ' + state.right + ' of ' + graded + ' on the tapped questions' : '');
+      el.doneStreak.textContent = 'His writing is on the page for a grown-up to mark.';
+      el.replayBtn.textContent = 'Done';
     }
     el.doneTime.textContent = 'in ' + m + ':' + (s < 10 ? '0' : '') + s
       + (me.token ? '  ·  🪙 ' + fmt(shop.coins) : '');
@@ -17018,7 +17110,11 @@
   }
   el.quitBtn.addEventListener('click', function(ev){ ev.stopPropagation(); chaseStop(); finish(); });
   el.studyMissed.addEventListener('click', function(){ studyMissedNow(state.missed); });
-  el.againBtn.addEventListener('click', function(){
+  el.replayBtn.addEventListener('click', function(){
+    /* ⚠️ On a sealed test night this button says Done, and Done has to mean
+       done: there is nothing to go again at, and sitting the test a second
+       time straight afterwards is not a thing. It goes home. */
+    if (state.sealed){ sfx.tap(); paintHome(); show('home'); return; }
     if (state.practice && state.practiceRounds){
       startRun(state.practiceRounds.map(function(r){
         return { label: r.label, table: r.table, cards: shuffle(r.cards.slice()) };
