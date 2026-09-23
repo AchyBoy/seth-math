@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.69">
+<meta name="x-cards-version" content="5.70">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -728,15 +728,15 @@
   body.letters .inkrow,body.letters .wgrade{display:none}
   body.letters #writeBox>.wrow{display:none}
   body.letters .pickbox{display:flex}
-  .pickbox{display:none;flex-direction:column;align-items:center;gap:12px}
+  .pickbox{display:none;flex-direction:column;align-items:center;gap:12px;touch-action:manipulation}
   .pickword{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:.12em;
     min-height:1.3em;text-align:center;color:var(--ink);word-break:break-all;
     border-bottom:3px solid var(--line);padding:4px 8px 6px;min-width:120px}
   .pickword:empty::after{content:'\00a0'}
-  .pickgrid{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
+  .pickgrid{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;touch-action:manipulation;
     width:100%;max-width:420px}
   .pickgrid .pkrow{display:flex;gap:6px;justify-content:center;width:100%}
-  .pickgrid button{width:calc(10% - 6px);min-width:28px;aspect-ratio:1;border:2px solid var(--line);border-radius:14px;
+  .pickgrid button{width:calc(10% - 6px);min-width:28px;aspect-ratio:1;border:2px solid var(--line);border-radius:14px;touch-action:manipulation;-webkit-user-select:none;user-select:none;
     background:#fff;font:inherit;font-size:clamp(20px,5.5vw,28px);font-weight:700;
     color:var(--ink);box-shadow:0 3px 0 #ded8cc;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
