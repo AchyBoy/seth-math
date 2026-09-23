@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.61">
+<meta name="x-cards-version" content="5.62">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6223,12 +6223,17 @@
   }
   el.watchBtn.addEventListener('click', function(){
     /* ⭐ ALWAYS KEYBOARD on the A+ round. The app marks it itself, no pencil,
-       no letter picker. The test is fast recall under his own steam. */
+       no letter picker. The test is fast recall under his own steam.
+       ⚠️ SAVED AND RESTORED, not permanently changed. Setting it to false
+       and leaving it overwrote the 🔤 Letters choice he had made on the
+       home screen, so every round after an A+ run was silently keyboard. */
+    var savedHand = state.hand;
     state.hand = false;
     if (sentenceNow()){
       var lang = langFocusCards();
       if (!lang.length) return;
       startRun([{ label: 'The A+ 100 Maker', cards: lang }], true);
+      state.hand = savedHand;
       return;
     }
     var maths = focusMaths();
@@ -6236,6 +6241,7 @@
       var sums = mathFocusCards(maths);
       if (!sums.length) return;
       startRun([{ label: 'The A+ 100 Maker', cards: sums }], true);
+      state.hand = savedHand;
       return;
     }
     var u = watchUnit(); if (!u) return;
@@ -6243,6 +6249,7 @@
     if (!cards.length) return;
     shuffle(cards);
     startRun([{ label: 'The A+ 100 Maker', cards: cards }], true);
+    state.hand = savedHand;
   });
   function paintTrouble(){
     var worst = troubleList(8);
@@ -14101,7 +14108,7 @@
     /* On a grammar card the reason already contains the answer ("Imp. — an
        imperative sentence gives a command"), so it stands in for Copy it
        carefully and teaches the thing he actually got wrong. */
-    var joke = (!isSent(c) && !isDef(c) && state.tries === 0) ? jokeFor(c.w) : '';
+    var joke = (!isSent(c) && state.tries === 0) ? jokeFor(c.w) : '';
     setWHint(isSent(c) ? (why || sentWhy(c))
            : state.tries >= 2 ? 'Copy it carefully: ' + (isDef(c) ? defWanted(c) : c.w)
            : joke || why || 'Not quite, write it again', 'bad');
