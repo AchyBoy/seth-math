@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.60">
+<meta name="x-cards-version" content="5.61">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -743,6 +743,8 @@
   .pickgrid .pkdel{grid-column:span 2;aspect-ratio:auto;padding:10px;font-size:18px;
     color:var(--muted);font-weight:600;letter-spacing:0}
   .pickgrid .pkdel:empty::before{content:'⌫'}
+  .pickgrid .pkspace{grid-column:span 3;aspect-ratio:auto;padding:10px;font-size:16px;
+    color:var(--muted);font-weight:600}
 
   /* How many times a word gets written. Big targets, because it is tapped
      with a thumb while the iPad is being handed over. */
@@ -11486,7 +11488,25 @@
      question entirely, so the pad is forced on whatever the setting says. */
   function penFor(c){ return (state.hand === true) || isTrace(c) || isSum(c) || isClockSay(c); }
   /* Letter picker: the card is a plain spelling word and the setting is 'pick'. */
-  function pickFor(c){ return state.hand === 'pick' && !!(c && c.k === 'w'); }
+  function pickFor(c){ return state.hand === 'pick' && !!(c && (c.k === 'w' || c.k === 'd')); }
+
+  /* ⭐ FUNNY HINTS for the words that catch him. The hint shows on the FIRST
+     miss, not the second, because that is when he needs a nudge and not a
+     lecture. A hint that is too clever to remember is worse than none, so
+     each one is short and silly. */
+  var WORD_JOKES = {
+    'arithmetic': '🐀 A Rat In The House Might Eat The Ice Cream',
+    'science':    '🐱 Sam\'s Cat Is Eating Nine Chocolate Eggs',
+    'skateboard': '🛹 skate + board. Two whole words stuck together!',
+    'friendship': '🤝 friend + ship. Say fri-END and you hear the i',
+    'history':    '📖 HIS story. Three beats: his·to·ry',
+    'adjective':  '🦆 A Duck Just Eats Cookies Till It Vomits Everywhere',
+    'observe':    '👀 ob·serve. No English word ends in v, so the e goes on',
+    'language':   '🦁 Lions And Ninjas Go Under A Giant Elephant',
+    'native':     '🦎 Never Ask The Iguana Very Early',
+    'relative':   '👪 rel·a·tive. The a in the middle is the quiet one'
+  };
+  function jokeFor(w){ return WORD_JOKES[w.toLowerCase()] || ''; }
   function isDef(c){ return !!(c && c.k === 'd'); }
   /* ⭐ THE WORD AND THEN WHAT IT MEANS, both in his own hand. The word stays
      on screen as the prompt, so this is not a memory test; what it stops being
@@ -14081,9 +14101,10 @@
     /* On a grammar card the reason already contains the answer ("Imp. — an
        imperative sentence gives a command"), so it stands in for Copy it
        carefully and teaches the thing he actually got wrong. */
+    var joke = (!isSent(c) && !isDef(c) && state.tries === 0) ? jokeFor(c.w) : '';
     setWHint(isSent(c) ? (why || sentWhy(c))
            : state.tries >= 2 ? 'Copy it carefully: ' + (isDef(c) ? defWanted(c) : c.w)
-           : why || 'Not quite, write it again', 'bad');
+           : joke || why || 'Not quite, write it again', 'bad');
     el.wCheck.textContent = 'Try again';
     el.pickCheck.textContent = 'Try again';
     setTimeout(function(){
@@ -14114,6 +14135,9 @@
     var del = document.createElement('button');
     del.type = 'button'; del.className = 'pkdel'; del.textContent = '⌫';
     grid.appendChild(del);
+    var sp = document.createElement('button');
+    sp.type = 'button'; sp.className = 'pkspace'; sp.textContent = 'space';
+    grid.appendChild(sp);
 
     grid.addEventListener('click', function(ev){
       var b = ev.target.closest('button'); if (!b) return;
@@ -14121,6 +14145,9 @@
       if (b.classList.contains('pkdel')){
         var cur = el.pickWord.textContent || '';
         el.pickWord.textContent = cur.slice(0, -1);
+        el.wInput.value = el.pickWord.textContent;
+      } else if (b.classList.contains('pkspace')){
+        el.pickWord.textContent = (el.pickWord.textContent || '') + ' ';
         el.wInput.value = el.pickWord.textContent;
       } else {
         var l = b.getAttribute('data-l'); if (!l) return;
