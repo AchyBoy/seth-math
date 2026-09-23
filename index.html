@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.63">
+<meta name="x-cards-version" content="5.64">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6228,7 +6228,7 @@
        and leaving it overwrote the 🔤 Letters choice he had made on the
        home screen, so every round after an A+ run was silently keyboard. */
     var savedHand = state.hand;
-    state.hand = false;
+    state.hand = 'pick';
     if (sentenceNow()){
       var lang = langFocusCards();
       if (!lang.length) return;
