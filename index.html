@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.62">
+<meta name="x-cards-version" content="5.63">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13679,7 +13679,7 @@
     /* A sum has nothing to show, hide, or read aloud: the problem is on screen
        above the pad and the answer is what he is working out. */
     var mode = (sum || tell) ? 'copy' : (ask && !pen) ? 'ask' : (def || sen || pen) ? 'copy' : state.write;
-    state.tries = 0; sayAgain = 0;
+    state.tries = 0; state.moveOn = false; sayAgain = 0;
     el.wSay.textContent = '\uD83D\uDD0A Hear it again';   // a new card, a new first press
     el.wParts.classList.toggle('hide', !(isWord(c) && !isDef(c) && sylParts(c).length > 1));
     paintParts(c);
@@ -14022,6 +14022,7 @@
   }
 
   function checkWrite(){
+    if (state.moveOn){ state.moveOn = false; step(); return; }
     var c = card();
     if (!c || !isWord(c) || state.caught || state.answered) return;
     if (checking) return;
@@ -14109,8 +14110,19 @@
        imperative sentence gives a command"), so it stands in for Copy it
        carefully and teaches the thing he actually got wrong. */
     var joke = (!isSent(c) && state.tries === 0) ? jokeFor(c.w) : '';
+    if (!isSent(c) && state.tries >= 2){
+      /* ⭐ TWO MISSES AND HE MOVES ON. Copying it taught nothing; seeing the
+         right answer beside what he wrote, and then moving to the next word,
+         is the same thing Andrew does at the table. The word comes back in
+         the queue anyway because it was missed. */
+      showWord(true);
+      setWHint(isDef(c) ? defWanted(c) : c.w, 'bad');
+      el.wCheck.textContent = 'Move on';
+      el.pickCheck.textContent = 'Move on';
+      state.moveOn = true;
+      return;
+    }
     setWHint(isSent(c) ? (why || sentWhy(c))
-           : state.tries >= 2 ? 'Copy it carefully: ' + (isDef(c) ? defWanted(c) : c.w)
            : joke || why || 'Not quite, write it again', 'bad');
     el.wCheck.textContent = 'Try again';
     el.pickCheck.textContent = 'Try again';
