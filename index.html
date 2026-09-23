@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.76">
+<meta name="x-cards-version" content="5.77">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6502,16 +6502,8 @@
     /* ⚠️ Named here because a downloaded voice is invisible otherwise: the
        Settings switch is on another screen and nothing in the app ever said
        which one it had ended up with. */
-    var vDebug = '';
-    try {
-      var allV = window.speechSynthesis.getVoices().filter(function(v){ return (v.lang||'').slice(0,2)==='en'; });
-      var picked = pickVoice();
-      vDebug = ' Voice: ' + (picked ? picked.name + ' [' + (picked.voiceURI||'').slice(0,40) + ']' : 'none')
-        + '. All EN: ' + allV.map(function(v){ return v.name; }).join(', ');
-    } catch(e){}
     el.writeNote.textContent = (WRITE_NOTE[state.write] || '')
-      + (state.write === 'listen' && voiceName() ? ' Reading in ' + voiceName() + '.' : '')
-      + vDebug;
+      + (state.write === 'listen' && voiceName() ? ' Reading in ' + voiceName() + '.' : '');
     var vocab = 0;
     state.units.map(unitById).filter(Boolean)
       .forEach(function(u){ vocab += (u.vocab || []).length; });
@@ -17570,27 +17562,7 @@
   // finds last night's page rather than a blank one
   if (hasSheet()) buildSheet();
   el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '');
-  var _voiceLogged = false;
-  function showVoiceDebug(){
-    try {
-      var allV = window.speechSynthesis.getVoices().filter(function(v){ return (v.lang||'').slice(0,2)==='en'; });
-      var picked = pickVoice();
-      var info = (picked ? picked.name + ' (' + (picked.voiceURI||'').slice(0,50) + ')' : 'no voice')
-        + ' | ' + allV.length + ' EN: ' + allV.map(function(v){ return v.name + '[' + voiceRank(v) + ']'; }).join(', ');
-      el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '')
-        + ' | ' + info;
-      if (!_voiceLogged && allV.length){
-        _voiceLogged = true;
-        apiCall('/voice-debug', { method: 'POST', body: {
-          token: me.token || 'anon',
-          picked: picked ? { name: picked.name, uri: picked.voiceURI, lang: picked.lang } : null,
-          all: allV.map(function(v){ return { name: v.name, uri: v.voiceURI, rank: voiceRank(v) }; })
-        }});
-      }
-    } catch(e){}
-  }
-  showVoiceDebug();
-  if (window.speechSynthesis) window.speechSynthesis.addEventListener('voiceschanged', showVoiceDebug);
+  
   applyMute();
   paintWho();
   // all best-effort; if the network is out the game just plays offline
