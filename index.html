@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.72">
+<meta name="x-cards-version" content="5.73">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4334,7 +4334,7 @@
     try {
       window.speechSynthesis.cancel();
       var u = new window.SpeechSynthesisUtterance(String(text));
-      u.rate = rate || 0.65; u.pitch = 1; u.lang = 'en-US';
+      u.rate = rate || 0.78; u.pitch = 1; u.lang = 'en-US';
       var v = pickVoice(); if (v) u.voice = v;
       window.speechSynthesis.speak(u);
       return true;
@@ -4360,10 +4360,10 @@
     if (isDef(c)){
       var mean = c.m || '';
       return speak(bare ? mean : ('Now what ' + c.w + ' means. ' + mean + ' ... ' + mean + '.'),
-                   bare ? 0.5 : 0.58);   // slower: it is a phrase, not a word
+                   bare ? 0.6 : 0.68);   // slower: it is a phrase, not a word
     }
     var line = c.m ? (c.w + '. ' + c.m + '. ' + c.w + '.') : (c.s ? (c.w + '. ' + c.s + ' ... ' + c.w + '.') : c.w);
-    return speak(bare ? c.w : line, bare ? 0.58 : 0.65);
+    return speak(bare ? c.w : line, bare ? 0.7 : 0.78);
   }
   /* ================= saying it the way it is SPELLED =================
      ⭐ Andrew, 2026-09-10, off three marked tests. He writes the sounds he
@@ -4552,7 +4552,7 @@
   function saySpelled(c){
     var parts = sayParts(c);
     if (!parts.length) return false;
-    return speak(parts.join(', '), 0.58);   // the commas are the pauses
+    return speak(parts.join(', '), 0.68);   // the commas are the pauses
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
@@ -6502,8 +6502,16 @@
     /* ⚠️ Named here because a downloaded voice is invisible otherwise: the
        Settings switch is on another screen and nothing in the app ever said
        which one it had ended up with. */
+    var vDebug = '';
+    try {
+      var allV = window.speechSynthesis.getVoices().filter(function(v){ return (v.lang||'').slice(0,2)==='en'; });
+      var picked = pickVoice();
+      vDebug = ' Voice: ' + (picked ? picked.name + ' [' + (picked.voiceURI||'').slice(0,40) + ']' : 'none')
+        + '. All EN: ' + allV.map(function(v){ return v.name; }).join(', ');
+    } catch(e){}
     el.writeNote.textContent = (WRITE_NOTE[state.write] || '')
-      + (state.write === 'listen' && voiceName() ? ' Reading in ' + voiceName() + '.' : '');
+      + (state.write === 'listen' && voiceName() ? ' Reading in ' + voiceName() + '.' : '')
+      + vDebug;
     var vocab = 0;
     state.units.map(unitById).filter(Boolean)
       .forEach(function(u){ vocab += (u.vocab || []).length; });
@@ -14229,7 +14237,7 @@
       b.className = 'wpart';
       b.textContent = open ? part : String(i + 1);
       b.addEventListener('click', function(){
-        unlock(); speak(sayParts(c)[i] || part, 0.58); focusWrite();
+        unlock(); speak(sayParts(c)[i] || part, 0.68); focusWrite();
       });
       el.wPartRow.appendChild(b);
     });
