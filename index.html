@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.65">
+<meta name="x-cards-version" content="5.66">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -733,18 +733,17 @@
     min-height:1.3em;text-align:center;color:var(--ink);word-break:break-all;
     border-bottom:3px solid var(--line);padding:4px 8px 6px;min-width:120px}
   .pickword:empty::after{content:'\00a0'}
-  .pickgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+  .pickgrid{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
     width:100%;max-width:420px}
-  @media (max-width:380px){.pickgrid{grid-template-columns:repeat(6,1fr);gap:5px}}
-  .pickgrid button{aspect-ratio:1;border:2px solid var(--line);border-radius:14px;
-    background:#fff;font:inherit;font-size:clamp(18px,5vw,24px);font-weight:700;
+  .pickgrid .pkrow{display:flex;gap:6px;justify-content:center;width:100%}
+  .pickgrid button{width:calc(10% - 6px);min-width:28px;aspect-ratio:1;border:2px solid var(--line);border-radius:14px;
+    background:#fff;font:inherit;font-size:clamp(16px,4.5vw,22px);font-weight:700;
     color:var(--ink);box-shadow:0 3px 0 #ded8cc;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
   .pickgrid button:active{transform:translateY(2px);box-shadow:0 1px 0 #ded8cc}
-  .pickgrid .pkdel{grid-column:span 2;aspect-ratio:auto;padding:10px;font-size:18px;
+  .pickgrid .pkdel{aspect-ratio:auto;width:calc(15% - 6px);padding:8px 4px;font-size:18px;
     color:var(--muted);font-weight:600;letter-spacing:0}
-  .pickgrid .pkdel:empty::before{content:'⌫'}
-  .pickgrid .pkspace{grid-column:span 3;aspect-ratio:auto;padding:10px;font-size:16px;
+  .pickgrid .pkspace{aspect-ratio:auto;width:calc(40% - 6px);padding:10px;font-size:16px;
     color:var(--muted);font-weight:600}
 
   /* How many times a word gets written. Big targets, because it is tapped
@@ -14143,21 +14142,31 @@
 
   /* ---------- letter picker ---------- */
   (function(){
-    var letters = 'abcdefghijklmnopqrstuvwxyz';
+    var rows = ['qwertyuiop','asdfghjkl','zxcvbnm'];
     var grid = el.pickGrid;
-    for (var i = 0; i < letters.length; i++){
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = letters[i];
-      b.setAttribute('data-l', letters[i]);
-      grid.appendChild(b);
+    for (var r = 0; r < rows.length; r++){
+      var row = document.createElement('div');
+      row.className = 'pkrow';
+      for (var i = 0; i < rows[r].length; i++){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = rows[r][i];
+        b.setAttribute('data-l', rows[r][i]);
+        row.appendChild(b);
+      }
+      if (r === 2){
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'pkdel'; del.textContent = '⌫';
+        row.appendChild(del);
+      }
+      grid.appendChild(row);
     }
-    var del = document.createElement('button');
-    del.type = 'button'; del.className = 'pkdel'; del.textContent = '⌫';
-    grid.appendChild(del);
+    var spRow = document.createElement('div');
+    spRow.className = 'pkrow';
     var sp = document.createElement('button');
     sp.type = 'button'; sp.className = 'pkspace'; sp.textContent = 'space';
-    grid.appendChild(sp);
+    spRow.appendChild(sp);
+    grid.appendChild(spRow);
 
     grid.addEventListener('click', function(ev){
       var b = ev.target.closest('button'); if (!b) return;
