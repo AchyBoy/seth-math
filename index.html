@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.57">
+<meta name="x-cards-version" content="5.58">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11531,7 +11531,7 @@
      you to recall the words; the four button mode has to go the other way,
      since four whole verses will not fit on a phone but four references will. */
   // both answer-from-four modes work the same way round, only the flip does not
-  function picking(){ return !spellingNow() && (state.mode === 'choice' || state.mode === 'shoot'); }
+  function isChoiceMode(){ return !spellingNow() && (state.mode === 'choice' || state.mode === 'shoot'); }
   /* ⭐ ONE DESCRIPTION OF A SUM, shared by the debug trail, the round log and
      the printed sheet, because three copies of this drifted apart the moment a
      card type stopped being a column of numbers.
@@ -11571,7 +11571,7 @@
     if (c && c.k === 'm') return namedAsk(c.kind);
     if (c && c.k === 'x') return c.ask || 'Which word breaks the rule?';
     if (c && c.k === 'c') return c.a + ' + ?';
-    if (isVerse(c)) return picking() ? c.t : c.r;
+    if (isVerse(c)) return isChoiceMode() ? c.t : c.r;
     return isSound(c) ? c.s : c[0] + ' × ' + c[1];
   }
   function cardAnswer(c){
@@ -11584,7 +11584,7 @@
     if (isDef(c)) return defWanted(c);
     if (c && c.k === 'qa') return c.w;
     if (isWord(c) || isTask(c)) return c.w;
-    if (isVerse(c)) return picking() ? c.r : c.t;
+    if (isVerse(c)) return isChoiceMode() ? c.r : c.t;
     return isSound(c) ? c.pick : String(c[0] * c[1]);
   }
   function cardKey(c){
@@ -11783,7 +11783,7 @@
       if (!state.answered){ sfx.timeUp(); state.hand === true ? inkReveal() : missWrite(''); }
       return;
     }
-    if (isTask(c) || picking()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
+    if (isTask(c) || isChoiceMode()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
     else if (!state.revealed) reveal();
   }
 
@@ -17226,7 +17226,7 @@
   function cardTap(){
     unlock();
     if (teachOn()) return;
-    if (state.caught || picking()) return;
+    if (state.caught || isChoiceMode()) return;
     if (!state.revealed){ reveal(); return; }
     if (state.answered) step();
   }
