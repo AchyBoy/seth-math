@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.74">
+<meta name="x-cards-version" content="5.75">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17570,6 +17570,17 @@
   // finds last night's page rather than a blank one
   if (hasSheet()) buildSheet();
   el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '');
+  function showVoiceDebug(){
+    try {
+      var allV = window.speechSynthesis.getVoices().filter(function(v){ return (v.lang||'').slice(0,2)==='en'; });
+      var picked = pickVoice();
+      el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '')
+        + ' | ' + (picked ? picked.name + ' (' + (picked.voiceURI||'').slice(0,50) + ')' : 'no voice')
+        + ' | ' + allV.length + ' EN voices';
+    } catch(e){}
+  }
+  showVoiceDebug();
+  if (window.speechSynthesis) window.speechSynthesis.addEventListener('voiceschanged', showVoiceDebug);
   applyMute();
   paintWho();
   // all best-effort; if the network is out the game just plays offline
