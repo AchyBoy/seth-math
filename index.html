@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.75">
+<meta name="x-cards-version" content="5.76">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17570,13 +17570,23 @@
   // finds last night's page rather than a blank one
   if (hasSheet()) buildSheet();
   el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '');
+  var _voiceLogged = false;
   function showVoiceDebug(){
     try {
       var allV = window.speechSynthesis.getVoices().filter(function(v){ return (v.lang||'').slice(0,2)==='en'; });
       var picked = pickVoice();
+      var info = (picked ? picked.name + ' (' + (picked.voiceURI||'').slice(0,50) + ')' : 'no voice')
+        + ' | ' + allV.length + ' EN: ' + allV.map(function(v){ return v.name + '[' + voiceRank(v) + ']'; }).join(', ');
       el.ver.textContent = 'v' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '')
-        + ' | ' + (picked ? picked.name + ' (' + (picked.voiceURI||'').slice(0,50) + ')' : 'no voice')
-        + ' | ' + allV.length + ' EN voices';
+        + ' | ' + info;
+      if (!_voiceLogged && allV.length){
+        _voiceLogged = true;
+        apiCall('/voice-debug', { method: 'POST', body: {
+          token: me.token || 'anon',
+          picked: picked ? { name: picked.name, uri: picked.voiceURI, lang: picked.lang } : null,
+          all: allV.map(function(v){ return { name: v.name, uri: v.voiceURI, rank: voiceRank(v) }; })
+        }});
+      }
     } catch(e){}
   }
   showVoiceDebug();
