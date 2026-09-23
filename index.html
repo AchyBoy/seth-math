@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.70">
+<meta name="x-cards-version" content="5.71">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14090,7 +14090,8 @@
        definition goes to a judge rather than to lcsKeep, and painting it red
        against the book would call a right answer wrong on screen while the
        judge was passing it. So it is shown back to him exactly as written. */
-    if (!got) el.wMark.innerHTML = '<span class="short">the time ran out</span>';
+    if (pickFor(c)){ el.wMark.textContent = ''; }
+    else if (!got) el.wMark.innerHTML = '<span class="short">the time ran out</span>';
     else if (isDef(c)) el.wMark.textContent = got;
     else el.wMark.innerHTML = marked(got, c.w);
     /* What he can see while he tries again is whatever the mode allows,
