@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.59">
+<meta name="x-cards-version" content="5.60">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17452,14 +17452,16 @@
 
   document.addEventListener('keydown', function(ev){
     if (!el.play.classList.contains('on')) return;
+    var tag = document.activeElement && document.activeElement.tagName;
     if (state.mode === 'shoot'){
       if (ev.key === 'ArrowLeft'){ keys.left = true; keyAim(); ev.preventDefault(); return; }
       if (ev.key === 'ArrowRight'){ keys.right = true; keyAim(); ev.preventDefault(); return; }
       if (ev.key === 'ArrowUp'){ keys.up = true; keyAim(); ev.preventDefault(); return; }
       if (ev.key === 'ArrowDown'){ keys.down = true; keyAim(); ev.preventDefault(); return; }
-      if (ev.key === ' ' || ev.key === 'Enter'){ ev.preventDefault(); fire(); return; }
+      if (ev.key === ' ' || ev.key === 'Enter'){ if (tag === 'INPUT' || tag === 'TEXTAREA') return; ev.preventDefault(); fire(); return; }
       return;
     }
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (ev.key === ' ' || ev.key === 'Enter' || ev.key === 'ArrowRight'){ ev.preventDefault(); cardTap(); }
   });
   document.addEventListener('keyup', function(ev){
