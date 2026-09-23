@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.68">
+<meta name="x-cards-version" content="5.69">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4297,7 +4297,7 @@
   function pickVoice(){
     var vs = [];
     try { vs = window.speechSynthesis.getVoices() || []; } catch(e){ return null; }
-    var want = ['Samantha', 'Karen', 'Moira', 'Daniel', 'Google US English'];
+    var want = ['Zoe', 'Nicky', 'Samantha', 'Karen', 'Moira', 'Daniel', 'Google US English'];
     var best = null, bestScore = -1, i, j, sc;
     for (i = 0; i < want.length; i++){
       for (j = 0; j < vs.length; j++){
@@ -4334,7 +4334,7 @@
     try {
       window.speechSynthesis.cancel();
       var u = new window.SpeechSynthesisUtterance(String(text));
-      u.rate = rate || 0.8; u.pitch = 1; u.lang = 'en-US';
+      u.rate = rate || 0.65; u.pitch = 1; u.lang = 'en-US';
       var v = pickVoice(); if (v) u.voice = v;
       window.speechSynthesis.speak(u);
       return true;
@@ -4360,10 +4360,10 @@
     if (isDef(c)){
       var mean = c.m || '';
       return speak(bare ? mean : ('Now what ' + c.w + ' means. ' + mean + ' ... ' + mean + '.'),
-                   bare ? 0.6 : 0.68);   // slower: it is a phrase, not a word
+                   bare ? 0.5 : 0.58);   // slower: it is a phrase, not a word
     }
     var line = c.m ? (c.w + '. ' + c.m + '. ' + c.w + '.') : (c.s ? (c.w + '. ' + c.s + ' ... ' + c.w + '.') : c.w);
-    return speak(bare ? c.w : line, bare ? 0.7 : 0.78);
+    return speak(bare ? c.w : line, bare ? 0.58 : 0.65);
   }
   /* ================= saying it the way it is SPELLED =================
      ⭐ Andrew, 2026-09-10, off three marked tests. He writes the sounds he
@@ -4552,7 +4552,7 @@
   function saySpelled(c){
     var parts = sayParts(c);
     if (!parts.length) return false;
-    return speak(parts.join(', '), 0.55);   // the commas are the pauses
+    return speak(parts.join(', '), 0.45);   // the commas are the pauses
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
@@ -14228,7 +14228,7 @@
       b.className = 'wpart';
       b.textContent = open ? part : String(i + 1);
       b.addEventListener('click', function(){
-        unlock(); speak(sayParts(c)[i] || part, 0.55); focusWrite();
+        unlock(); speak(sayParts(c)[i] || part, 0.45); focusWrite();
       });
       el.wPartRow.appendChild(b);
     });
