@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.66">
+<meta name="x-cards-version" content="5.67">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -737,7 +737,7 @@
     width:100%;max-width:420px}
   .pickgrid .pkrow{display:flex;gap:6px;justify-content:center;width:100%}
   .pickgrid button{width:calc(10% - 6px);min-width:28px;aspect-ratio:1;border:2px solid var(--line);border-radius:14px;
-    background:#fff;font:inherit;font-size:clamp(16px,4.5vw,22px);font-weight:700;
+    background:#fff;font:inherit;font-size:clamp(20px,5.5vw,28px);font-weight:700;
     color:var(--ink);box-shadow:0 3px 0 #ded8cc;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
   .pickgrid button:active{transform:translateY(2px);box-shadow:0 1px 0 #ded8cc}
@@ -6227,13 +6227,12 @@
        ⚠️ SAVED AND RESTORED, not permanently changed. Setting it to false
        and leaving it overwrote the 🔤 Letters choice he had made on the
        home screen, so every round after an A+ run was silently keyboard. */
-    var savedHand = state.hand;
+    state._savedHand = state.hand;
     state.hand = 'pick';
     if (sentenceNow()){
       var lang = langFocusCards();
       if (!lang.length) return;
       startRun([{ label: 'The A+ 100 Maker', cards: lang }], true);
-      state.hand = savedHand;
       return;
     }
     var maths = focusMaths();
@@ -6241,7 +6240,6 @@
       var sums = mathFocusCards(maths);
       if (!sums.length) return;
       startRun([{ label: 'The A+ 100 Maker', cards: sums }], true);
-      state.hand = savedHand;
       return;
     }
     var u = watchUnit(); if (!u) return;
@@ -6249,7 +6247,6 @@
     if (!cards.length) return;
     shuffle(cards);
     startRun([{ label: 'The A+ 100 Maker', cards: cards }], true);
-    state.hand = savedHand;
   });
   function paintTrouble(){
     var worst = troubleList(8);
@@ -17366,6 +17363,7 @@
   }
 
   function finish(){
+    if (state._savedHand != null){ state.hand = state._savedHand; state._savedHand = null; saveSettings(); }
     veClose();        // quitting on a ·ve word must not leave the question up
     dropSaved();      // it is finished; there is nothing to pick up
     stopTimer(); chaseStop(); rangeStop(); clearTimeout(advanceId); hush();
