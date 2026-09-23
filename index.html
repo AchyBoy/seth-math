@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.56">
+<meta name="x-cards-version" content="5.57">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -722,6 +722,27 @@
   body:not(.hand) .wgrade.on{display:flex}
   body.hand .inkrow.hide{display:none}
   .ink{display:none}
+
+  /* ---------- letter picker: he picks from all 26 ---------- */
+  body.letters .winput,body.letters .wrow,body.letters .ink,
+  body.letters .inkrow,body.letters .wgrade{display:none}
+  body.letters .pickbox{display:flex}
+  .pickbox{display:none;flex-direction:column;align-items:center;gap:12px}
+  .pickword{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:.12em;
+    min-height:1.3em;text-align:center;color:var(--ink);word-break:break-all;
+    border-bottom:3px solid var(--line);padding:4px 8px 6px;min-width:120px}
+  .pickword:empty::after{content:'\00a0'}
+  .pickgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+    width:100%;max-width:420px}
+  @media (max-width:380px){.pickgrid{grid-template-columns:repeat(6,1fr);gap:5px}}
+  .pickgrid button{aspect-ratio:1;border:2px solid var(--line);border-radius:14px;
+    background:#fff;font:inherit;font-size:clamp(18px,5vw,24px);font-weight:700;
+    color:var(--ink);box-shadow:0 3px 0 #ded8cc;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  .pickgrid button:active{transform:translateY(2px);box-shadow:0 1px 0 #ded8cc}
+  .pickgrid .pkdel{grid-column:span 2;aspect-ratio:auto;padding:10px;font-size:18px;
+    color:var(--muted);font-weight:600;letter-spacing:0}
+  .pickgrid .pkdel:empty::before{content:'⌫'}
 
   /* How many times a word gets written. Big targets, because it is tapped
      with a thumb while the iPad is being handed over. */
@@ -1510,6 +1531,7 @@
     <p class="label" style="margin-top:22px">What you write with</p>
     <div class="opts" id="handOpts">
       <button type="button" class="opt on" data-hand="1">✏️ Apple Pencil</button>
+      <button type="button" class="opt" data-hand="pick">🔤 Letters</button>
       <button type="button" class="opt" data-hand="0">Keyboard</button>
     </div>
     <p class="note" id="handNote"></p>
@@ -1972,6 +1994,15 @@
     <div class="wgrade" id="inkAsk">
       <button type="button" class="gbtn again" id="askAgain">Write it again</button>
       <button type="button" class="gbtn flag" id="askGrown">🚩 I got it right</button>
+    </div>
+    <!-- Letter picker: 26 letters + backspace, answer builds at the top -->
+    <div class="pickbox" id="pickBox">
+      <div class="pickword" id="pickWord"></div>
+      <div class="pickgrid" id="pickGrid"></div>
+      <div class="wrow">
+        <button type="button" class="wpeek hide" id="pickPeek">👀 Peek</button>
+        <button type="button" class="wgo" id="pickCheck">Check it</button>
+      </div>
     </div>
   </div>
 
@@ -4187,6 +4218,7 @@
    'teachBox','teachKind','teachWhat','teachSpot','teachMark','helpBtn',
    'proofBox','proofLine','proofNote','proofTask','proofBlock','proofHomeNote',
    'handOpts','handNote','markBlock','markOpts','markNote',
+   'pickBox','pickWord','pickGrid','pickPeek','pickCheck',
    'inkBox','inkCv','inkHint','inkRow','inkUndo','inkClear','inkRub','inkPeek','inkAi','inkDone',
    'timerBlock','checkBlock','checkList','checkNote',
    'inkGrade','inkYes','inkNo','sheet','printBtn',
@@ -4900,7 +4932,7 @@
         if (s.write === 'copy' || s.write === 'peek' || s.write === 'listen') state.write = s.write;
         if (typeof s.extras === 'boolean') state.extras = s.extras;
         if (typeof s.defs === 'boolean') state.defs = s.defs;
-        if (typeof s.hand === 'boolean') state.hand = s.hand;
+        if (s.hand === 'pick' || typeof s.hand === 'boolean') state.hand = s.hand;
         /* ⚠️ ONCE, ON EVERY DEVICE THAT ALREADY SAID YES. Changing the default
            only reaches a phone that has never been used, and his iPad has
            `autoMark: true` saved from before the checker was dropped. `aiOff`
@@ -6477,16 +6509,18 @@
         : 'The vocabulary words are dealt as ordinary spellings, with no meanings. He is '
           + 'still tested on writing what they mean.';
     setOn(el.defOpts, 'data-def', state.defs ? '1' : '0');
-    el.handNote.textContent = state.hand
+    el.handNote.textContent = state.hand === 'pick'
+      ? 'He picks letters from all 26 to build the word. The app marks it itself, letter by letter.'
+      : state.hand
       ? 'He writes each word on the line with the Pencil, and the page keeps the ink exactly '
         + 'as he drew it. Nothing here can read handwriting, so it shows him the spelling once '
         + 'he is done and he says whether he got it. At the end it prints the lot on one page '
         + 'for his teacher.'
       : 'He types the words and the app marks them itself, letter by letter. Nothing is kept '
         + 'to print.';
-    setOn(el.handOpts, 'data-hand', state.hand ? '1' : '0');
+    setOn(el.handOpts, 'data-hand', state.hand === 'pick' ? 'pick' : state.hand ? '1' : '0');
     setOn(el.markOpts, 'data-mark', state.autoMark ? '1' : '0');
-    el.markBlock.classList.toggle('hide', !spell || !state.hand);
+    el.markBlock.classList.toggle('hide', !spell || !state.hand || state.hand === 'pick');
     el.lessonNote.textContent = sentenceSummary()
       + (sent ? ' He writes each answer and the app marks it, and that cannot be '
               + 'switched off on this subject.' : '');
@@ -6662,7 +6696,7 @@
   });
   el.handOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
-    state.hand = b.getAttribute('data-hand') === '1'; sfx.tap(); paintHome(); saveSettings();
+    var hv = b.getAttribute('data-hand'); state.hand = hv === 'pick' ? 'pick' : hv === '1'; sfx.tap(); paintHome(); saveSettings();
   });
   el.writeOpts.addEventListener('click', function(ev){
     var b = ev.target.closest('.opt'); if (!b) return;
@@ -11447,7 +11481,9 @@
   /* ⚠️ THE PENCIL IS NOT OPTIONAL ON A HANDWRITING CARD. Everywhere else the
      keyboard is a fair way to answer; here it would be answering a different
      question entirely, so the pad is forced on whatever the setting says. */
-  function penFor(c){ return !!state.hand || isTrace(c) || isSum(c) || isClockSay(c); }
+  function penFor(c){ return (state.hand === true) || isTrace(c) || isSum(c) || isClockSay(c); }
+  /* Letter picker: the card is a plain spelling word and the setting is 'pick'. */
+  function pickFor(c){ return state.hand === 'pick' && !!(c && c.k === 'w'); }
   function isDef(c){ return !!(c && c.k === 'd'); }
   /* ⭐ THE WORD AND THEN WHAT IT MEANS, both in his own hand. The word stays
      on screen as the prompt, so this is not a memory test; what it stops being
@@ -11744,7 +11780,7 @@
   function timeUp(){
     var c = card();
     if (isWord(c)){
-      if (!state.answered){ sfx.timeUp(); state.hand ? inkReveal() : missWrite(''); }
+      if (!state.answered){ sfx.timeUp(); state.hand === true ? inkReveal() : missWrite(''); }
       return;
     }
     if (isTask(c) || picking()){ if (!state.answered){ sfx.timeUp(); settle(null); } }
@@ -13594,6 +13630,7 @@
   /* iOS only opens the keyboard from inside a gesture, so once a round is
      going the box is never blurred: between cards it is only emptied. */
   function focusWrite(){
+    if (pickFor(card())) return;
     try { el.wInput.focus(); } catch(e){}
   }
   function tidy(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
@@ -13663,6 +13700,7 @@
     document.body.classList.toggle('meaning', def);
     document.body.classList.toggle('copymean', def);
     el.wCheck.textContent = 'Check it';
+    el.pickCheck.textContent = 'Check it';
     setWHint('');
     document.body.classList.toggle('listening', mode === 'listen');
     /* The sentence has the word inside it, so it can only be shown when the
@@ -13747,7 +13785,10 @@
        it sat on the pad flashing the whole word and reading it aloud. */
     el.wPeek.classList.toggle('hide', mode === 'copy' || sealedNight());
     el.inkPeek.classList.toggle('hide', mode === 'copy' || sealedNight());
+    el.pickPeek.classList.toggle('hide', mode === 'copy' || sealedNight());
     document.body.classList.toggle('hand', penFor(c));
+    document.body.classList.toggle('letters', pickFor(c));
+    if (pickFor(c)){ el.pickWord.textContent = ''; el.wInput.value = ''; }
     document.body.classList.toggle('tracing', pen);
     el.inkGrade.classList.remove('on');
     el.inkAsk.classList.remove('on');
@@ -14041,11 +14082,13 @@
            : state.tries >= 2 ? 'Copy it carefully: ' + (isDef(c) ? defWanted(c) : c.w)
            : why || 'Not quite, write it again', 'bad');
     el.wCheck.textContent = 'Try again';
+    el.pickCheck.textContent = 'Try again';
     setTimeout(function(){
       if (state.answered || state.caught || !isWord(card())) return;
       el.wInput.value = '';
+      el.pickWord.textContent = '';
       el.wInput.classList.remove('bad');
-      focusWrite();
+      if (!pickFor(card())) focusWrite();
     }, 850);
   }
 
@@ -14053,6 +14096,44 @@
   el.wInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' || ev.keyCode === 13){ ev.preventDefault(); unlock(); checkWrite(); }
   });
+
+  /* ---------- letter picker ---------- */
+  (function(){
+    var letters = 'abcdefghijklmnopqrstuvwxyz';
+    var grid = el.pickGrid;
+    for (var i = 0; i < letters.length; i++){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = letters[i];
+      b.setAttribute('data-l', letters[i]);
+      grid.appendChild(b);
+    }
+    var del = document.createElement('button');
+    del.type = 'button'; del.className = 'pkdel'; del.textContent = '⌫';
+    grid.appendChild(del);
+
+    grid.addEventListener('click', function(ev){
+      var b = ev.target.closest('button'); if (!b) return;
+      sfx.tap();
+      if (b.classList.contains('pkdel')){
+        var cur = el.pickWord.textContent || '';
+        el.pickWord.textContent = cur.slice(0, -1);
+        el.wInput.value = el.pickWord.textContent;
+      } else {
+        var l = b.getAttribute('data-l'); if (!l) return;
+        el.pickWord.textContent = (el.pickWord.textContent || '') + l;
+        el.wInput.value = el.pickWord.textContent;
+      }
+    });
+    el.pickCheck.addEventListener('click', function(){ unlock(); checkWrite(); });
+    el.pickPeek.addEventListener('click', function(){
+      unlock();
+      if (sealedNight()) return;
+      var c = card(); if (!isWord(c)) return;
+      showWord(true);
+      hideWordSoon(c.w, PEEK_FLASH);
+    });
+  })();
   /* Three presses, and the third is the one that teaches. First the sentence
      over again, then the bare word slowly, then the word said the way it is
      WRITTEN. ⚠️ Third rather than first on purpose: on a dictation night the
@@ -14899,7 +14980,7 @@
     state.subject = v.subject || state.subject;
     if (v.units && v.units.length) state.units = v.units;
     if (v.write) state.write = v.write;
-    if (typeof v.hand === 'boolean') state.hand = v.hand;
+    if (v.hand === 'pick' || typeof v.hand === 'boolean') state.hand = v.hand;
     if (typeof v.autoMark === 'boolean') state.autoMark = v.autoMark;
     state.sessionId = v.sessionId || state.sessionId;
     startRun(v.rounds, v.practice, v.testing);
@@ -15662,7 +15743,7 @@
     /* On a handwriting card this is the exercise rather than a rescue after two
        misses, so it is on for the trace pass and off for his own, every time. */
     if (isTrace(c)) return c.pass === 'trace';
-    return !!(c && c.k === 'w' && state.hand && state.tries >= TRACE_AFTER);
+    return !!(c && c.k === 'w' && state.hand === true && state.tries >= TRACE_AFTER);
   }
   function traceFont(px){
     return '400 ' + px + 'px "Snell Roundhand","Apple Chancery","Segoe Script",cursive';
@@ -15813,7 +15894,7 @@
     return true;
   }
   el.inkBox.addEventListener('pointerdown', function(ev){
-    if (!state.hand || state.answered || !inkAllowed(ev)) return;
+    if (state.hand !== true || state.answered || !inkAllowed(ev)) return;
     ev.preventDefault();
     try { el.inkBox.setPointerCapture(ev.pointerId); } catch(e){}
     var p = inkPos(ev);
