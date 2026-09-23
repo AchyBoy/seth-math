@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.71">
+<meta name="x-cards-version" content="5.72">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4552,7 +4552,7 @@
   function saySpelled(c){
     var parts = sayParts(c);
     if (!parts.length) return false;
-    return speak(parts.join(', '), 0.45);   // the commas are the pauses
+    return speak(parts.join(', '), 0.58);   // the commas are the pauses
   }
   function applyMute(){
     if (master) master.gain.value = state.sound ? 0.9 : 0;
@@ -14229,7 +14229,7 @@
       b.className = 'wpart';
       b.textContent = open ? part : String(i + 1);
       b.addEventListener('click', function(){
-        unlock(); speak(sayParts(c)[i] || part, 0.45); focusWrite();
+        unlock(); speak(sayParts(c)[i] || part, 0.58); focusWrite();
       });
       el.wPartRow.appendChild(b);
     });
