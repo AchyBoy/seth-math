@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.58">
+<meta name="x-cards-version" content="5.59">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6220,6 +6220,9 @@
       + 'from. Practice only, nothing here is scored.';
   }
   el.watchBtn.addEventListener('click', function(){
+    /* ⭐ ALWAYS KEYBOARD on the A+ round. The app marks it itself, no pencil,
+       no letter picker. The test is fast recall under his own steam. */
+    state.hand = false;
     if (sentenceNow()){
       var lang = langFocusCards();
       if (!lang.length) return;
