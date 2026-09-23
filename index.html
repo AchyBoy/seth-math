@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.64">
+<meta name="x-cards-version" content="5.65">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -724,8 +724,9 @@
   .ink{display:none}
 
   /* ---------- letter picker: he picks from all 26 ---------- */
-  body.letters .winput,body.letters .wrow,body.letters .ink,
+  body.letters .winput,body.letters .ink,
   body.letters .inkrow,body.letters .wgrade{display:none}
+  body.letters #writeBox>.wrow{display:none}
   body.letters .pickbox{display:flex}
   .pickbox{display:none;flex-direction:column;align-items:center;gap:12px}
   .pickword{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:.12em;
