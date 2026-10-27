@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.81">
+<meta name="x-cards-version" content="5.82">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13163,7 +13163,11 @@
        turning it off means marking his own paper. Every other way in leaves
        this false, so the lock cannot leak into ordinary practice. */
     state.testing = !!testing;
-    state.aplus = !!(rounds && rounds[0] && rounds[0].label === 'The A+ 100 Maker');
+    /* the A+ round, and the Study these that follows it: that one is checking
+       whether he has the missed words NOW, so a peek counts there too (Andrew, 10-26) */
+    state.aplus = !!(rounds && rounds[0] && (rounds[0].label === 'The A+ 100 Maker'
+      || (rounds[0].label === 'The ones you missed' && state._aplusStudy)));
+    state._aplusStudy = false;
     /* ⭐ A MANUAL RUN IS NEVER READ BY THE CHECKER. Only the flagged lesson
        starts one today. Like the test lock it lives on the RUN, so ordinary
        practice keeps its 🤖 switch and nothing here can leak into it. */
@@ -17584,6 +17588,7 @@
        pencil setting back, so the words he missed on the keyboard came back to
        be written. Same save-and-restore as the A+ button, so it cannot leak. */
     if (state.aplus && state._savedHand == null){ state._savedHand = state.hand; state.hand = 'pick'; }
+    state._aplusStudy = !!state.aplus;
     studyMissedNow(state.missed);
   });
   el.replayBtn.addEventListener('click', function(){
