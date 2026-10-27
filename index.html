@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.77">
+<meta name="x-cards-version" content="5.78">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3109,6 +3109,57 @@
         ['wind','mill'], ['hay','stack'], ['weather','vane'],
         ['north','east'], ['south','west']
       ]
+    },
+    {
+      id: 11, who: 'Seth', unit: 9,
+      /* ⚠️ id 11, not 9: 9 is unit 6. Unit 8 never came home, so there is no
+         list 8. Twenty words and three vocabulary, like unit 7. */
+      rule: 'The letter q travels with a u.',
+      words: [
+        ['quotation',  'She wrote the quotation at the top of her paper.'],
+        ['quite',      'The water was quite cold this morning.'],
+        ['questions',  'The teacher asked us three questions.'],
+        ['quench',     'A glass of cold water will quench your thirst.'],
+        ['quail',      'A quail ran across the path into the grass.'],
+        ['quiet',      'Please be quiet while the baby sleeps.'],
+        ['quickly',    'He quickly ran to catch the bus.'],
+        ['earthquake', 'The earthquake shook the dishes off the shelf.'],
+        ['quill',      'Long ago people wrote with a feather quill.'],
+        ['squeeze',    'Squeeze the lemon over the fish.'],
+        ['squirrel',   'A squirrel hid an acorn under the tree.'],
+        ['squirm',     'The puppy began to squirm in his arms.'],
+        ['squid',      'A squid has ten long arms.'],
+        ['liquid',     'Water is a liquid.'],
+        ['equals',     'Two plus two equals four.'],
+        ['frequent',   'We make frequent trips to the store.'],
+        ['aqua',       'She painted her room aqua, a blue green.'],
+        ['aquarium',   'We saw sharks at the aquarium.'],
+        ['banquet',    'The church had a banquet for the seniors.'],
+        ['quarters',   'He saved his quarters in a jar.']
+      ],
+      vocab: [
+        ['adequate', 'enough'],
+        ['quarrel',  'to argue'],
+        ['inquire',  'to ask about']
+      ],
+      /* The ones to watch. The four letters circled on his sheet (aquarium,
+         banquet, quarters, inquire) lead it: each is a letter he does not
+         hear the way it is written. */
+      watch: [
+        ['quarters',   'quar says kwor, and it is written ar'],
+        ['quarrel',    'quar says kwor, and two r’s in the middle'],
+        ['aquarium',   'a-quar-i-um, four beats, and the u after q is easy to lose'],
+        ['banquet',    'ban-quet, and the e is the quiet one'],
+        ['inquire',    'in-quire, ui together and a silent e on the end'],
+        ['adequate',   'ad-e-quate, the middle e is quiet and ate says it'],
+        ['squirrel',   'squir-rel, two r’s, and the ir is not what you hear'],
+        ['questions',  'ques-tions, and tion says shun'],
+        ['quotation',  'quo-ta-tion, three beats, and tion says shun'],
+        ['earthquake', 'earth + quake, ea in earth and a silent e on quake']
+      ]
+      /* No compounds: earthquake is the only one, and a card needs other
+         endings off the same sheet to offer. No exceptions block: the rule
+         is stated, nothing asks him to find a word that breaks it. */
     }
   ];
 
