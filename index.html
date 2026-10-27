@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.79">
+<meta name="x-cards-version" content="5.80">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2025,6 +2025,17 @@
        ⚠️ AND IT IS TAKEN DOWN ON EVERY PATH OUT. That is the one cost of an
        overlay over a panel, written down here because the mark panel chose not
        to pay it: paintCard, finish and quitting all close it. -->
+  <!-- A+ 100 Maker: a peek counts the word as one to practise (Andrew, 10-26) -->
+  <div class="pop" id="peekPop">
+    <div class="popbox">
+      <p class="popq">👀 Want a peek?</p>
+      <p class="popsay" style="margin:0 0 15px;color:var(--ink)">Peeking is a great way to study a word that is giving you trouble. Just so you know, a peek counts this word as a miss, so we can practise it again.</p>
+      <div class="popopts">
+        <button type="button" class="popopt" id="peekYes">👀 Peek and study it</button>
+        <button type="button" class="popopt" id="peekNo">✏️ I'll try it first</button>
+      </div>
+    </div>
+  </div>
   <div class="pop" id="vePop">
     <div class="popbox">
       <p class="popq" id="vePopQ"></p>
@@ -13152,6 +13163,7 @@
        turning it off means marking his own paper. Every other way in leaves
        this false, so the lock cannot leak into ordinary practice. */
     state.testing = !!testing;
+    state.aplus = !!(rounds && rounds[0] && rounds[0].label === 'The A+ 100 Maker');
     /* ⭐ A MANUAL RUN IS NEVER READ BY THE CHECKER. Only the flagged lesson
        starts one today. Like the test lock it lives on the RUN, so ordinary
        practice keeps its 🤖 switch and nothing here can leak into it. */
@@ -13633,6 +13645,26 @@
        a new card: a peek changes what they are allowed to say. */
     var c = card();
     if (c && isWord(c)) paintParts(c);
+  }
+  /* ⭐ ON THE A+ 100 MAKER A PEEK IS A MISS (Andrew, 2026-10-26). That round is
+     the run up to the test, and a word he had to look at is not a word he
+     knows yet. So the first peek on a card asks first, kindly, and if he goes
+     ahead it is counted exactly as a wrong answer would be (bump once, tries
+     up), which is what brings it back round. Every other round peeks freely.
+     Returns true when it has taken over the tap. */
+  function peekGate(again){
+    if (!state.aplus || state.answered || state.tries > 0) return false;
+    var pop = document.getElementById('peekPop');
+    pop.classList.add('on');
+    document.getElementById('peekYes').onclick = function(){
+      pop.classList.remove('on');
+      if (state.tries === 0){ bump(false, true); state.tries++; }
+      again();
+    };
+    document.getElementById('peekNo').onclick = function(){
+      pop.classList.remove('on'); focusWrite();
+    };
+    return true;
   }
   function hideWordSoon(w, ms){
     clearTimeout(peekId);
@@ -14241,6 +14273,7 @@
       unlock();
       if (sealedNight()) return;
       var c = card(); if (!isWord(c)) return;
+      if (peekGate(function(){ el.pickPeek.click(); })) return;
       showWord(true);
       hideWordSoon(c.w, PEEK_FLASH);
     });
@@ -14303,6 +14336,7 @@
     unlock();
     if (sealedNight()) return;
     var c = card(); if (!isWord(c)) return;
+    if (peekGate(function(){ el.wPeek.click(); })) return;
     showWord(true);
     hideWordSoon(c.w, PEEK_FLASH);
     focusWrite();
@@ -16115,6 +16149,7 @@
     unlock();
     if (sealedNight()) return;
     var c = card(); if (!isWord(c)) return;
+    if (peekGate(function(){ el.inkPeek.click(); })) return;
     if (state.write === 'listen') sayCard(c, true);
     showWord(true);
     hideWordSoon(c.w, PEEK_FLASH);
