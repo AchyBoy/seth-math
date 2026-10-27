@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.80">
+<meta name="x-cards-version" content="5.81">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17578,7 +17578,14 @@
     });
   }
   el.quitBtn.addEventListener('click', function(ev){ ev.stopPropagation(); chaseStop(); finish(); });
-  el.studyMissed.addEventListener('click', function(){ studyMissedNow(state.missed); });
+  el.studyMissed.addEventListener('click', function(){
+    /* ⭐ AFTER AN A+ ROUND, STUDY THESE IS TYPED TOO (Andrew, 2026-10-26: "the
+       study these is handwriting not typing"). finish() has already put his own
+       pencil setting back, so the words he missed on the keyboard came back to
+       be written. Same save-and-restore as the A+ button, so it cannot leak. */
+    if (state.aplus && state._savedHand == null){ state._savedHand = state.hand; state.hand = 'pick'; }
+    studyMissedNow(state.missed);
+  });
   el.replayBtn.addEventListener('click', function(){
     /* ⚠️ On a sealed test night this button says Done, and Done has to mean
        done: there is nothing to go again at, and sitting the test a second
