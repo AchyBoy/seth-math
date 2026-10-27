@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.82">
+<meta name="x-cards-version" content="5.83">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1326,6 +1326,18 @@
     <button type="button" id="watchBtn"></button>
     <div class="misses" id="watchList"></div>
     <p class="note" id="watchNote"></p>
+  </div>
+
+  <!-- ✋ A grown-up's own picks (Andrew, 10-26): NOT the red pen, so nothing
+       here touches what the teacher marked. Typed, and a peek counts. -->
+  <div class="block hide" id="mineBlock">
+    <p class="label">✋ Pick words for him to study</p>
+    <div class="wchips" id="mineChips"></div>
+    <p class="note" id="mineNote"></p>
+    <div class="quick">
+      <button type="button" id="minePractice">Study these</button>
+      <button type="button" class="warn hide" id="mineClear">Clear</button>
+    </div>
   </div>
 
   <div class="block hide" id="troubleBlock">
@@ -6560,6 +6572,7 @@
     paintTimes();
     paintNight();
     paintRed();
+    paintMine();
     paintReads();
     paintChecks();
     paintFlags();
@@ -13166,6 +13179,7 @@
     /* the A+ round, and the Study these that follows it: that one is checking
        whether he has the missed words NOW, so a peek counts there too (Andrew, 10-26) */
     state.aplus = !!(rounds && rounds[0] && (rounds[0].label === 'The A+ 100 Maker'
+      || rounds[0].label === 'Your picks'
       || (rounds[0].label === 'The ones you missed' && state._aplusStudy)));
     state._aplusStudy = false;
     /* ⭐ A MANUAL RUN IS NEVER READ BY THE CHECKER. Only the flagged lesson
@@ -15016,6 +15030,61 @@
     redUnits().forEach(function(u){ n += redFor(u).length; });
     return n;
   }
+  /* ✋ PICK WORDS FOR HIM TO STUDY. Stored per unit in their own key, never in
+     `redpen` or `marked`: a grown-up's pick is not the teacher's mark and must
+     not be folded into his record as one. The run is typed like the A+ round
+     (same save and restore of his pencil setting) and its label turns the peek
+     popup on, because the point is seeing whether he has them now. */
+  var MINE = 'seth-cards-mine-v1', mine = {};
+  try { mine = JSON.parse(localStorage.getItem(MINE) || '{}') || {}; } catch (e) { mine = {}; }
+  function saveMine(){ try { localStorage.setItem(MINE, JSON.stringify(mine)); } catch (e) {} }
+  function mineCount(){ return redUnits().reduce(function(n, u){ return n + (mine[u.id] || []).length; }, 0); }
+  function paintMine(){
+    var box = document.getElementById('mineBlock'), chips = document.getElementById('mineChips');
+    var units = redUnits(), show = state.subject === 'spelling' && !groupKit() && units.length > 0;
+    box.classList.toggle('hide', !show);
+    if (!show) return;
+    chips.innerHTML = '';
+    units.forEach(function(u){
+      var on = mine[u.id] || [];
+      u.words.forEach(function(r){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'wchip' + (on.indexOf(r[0]) !== -1 ? ' on' : '');
+        b.setAttribute('data-unit', String(u.id));
+        b.setAttribute('data-word', r[0]);
+        b.textContent = r[0];
+        chips.appendChild(b);
+      });
+    });
+    var n = mineCount(), btn = document.getElementById('minePractice');
+    btn.disabled = n === 0;
+    btn.textContent = n ? 'Study these (' + n + ')' : 'Study these';
+    document.getElementById('mineClear').classList.toggle('hide', n === 0);
+    document.getElementById('mineNote').textContent = n
+      ? 'He types each one. If he peeks, it asks first and counts as a miss.'
+      : 'Tap the words you want him to study. This does not change what the teacher marked.';
+  }
+  document.getElementById('mineChips').addEventListener('click', function(ev){
+    var b = ev.target.closest('.wchip'); if (!b) return;
+    var id = b.getAttribute('data-unit'), w = b.getAttribute('data-word');
+    var list = mine[id] || (mine[id] = []), i = list.indexOf(w);
+    if (i === -1) list.push(w); else list.splice(i, 1);
+    unlock(); sfx.tap(); saveMine(); paintMine();
+  });
+  document.getElementById('mineClear').addEventListener('click', function(){
+    redUnits().forEach(function(u){ mine[u.id] = []; });
+    sfx.tap(); saveMine(); paintMine();
+  });
+  document.getElementById('minePractice').addEventListener('click', function(){
+    var cards = [];
+    redUnits().forEach(function(u){ (mine[u.id] || []).forEach(function(w){ var c = spellByWord(w); if (c) cards.push(c); }); });
+    if (!cards.length) return;
+    shuffle(cards);
+    state._savedHand = state.hand;
+    state.hand = 'pick';
+    startRun([{ label: 'Your picks', cards: cards }], true);
+  });
   function paintRed(){
     var picked = redUnits();
     var show = state.subject === 'spelling' && !groupKit() && picked.length > 0;
