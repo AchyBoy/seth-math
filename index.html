@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.84">
+<meta name="x-cards-version" content="5.85">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3138,6 +3138,11 @@
       /* ⚠️ id 11, not 9: 9 is unit 6. Unit 8 never came home, so there is no
          list 8. Twenty words and three vocabulary, like unit 7. */
       rule: 'The letter q travels with a u.',
+      /* Andrew, 11-04, night before the trial: "he needs to study 10 onward".
+         Seeds the Study these chips once, see MINE. Not `marked`: nobody marked
+         these. */
+      picks: ['squeeze','squirrel','squirm','squid','liquid','equals','frequent',
+              'aqua','aquarium','banquet','quarters','adequate','quarrel','inquire'],
       words: [
         ['quotation',  'She wrote the quotation at the top of her paper.'],
         ['quite',      'The water was quite cold this morning.'],
@@ -3188,7 +3193,10 @@
          is stated, nothing asks him to find a word that breaks it. */
     },
     {
-      id: 12, who: 'Seth', unit: 11,
+      id: 12, who: 'Seth', unit: 11, off: true,
+      /* 🔴 OFF until Andrew says: the sheet came in 11-04 by mistake, he is still
+         on list 9 (trial 11-05). Off and not `opens`, because nobody knows the
+         date and a guessed one would pull him off the list he is on. */
       /* ⚠️ id 12, not 11: 11 is unit 9. Twenty words and three vocabulary. The
          Catch This! is the whole sheet in two piles, so its two families are in
          FAMILIES (ysadd, ies) and the sort round asks exactly that. */
@@ -14989,6 +14997,9 @@
      A child at a time, because the only days anybody has told me about are
      Seth's. Bailey's are one line when they are known. */
   var TEST_DAY = { Seth: { trial: 3, real: 4 } };   // 0 Sunday .. 3 Wednesday, 4 Thursday
+  /* A week the school moved it. A date here answers before the weekday does.
+     11-05 is a Thursday but it is the trial: he was sick and the schedule changed. */
+  var TEST_MOVED = { '2026-11-05': 'trial' };
   /* ⭐ AND COPY IT, NOT SAY IT, FOR NOW (Andrew, 2 September: "for his test we
      just do the copy, not the speak it for now"). Both ways in read this, the
      arming and the green button, and so does the note that describes them, so
@@ -15070,7 +15081,12 @@
   function testTonight(){
     var days = testDaysFor(me.name);
     if (!days) return '';
-    var tomorrow = (new Date().getDay() + 1) % 7;
+    var next = new Date();
+    next.setDate(next.getDate() + 1);
+    var moved = TEST_MOVED[next.getFullYear() + '-' + ('0' + (next.getMonth() + 1)).slice(-2)
+                           + '-' + ('0' + next.getDate()).slice(-2)];
+    if (moved) return moved;
+    var tomorrow = next.getDay();
     if (tomorrow === days.trial) return 'trial';
     if (tomorrow === days.real) return 'real';
     return '';
@@ -15138,6 +15154,14 @@
   var MINE = 'seth-cards-mine-v1', mine = {};
   try { mine = JSON.parse(localStorage.getItem(MINE) || '{}') || {}; } catch (e) { mine = {}; }
   function saveMine(){ try { localStorage.setItem(MINE, JSON.stringify(mine)); } catch (e) {} }
+  /* A week's `picks` are laid down ONCE per device, over whatever was tapped
+     before, so taking one off afterwards or pressing Clear sticks. */
+  SPELLING.forEach(function(u){
+    if (!u.picks || mine['seeded:' + u.id]) return;
+    mine['seeded:' + u.id] = 1;
+    mine[u.id] = u.picks.slice();
+    saveMine();
+  });
   function mineCount(){ return redUnits().reduce(function(n, u){ return n + (mine[u.id] || []).length; }, 0); }
   function paintMine(){
     var box = document.getElementById('mineBlock'), chips = document.getElementById('mineChips');
@@ -15147,7 +15171,7 @@
     chips.innerHTML = '';
     units.forEach(function(u){
       var on = mine[u.id] || [];
-      u.words.forEach(function(r){
+      u.words.concat(u.vocab || []).forEach(function(r){
         var b = document.createElement('button');
         b.type = 'button';
         b.className = 'wchip' + (on.indexOf(r[0]) !== -1 ? ' on' : '');
