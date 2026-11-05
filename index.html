@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.87">
+<meta name="x-cards-version" content="5.88">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4468,8 +4468,55 @@
       window.speechSynthesis.speak(new window.SpeechSynthesisUtterance(''));
     } catch(e){ canSpeak = false; }
   }
+  /* ⭐ IOLA READS THE LISTS THAT HAVE HER (Andrew, 11-04). Her voice is rendered
+     on the Mac (Kokoro af_heart), so each line a list can say is a clip in
+     audio/iola, named by clips.json. speak() plays the clip for that exact text
+     and anything without one still goes to the iPad's voice. Decoded up front
+     off a context of its own, because a card reads itself out after a timer and
+     must not have to wait on the network or a tap. */
+  var iola = { buf: {}, src: null };
+  function iolaLoad(){
+    var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OC || !window.fetch) return;
+    var dec;
+    try { dec = new OC(1, 1, 24000); } catch(e){ return; }
+    fetch('audio/iola/clips.json').then(function(r){ return r.json(); }).then(function(man){
+      var keys = Object.keys(man), at = 0;
+      function next(){
+        if (at >= keys.length) return;
+        var key = keys[at++];
+        fetch('audio/iola/' + man[key]).then(function(r){ return r.arrayBuffer(); }).then(function(ab){
+          dec.decodeAudioData(ab, function(b){ iola.buf[key] = b; next(); }, next);
+        }).catch(next);
+      }
+      for (var n = 0; n < 6; n++) next();      // six at a time, so they are in before he has tapped through
+    }).catch(function(){});
+  }
+  iolaLoad();
+  function iolaStop(){
+    if (!iola.src) return;
+    try { iola.src.stop(); } catch(e){}
+    iola.src = null;
+  }
+  function iolaPlay(text){
+    var b = iola.buf[String(text)], c = b && audio();
+    if (!c) return false;
+    try {
+      if (c.state === 'suspended' && c.resume) c.resume();
+      var s = c.createBufferSource();
+      s.buffer = b;
+      s.connect(c.destination);    // the speaker button is for the sound effects, as it is for the iPad's voice
+      s.start(0);
+      iola.src = s;
+      return true;
+    } catch(e){ return false; }
+  }
   function speak(text, rate){
-    if (!canSpeak || !text) return false;
+    if (!text) return false;
+    iolaStop();
+    if (iola.buf[String(text)] && canSpeak) try { window.speechSynthesis.cancel(); } catch(e){}
+    if (iolaPlay(text)) return true;
+    if (!canSpeak) return false;
     try {
       window.speechSynthesis.cancel();
       var u = new window.SpeechSynthesisUtterance(String(text));
@@ -4480,6 +4527,7 @@
     } catch(e){ return false; }
   }
   function hushVoice(){
+    iolaStop();
     if (!canSpeak) return;
     try { window.speechSynthesis.cancel(); } catch(e){}
   }
@@ -4627,6 +4675,8 @@
     unseasonable: ['un','sea','son','a','ble'], untrustworthy: ['un','trust','wor','thy'],
     valuable: ['val','u','a','ble'], venison: ['ven','i','son'], weather: ['weath','er'],
     weathervane: ['weath','er','vane'],
+    /* List 9, found when Iola read it: eart·hquake, a·qua·rium, a·de·quate. */
+    earthquake: ['earth','quake'], aquarium: ['a','quar','i','um'], adequate: ['ad','e','quate'],
     /* List 11, read through by hand like the rest. */
     holidays: ['hol','i','days'], deliveries: ['de','liv','er','ies'],
     libraries: ['li','brar','ies'], families: ['fam','i','lies'],
@@ -4685,6 +4735,23 @@
     centennial:['cen','ten','nee','al'],
     Puritans: ['Pu','ree','tans'],
     untrustworthy:['un','trust','wor','thee'],
+    /* List 9, said the way a person says it slowly. tion was being read as
+       letters, quo and ta as nothing in particular. */
+    quotation: ['kwoh','tay','shun'],
+    questions: ['kwes','chunz'],
+    quickly:   ['kwik','lee'],
+    earthquake:['erth','kwake'],
+    squirrel:  ['skwur','ul'],
+    liquid:    ['lik','wid'],
+    equals:    ['ee','kwulz'],
+    frequent:  ['free','kwent'],
+    aqua:      ['ah','kwuh'],
+    aquarium:  ['uh','kwair','ee','um'],
+    banquet:   ['bang','kwit'],
+    quarters:  ['kwor','terz'],
+    adequate:  ['ad','uh','kwit'],
+    quarrel:   ['kwor','ul'],
+    inquire:   ['in','kwire'],
     /* List 11. 🔴 A plural's last chunk is a real word to the voice and the
        wrong one: pup·pies said pies, la·dies said dies, val·leys said lays. */
     valleys:   ['val','leez'],
