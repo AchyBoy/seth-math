@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.88">
+<meta name="x-cards-version" content="5.89">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -729,15 +729,23 @@
   body.letters #writeBox>.wrow{display:none}
   body.letters .pickbox{display:flex}
   .pickbox{display:none;flex-direction:column;align-items:center;gap:12px;touch-action:manipulation}
+  /* The iPad held sideways: the card's empty space gives way, so Check it stays on screen. */
+  @media (max-height:820px){
+    body.letters .wtop{min-height:0;padding-top:12px;padding-bottom:12px}
+    body.letters .wmark:empty{display:none}
+    body.letters.listening #wWord:not(.shown){display:none}
+    body.letters .wpanel{gap:8px}
+    body.letters .pickbox{gap:8px}
+  }
   .pickword{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:.12em;
     min-height:1.3em;text-align:center;color:var(--ink);word-break:break-all;
     border-bottom:3px solid var(--line);padding:4px 8px 6px;min-width:120px}
   .pickword:empty::after{content:'\00a0'}
   .pickgrid{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;touch-action:manipulation;
-    width:100%;max-width:420px}
+    width:100%;max-width:560px}
   .pickgrid .pkrow{display:flex;gap:6px;justify-content:center;width:100%}
   .pickgrid button{width:calc(10% - 6px);min-width:28px;aspect-ratio:1;border:2px solid var(--line);border-radius:14px;touch-action:manipulation;-webkit-user-select:none;user-select:none;
-    background:#fff;font:inherit;font-size:clamp(20px,5.5vw,28px);font-weight:700;
+    background:#fff;font:inherit;font-size:clamp(22px,6vw,34px);font-weight:700;
     color:var(--ink);box-shadow:0 3px 0 #ded8cc;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
   .pickgrid button:active{transform:translateY(2px);box-shadow:0 1px 0 #ded8cc}
@@ -2038,6 +2046,17 @@
        overlay over a panel, written down here because the mark panel chose not
        to pay it: paintCard, finish and quitting all close it. -->
   <!-- A+ 100 Maker: a peek counts the word as one to practise (Andrew, 10-26) -->
+  <!-- Check it sits just under the space bar (Andrew, 11-04) -->
+  <div class="pop" id="surePop">
+    <div class="popbox">
+      <p class="popq">Is this your answer?</p>
+      <p class="popsay" id="sureWord" style="margin:0 0 15px;color:var(--ink);font-size:28px;font-weight:700;word-break:break-word"></p>
+      <div class="popopts">
+        <button type="button" class="popopt" id="sureYes">✅ Yes, check it</button>
+        <button type="button" class="popopt" id="sureNo">✏️ Keep going</button>
+      </div>
+    </div>
+  </div>
   <div class="pop" id="peekPop">
     <div class="popbox">
       <p class="popq">👀 Want a peek?</p>
@@ -14488,7 +14507,22 @@
         el.wInput.value = el.pickWord.textContent;
       }
     });
-    el.pickCheck.addEventListener('click', function(){ unlock(); checkWrite(); });
+    /* Only the first go, where a slip of the thumb costs him the word. After a
+       miss the button is Try again or Move on and there is nothing to lose. */
+    el.pickCheck.addEventListener('click', function(){
+      unlock();
+      var got = tidy(el.wInput.value), pop = document.getElementById('surePop');
+      if (!got || state.moveOn || state.tries > 0 || state.answered || !isWord(card())){ checkWrite(); return; }
+      document.getElementById('sureWord').textContent = got;
+      pop.classList.add('on');
+    });
+    document.getElementById('sureYes').addEventListener('click', function(){
+      document.getElementById('surePop').classList.remove('on');
+      checkWrite();
+    });
+    document.getElementById('sureNo').addEventListener('click', function(){
+      document.getElementById('surePop').classList.remove('on');
+    });
     el.pickPeek.addEventListener('click', function(){
       unlock();
       if (sealedNight()) return;
