@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.90">
+<meta name="x-cards-version" content="5.91">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4500,7 +4500,7 @@
   var iola = { man: null, el: null, ready: false };
   function iolaLoad(){
     if (!window.fetch) return;
-    fetch('audio/iola/clips.json').then(function(r){ return r.json(); }).then(function(man){
+    fetch('audio/iola/clips.json?v=' + ((document.querySelector('meta[name=x-cards-version]') || {}).content || '')).then(function(r){ return r.json(); }).then(function(man){
       iola.man = man;
       var keys = Object.keys(man), at = 0;
       function next(){
@@ -4535,7 +4535,7 @@
     try { p = a.play(); } catch(e){ return false; }
     if (p && p.catch) p.catch(function(err){
       if (err && err.name === 'AbortError') return;     // another line took over, which is fine
-      iola.ready = false;
+      if (err && err.name === 'NotAllowedError') iola.ready = false;   // a bad clip is just that line
       ttsSpeak(text, rate);
     });
     return true;
