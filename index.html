@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.89">
+<meta name="x-cards-version" content="5.90">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4425,6 +4425,7 @@
     var c = audio();
     if (c && c.state === 'suspended' && c.resume) c.resume();
     primeSpeech();
+    iolaUnlock();
   }
 
   /* ---------- the voice ----------
@@ -4489,52 +4490,64 @@
   }
   /* ⭐ IOLA READS THE LISTS THAT HAVE HER (Andrew, 11-04). Her voice is rendered
      on the Mac (Kokoro af_heart), so each line a list can say is a clip in
-     audio/iola, named by clips.json. speak() plays the clip for that exact text
-     and anything without one still goes to the iPad's voice. Decoded up front
-     off a context of its own, because a card reads itself out after a timer and
-     must not have to wait on the network or a tap. */
-  var iola = { buf: {}, src: null };
+     audio/iola, named by clips.json. Anything without a clip, and any clip the
+     iPad refuses to play, goes to the iPad's own voice.
+
+     🔴 ONE AUDIO ELEMENT, PLAYED ONCE INSIDE A TAP. A card reads itself out off
+     a timer, and iOS only allows that on an element a tap has already started.
+     Web Audio was silent on his iPad with nothing to say it had failed; play()
+     gives back an answer, which is what the fallback needs. */
+  var iola = { man: null, el: null, ready: false };
   function iolaLoad(){
-    var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    if (!OC || !window.fetch) return;
-    var dec;
-    try { dec = new OC(1, 1, 24000); } catch(e){ return; }
+    if (!window.fetch) return;
     fetch('audio/iola/clips.json').then(function(r){ return r.json(); }).then(function(man){
+      iola.man = man;
       var keys = Object.keys(man), at = 0;
       function next(){
-        if (at >= keys.length) return;
-        var key = keys[at++];
-        fetch('audio/iola/' + man[key]).then(function(r){ return r.arrayBuffer(); }).then(function(ab){
-          dec.decodeAudioData(ab, function(b){ iola.buf[key] = b; next(); }, next);
-        }).catch(next);
+        if (at < keys.length) fetch('audio/iola/' + man[keys[at++]]).then(next, next);
       }
-      for (var n = 0; n < 6; n++) next();      // six at a time, so they are in before he has tapped through
+      for (var n = 0; n < 6; n++) next();       // into the browser's cache ahead of him
     }).catch(function(){});
   }
   iolaLoad();
-  function iolaStop(){
-    if (!iola.src) return;
-    try { iola.src.stop(); } catch(e){}
-    iola.src = null;
-  }
-  function iolaPlay(text){
-    var b = iola.buf[String(text)], c = b && audio();
-    if (!c) return false;
+  function iolaUnlock(){
+    if (iola.ready || !window.Audio) return;
+    var a = iola.el || (iola.el = new Audio());
+    /* the shortest silence there is, played inside the tap */
+    a.src = 'data:audio/mpeg;base64,SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYzLjEuMTAxAAAAAAAAAAAAAAD/84TAAAAAAAAAAAAASW5mbwAAAA8AAAAFAAACoABtbW1tbW1tbW1tbW1tbW1tbW1tkpKSkpKSkpKSkpKSkpKSkpKSkpK2tra2tra2tra2tra2tra2tra2ttvb29vb29vb29vb29vb29vb29vb//////////////////////////8AAAAATGF2YzYzLjEuAAAAAAAAAAAAAAAAJANgAAAAAAAAAqDr4TdlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/80TEAAAAA0gAAAAATEFNRTQuMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FNC7/80TEUwAAA0gAAAAAMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FNC7/80TEpgAAA0gAAAAAMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80TErAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80TErAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=';
     try {
-      if (c.state === 'suspended' && c.resume) c.resume();
-      var s = c.createBufferSource();
-      s.buffer = b;
-      s.connect(c.destination);    // the speaker button is for the sound effects, as it is for the iPad's voice
-      s.start(0);
-      iola.src = s;
-      return true;
-    } catch(e){ return false; }
+      var p = a.play();
+      iola.ready = true;
+      if (p && p.catch) p.catch(function(err){
+        if (!err || err.name !== 'AbortError') iola.ready = false;   // the first word taking over is fine
+      });
+    } catch(e){}
+  }
+  function iolaStop(){
+    if (!iola.el) return;
+    try { iola.el.pause(); } catch(e){}
+  }
+  function iolaPlay(text, rate){
+    var file = iola.man && iola.man[String(text)], a = iola.el;
+    if (!file || !a || !iola.ready) return false;
+    a.src = 'audio/iola/' + file;
+    var p;
+    try { p = a.play(); } catch(e){ return false; }
+    if (p && p.catch) p.catch(function(err){
+      if (err && err.name === 'AbortError') return;     // another line took over, which is fine
+      iola.ready = false;
+      ttsSpeak(text, rate);
+    });
+    return true;
   }
   function speak(text, rate){
     if (!text) return false;
     iolaStop();
-    if (iola.buf[String(text)] && canSpeak) try { window.speechSynthesis.cancel(); } catch(e){}
-    if (iolaPlay(text)) return true;
+    if (canSpeak) try { window.speechSynthesis.cancel(); } catch(e){}
+    if (iolaPlay(text, rate)) return true;
+    return ttsSpeak(text, rate);
+  }
+  function ttsSpeak(text, rate){
     if (!canSpeak) return false;
     try {
       window.speechSynthesis.cancel();
