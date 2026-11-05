@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.83">
+<meta name="x-cards-version" content="5.84">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3186,6 +3186,60 @@
       /* No compounds: earthquake is the only one, and a card needs other
          endings off the same sheet to offer. No exceptions block: the rule
          is stated, nothing asks him to find a word that breaks it. */
+    },
+    {
+      id: 12, who: 'Seth', unit: 11,
+      /* ⚠️ id 12, not 11: 11 is unit 9. Twenty words and three vocabulary. The
+         Catch This! is the whole sheet in two piles, so its two families are in
+         FAMILIES (ysadd, ies) and the sort round asks exactly that. */
+      rule: 'To change a singular word which ends in a vowel followed by a y, simply '
+          + 'add s. If the word ends in a consonant followed by a y, change the y to i '
+          + 'and add es.',
+      words: [
+        ['valleys',    'Green valleys lie between the tall mountains.'],
+        ['monkeys',    'The monkeys swung from branch to branch.'],
+        ['journeys',   'Paul made three long journeys to preach the gospel.'],
+        ['pulleys',    'The workers used ropes and pulleys to lift the beam.'],
+        ['trolleys',   'Red trolleys carry people up and down the street.'],
+        ['holidays',   'Our whole house travels during the holidays.'],
+        ['pathways',   'Stone pathways wind through the garden.'],
+        ['highways',   'Two big highways meet just outside of town.'],
+        ['trays',      'The waiters carried the food on silver trays.'],
+        ['deliveries', 'The mail truck makes deliveries every afternoon.'],
+        ['pennies',    'He counted the pennies in his jar.'],
+        ['stories',    'Grandmother told us stories before bed.'],
+        ['ladies',     'The ladies of the church cooked the meal.'],
+        ['puppies',    'The puppies chased each other around the yard.'],
+        ['libraries',  'Most libraries let you keep a book for three weeks.'],
+        ['cherries',   'She picked ripe cherries off the tree.'],
+        ['families',   'Three families sat together at the picnic.'],
+        ['countries',  'Missionaries go to many countries to preach.'],
+        ['hobbies',    'Fishing and reading are his two hobbies.'],
+        ['cities',     'The train runs between the two cities.']
+      ],
+      vocab: [
+        ['prepare', 'to make ready'],
+        ['serene',  'calm'],
+        ['hazard',  'risk; danger']
+      ],
+      /* The ones to watch: a beat he does not hear in the middle, or the second
+         half of a doubled letter, which is what falls out when he is minding
+         something else. So each one names the whole shape, not one letter. */
+      watch: [
+        ['families',   'fam-i-lies, three beats. Do not lose the quiet i in the middle'],
+        ['libraries',  'li-brar-ies, three beats, with an r before the a and an r after it'],
+        ['deliveries', 'de-liv-er-ies, four beats, and the er in the middle goes quiet'],
+        ['journeys',   'jour-neys, our says er, and the y stays because e comes before it'],
+        ['countries',  'coun-tries, ou says uh, then y changes to ies'],
+        ['cherries',   'cher-ries, two r’s, then y changes to ies'],
+        ['hobbies',    'hob-bies, two b’s, then y changes to ies'],
+        ['puppies',    'pup-pies, p then two more p’s in the middle, then ies'],
+        ['valleys',    'val-leys, two l’s, and the y stays because e comes before it'],
+        ['trolleys',   'trol-leys, tr at the front, two l’s, and the y stays']
+      ]
+      /* No compounds: highways and pathways are the only two and they share an
+         ending, so a card has nothing to offer against it. No exceptions block:
+         the rule is stated, nothing asks him to find a word that breaks it. */
     }
   ];
 
@@ -4564,7 +4618,11 @@
     unreliable: ['un','re','li','a','ble'], unresolved: ['un','re','solved'],
     unseasonable: ['un','sea','son','a','ble'], untrustworthy: ['un','trust','wor','thy'],
     valuable: ['val','u','a','ble'], venison: ['ven','i','son'], weather: ['weath','er'],
-    weathervane: ['weath','er','vane']
+    weathervane: ['weath','er','vane'],
+    /* List 11, read through by hand like the rest. */
+    holidays: ['hol','i','days'], deliveries: ['de','liv','er','ies'],
+    libraries: ['li','brar','ies'], families: ['fam','i','lies'],
+    countries: ['coun','tries'], cities: ['cit','ies'], hazard: ['haz','ard']
   };
   function sylParts(c){
     if (!c || !c.w) return [];
@@ -4618,7 +4676,29 @@
     millennium:['mil','len','nee','um'],
     centennial:['cen','ten','nee','al'],
     Puritans: ['Pu','ree','tans'],
-    untrustworthy:['un','trust','wor','thee']
+    untrustworthy:['un','trust','wor','thee'],
+    /* List 11. 🔴 A plural's last chunk is a real word to the voice and the
+       wrong one: pup·pies said pies, la·dies said dies, val·leys said lays. */
+    valleys:   ['val','leez'],
+    monkeys:   ['mun','keez'],
+    journeys:  ['jer','neez'],
+    pulleys:   ['pull','leez'],
+    trolleys:  ['trol','leez'],
+    holidays:  ['hol','uh','dayz'],
+    deliveries:['duh','liv','er','eez'],
+    pennies:   ['pen','neez'],
+    stories:   ['stor','eez'],
+    ladies:    ['lay','deez'],
+    puppies:   ['pup','peez'],
+    libraries: ['lie','brair','eez'],
+    cherries:  ['chair','reez'],
+    families:  ['fam','uh','leez'],
+    countries: ['cun','treez'],
+    hobbies:   ['hob','beez'],
+    cities:    ['sit','eez'],
+    prepare:   ['pre','pair'],
+    serene:    ['suh','reen'],
+    hazard:    ['haz','erd']
   };
   function sayParts(c){
     var parts = sylParts(c);
@@ -5613,6 +5693,13 @@
     collie:      'col\u00b7lie. The two l letters keep the o short. One l would make colie, and the o would go long.',
     balloon:     'bal\u00b7loon. The two l letters keep the a short, and then oo makes its own long sound.',
     pulley:      'pul\u00b7ley. The two l letters keep the u short.',
+    pulleys:     'pul\u00b7leys. The two l letters keep the u short.',
+    valleys:     'val\u00b7leys. The two l letters keep the a short.',
+    trolleys:    'trol\u00b7leys. The two l letters keep the o short.',
+    pennies:     'pen\u00b7nies. The two n letters keep the e short. With one n it would be penies, and the e would say its own name.',
+    puppies:     'pup\u00b7pies. The two p letters in the middle keep the u short. With one it would be pupies, and the u would go long.',
+    cherries:    'cher\u00b7ries. The two r letters keep the e short.',
+    hobbies:     'hob\u00b7bies. The two b letters keep the o short. With one b it would be hobies, and the o would say its own name.',
     terrier:     'ter\u00b7ri\u00b7er. The two r letters keep the first e short.',
     terrain:     'ter\u00b7rain. The two r letters keep the e short.',
     Holland:     'Hol\u00b7land. The two l letters keep the o short.',
@@ -5777,8 +5864,21 @@
      or a season is the most particular thing a word on these lists does, so it
      beats every pattern underneath it. */
   var FAM_GENERAL = ['dblle','ible','omni','terr','un','ie','barei','aimid','ayend',
-                     'oimid','oyend','le','ves','ve','dge','ge','dbl','cmp'];
+                     'oimid','oyend','le','ves','ve','dge','ge','dbl','cmp','ysadd','ies'];
   var FAMILIES = [
+    /* List 11's two piles. They beat the doubling because the plural is what
+       these lists are teaching: valleys and hobbies each carry a doubled letter
+       too, and without this neither one could be sorted at all. */
+    { id: 'ysadd', beats: ['dbl'],
+      label: 'vowel then y, just add s',
+      band: 'Every one of these had a vowel right before the y, so the y stays and you '
+          + 'just add s.',
+      test: function(lw){ return /[aeiou]ys$/.test(lw); } },
+    { id: 'ies', beats: ['dbl'],
+      label: 'y changed to ·ies',
+      band: 'Every one of these had a consonant right before the y, so the y changes to i '
+          + 'and you add es.',
+      test: function(lw){ return /[^aeiou]ies$/.test(lw); } },
     { id: 'dblle', beats: ['le', 'dbl'],
       label: 'a doubled letter, then ·le',
       band: 'Every one of these doubles the letter before ·le, like bubble and little.',
