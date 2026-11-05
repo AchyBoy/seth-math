@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.86">
+<meta name="x-cards-version" content="5.87">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14237,6 +14237,7 @@
     if (checking) return;
     var want = c.w, got = tidy(el.wInput.value);
     if (!got){ focusWrite(); return; }
+    if (sealedNight() && pickFor(c)){ sealTyped(c, got); return; }
     if (isDef(c)){ checkDef(c, got); return; }
     /* ⚠️ The abbreviation's own full stop is not the thing being tested, so
        Dec and Dec. both pass. On the END MARK card the mark IS the answer, so
@@ -14270,6 +14271,32 @@
       clearCard(true); chaseNudge(true);
     }
     if (state.caught) return;
+    clearTimeout(advanceId);
+    advanceId = setTimeout(step, 700);
+  }
+
+  /* 🔴 A TEST ON THE LETTERS (Andrew, 11-04: "I just need his test to work
+     with the keyboard"). Still one go a word with nothing shown, but there is
+     no ink to mark later, so the app marks it now and says so only at the end.
+     Not bump: its green flash and the score would tell him as he goes. Not
+     state.sealed: that is what makes the finish say nothing was marked. */
+  function sealTyped(c, got){
+    var plain = function(v){ return tidy(v).toLowerCase().replace(/[^a-z' ]/g, ''); };
+    var right = plain(got) === plain(isDef(c) ? c.m : c.w);
+    var key = cardKey(c);
+    stopTimer(); chasePause(); hushVoice();
+    el.track.classList.add('hidden');
+    if (key) noteResult(key, right, false);
+    if (right){ state.right++; state.roundRight++; }
+    else {
+      state.wrong++; state.roundWrong++;
+      if (key && state.missed.indexOf(key) === -1) state.missed.push(key);
+      if (key && state.roundMissed.indexOf(key) === -1) state.roundMissed.push(key);
+    }
+    state.answered = true;
+    sfx.tap();
+    setWHint('Got it. Your score comes at the end.', 'good');
+    state.queue.shift(); state.cleared++;
     clearTimeout(advanceId);
     advanceId = setTimeout(step, 700);
   }
@@ -14930,9 +14957,8 @@
      every other round and he is the one deciding whether to tap it. It used to
      read "He marks his own goes", which stopped being true the night the test
      was sealed. */
-  var SEALED_SAYS = 'No peeking, no marking and the word is never shown: he writes it, '
-    + 'it is kept, and the next one comes. His writing goes on the page for you to mark '
-    + 'afterwards.';
+  var SEALED_SAYS = 'No peeking and the word is never shown: he taps it out on the letters, '
+    + 'and the next one comes. His score and the words he missed come at the end.';
   function paintNight(){
     var plan = nightPlan();
     var show = state.subject === 'spelling' && !groupKit() && !!plan;
@@ -14961,13 +14987,13 @@
       + (plan.work === 0
       ? 'Tap what the red pen marked on his paper, just below, and this sets the rest up '
         + 'and starts. Nothing tapped yet, so it would deal all ' + plan.all + ' words once, '
-        + testWriteWords() + ', written by hand, no timer. '
+        + testWriteWords() + ', tapped out on the letters, no timer. '
         + SEALED_SAYS
       : plan.work + (plan.work === 1 ? ' word needs' : ' words need') + ' work, written '
         + timesWord(plan.times) + ' each, the other ' + plan.rest + ' once'
         + (state.defs ? ', and each vocabulary word is followed by a screen to copy what it means' : '')
         + '. ' + plan.cards + ' cards, '
-        + testWriteWords() + ', written by hand, no timer. ' + SEALED_SAYS
+        + testWriteWords() + ', tapped out on the letters, no timer. ' + SEALED_SAYS
         + ' Nothing to set up.');
   }
   /* ⭐ THERE ARE TWO TESTS A WEEK, AND THE PRACTICE IS THE NIGHT BEFORE EACH
@@ -15106,7 +15132,7 @@
     state.subject = 'spelling';
     state.timer = 'off';
     state.write = testWrite();
-    state.hand = true;
+    state.hand = 'pick';
     state.shuffle = true;
     state.mode = 'flip';
     picked.forEach(function(u){
@@ -15134,7 +15160,7 @@
     saveRed();
     state.timer = 'off';                       // he asked for no timer, first
     state.write = testWrite();                 // read aloud on the real night, a peek on the trial
-    state.hand = true;                         // and by hand, like the real thing
+    state.hand = 'pick';                       // on the letters, no more Pencil (Andrew, 11-04)
     state.shuffle = true;
     state.mode = 'flip';                       // never the archer on a spelling night
     saveSettings();
