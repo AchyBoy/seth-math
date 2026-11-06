@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.92">
+<meta name="x-cards-version" content="5.93">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -751,6 +751,9 @@
   .pickgrid button:active{transform:translateY(2px);box-shadow:0 1px 0 #ded8cc}
   .pickgrid .pkdel{aspect-ratio:auto;width:calc(15% - 6px);padding:8px 4px;font-size:18px;
     color:var(--muted);font-weight:600;letter-spacing:0}
+  .pickgrid .pkshift{aspect-ratio:auto;width:calc(13% - 6px);padding:8px 4px;font-size:18px}
+  .pickgrid.caps .pkshift{background:var(--ink);color:#fff}
+  .pickgrid.caps [data-l]{text-transform:uppercase}
   .pickgrid .pkspace{aspect-ratio:auto;width:calc(40% - 6px);padding:10px;font-size:16px;
     color:var(--muted);font-weight:600}
 
@@ -14074,6 +14077,7 @@
   function tidy(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
 
   function paintWrite(c){
+    el.pickGrid.classList.remove('caps');   // a ⇧ left on must not carry to the next word
     var def = isDef(c), sen = isSent(c), ask = isAsk(c), pen = isTrace(c), sum = isSum(c);
     var tell = isClockSay(c);
     /* The word is the PROMPT on a definition card, and the whole sentence is
@@ -14481,7 +14485,9 @@
      state.sealed: that is what makes the finish say nothing was marked. */
   function sealTyped(c, got){
     var plain = function(v){ return tidy(v).toLowerCase().replace(/[^a-z' ]/g, ''); };
-    var right = plain(got) === plain(isDef(c) ? c.m : c.w);
+    /* ⭐ A CAPITAL COUNTS ON THE WORDS (Andrew, 11-06), same rule as capNote:
+       Christian with a small c is a miss. A meaning is only ever letters. */
+    var right = isDef(c) ? plain(got) === plain(c.m) : tidy(got) === tidy(c.w);
     var key = cardKey(c);
     stopTimer(); chasePause(); hushVoice();
     el.track.classList.add('hidden');
@@ -14591,6 +14597,12 @@
         row.appendChild(b);
       }
       if (r === 2){
+        /* ⇧ is good for one letter, then the keys go back to small, like a phone.
+           Without it a word with a capital could never be spelled right here. */
+        var shift = document.createElement('button');
+        shift.type = 'button'; shift.className = 'pkshift'; shift.textContent = '⇧';
+        shift.setAttribute('aria-label', 'Capital letter');
+        row.insertBefore(shift, row.firstChild);
         var del = document.createElement('button');
         del.type = 'button'; del.className = 'pkdel'; del.textContent = '⌫';
         row.appendChild(del);
@@ -14607,7 +14619,9 @@
     grid.addEventListener('click', function(ev){
       var b = ev.target.closest('button'); if (!b) return;
       sfx.tap();
-      if (b.classList.contains('pkdel')){
+      if (b.classList.contains('pkshift')){
+        grid.classList.toggle('caps');
+      } else if (b.classList.contains('pkdel')){
         var cur = el.pickWord.textContent || '';
         el.pickWord.textContent = cur.slice(0, -1);
         el.wInput.value = el.pickWord.textContent;
@@ -14616,6 +14630,7 @@
         el.wInput.value = el.pickWord.textContent;
       } else {
         var l = b.getAttribute('data-l'); if (!l) return;
+        if (grid.classList.contains('caps')){ l = l.toUpperCase(); grid.classList.remove('caps'); }
         el.pickWord.textContent = (el.pickWord.textContent || '') + l;
         el.wInput.value = el.pickWord.textContent;
       }
