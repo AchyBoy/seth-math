@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.93">
+<meta name="x-cards-version" content="5.94">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -872,6 +872,11 @@
     border-radius:14px;background:#fbeaf5;border:2px solid #b03a8c;color:#7d2462;
     font-size:14px;font-weight:700;line-height:1.35;text-align:center}
   .famband.hide{display:none}
+  .missrule{margin:12px 0 2px;padding:9px 12px;border-radius:12px;background:#fbeaf5;
+    border:2px solid #b03a8c;color:#7d2462;font-size:14px;font-weight:700;line-height:1.35;
+    text-align:left}
+  .missrule.hide{display:none}
+  .missrule + .missrule{margin-top:8px}
   #moreBtn{display:block;width:100%;border:2px solid var(--line);background:#fff;
     border-radius:16px;font:inherit;font-size:15px;font-weight:700;padding:13px 16px;
     margin:0 0 18px;cursor:pointer}
@@ -2110,6 +2115,7 @@
     <div class="missbox" id="missBox">
       <p class="label">Missed this time, tap one to see the answer</p>
       <div class="misses" id="missList"></div>
+      <div id="missRule"></div>
       <button type="button" class="link" id="studyMissed">Study these</button>
     </div>
 
@@ -4426,7 +4432,7 @@
    'markRow','markSaid','markYes','markNo','mapBox','mapCv','mapAsk','mapNote','mapOpts',
    'mathBlock','mathChips','mathNote',
    'topicsBlock','topicChips','topicNote','allTopicsBtn','noTopicsBtn',
-   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','sortBlock','sortBtn','sortNote','famBand','vePop','vePopQ','vePopOpts','vePopSay','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
+   'waitBar','pips','againBlock','againList','againBtn','againNote','dblBlock','dblBtn','dblNote','sortBlock','sortBtn','sortNote','famBand','missRule','vePop','vePopQ','vePopOpts','vePopSay','watchBlock','watchList','watchBtn','watchNote','pickHead','pickBack','pickNow','studyNowBtn','moreBtn','modeBlock','unitsBlock','unitChips','unitNote','unitSoon','pagesBlock','pagesList','pagesNote',
    'redBlock','redChips','redNote','redPractice','redClear',
    'flagBlock','flagList','flagNote','flagPractice','flagClear',
    'inkAsk','askAgain','askGrown',
@@ -5252,9 +5258,16 @@
     if (isTermKey(k)) return termByWord(k.slice(2));
     if (isAskKey(k)) return null;      // nothing to rebuild a tapped question from
     if (isWordKey(k)) return spellByWord(k.slice(2));
+    /* 🔴 A MISSED MEANING HAD NO LINE HERE, so Study these turned d:scheme into
+       the times card NaN × NaN. A key nothing can rebuild is dropped, below. */
+    if (/^d:/.test(k)){
+      var dc = spellByWord(k.slice(2));
+      return dc && dc.m ? { k: 'd', w: dc.w, m: dc.m, u: dc.u } : null;
+    }
     if (isVerseKey(k)) return verseByRef(k.slice(2));
     if (isSoundKey(k)) { var p = k.split(':'); return { s: p[1], w: [p[2]], pick: p[2] }; }
-    return keyToPair(k);
+    var pr = keyToPair(k);
+    return isNaN(pr[0]) || isNaN(pr[1]) ? null : pr;
   }
   function pairKey(a, b){ return a + '×' + b; }
 
@@ -8364,7 +8377,8 @@
   el.practiceBtn.addEventListener('click', function(){
     var worst = troubleList();
     if (!worst.length) return;
-    var cards = worst.map(function(w){ return keyToCard(w.key); });
+    var cards = worst.map(function(w){ return keyToCard(w.key); }).filter(Boolean);
+    if (!cards.length) return;
     shuffle(cards);
     startRun([{label: 'Trouble spots', cards: cards}], true);
   });
@@ -13813,6 +13827,40 @@
 
   /* hold keeps the card exactly where it is: spelling counts the miss and
      then makes him write it again, so the queue must not move underneath. */
+  /* ⭐ THE RULE ON EVERY MISS (Andrew, 11-06: "show rules every miss, even for
+     tests"). Practice shows it the moment he misses, over the word, and the next
+     card's paint clears it. ⚠️ A TEST NEVER GETS IT MID-WAY: sealTyped does not
+     come through bump, because a rule on screen would tell him he missed and
+     hint at the words still to come. His test misses get it on the finish
+     screen, paintMissRules. A meaning has no spelling rule, so it gets none. */
+  function wordRule(w, uid){
+    var u = unitById(uid);
+    if (!(u && u.rule)){ var sc = spellByWord(w); u = sc ? unitById(sc.u) : null; }
+    return (u && u.rule) || '';
+  }
+  function showMissRule(c){
+    if (state.testing || !c || c.k !== 'w') return;
+    var rule = wordRule(c.w, c.u);
+    if (!rule) return;
+    el.famBand.textContent = 'Catch this: ' + rule;
+    el.famBand.classList.remove('hide');
+  }
+  /* One line per rule, however many words he missed under it. */
+  function paintMissRules(keys){
+    var seen = [];
+    keys.forEach(function(k){
+      if (!isWordKey(k)) return;
+      var r = wordRule(k.slice(2));
+      if (r && seen.indexOf(r) === -1) seen.push(r);
+    });
+    el.missRule.innerHTML = '';
+    seen.forEach(function(r){
+      var p = document.createElement('p');
+      p.className = 'missrule';
+      p.textContent = 'Catch this: ' + r;
+      el.missRule.appendChild(p);
+    });
+  }
   function bump(correct, hold){
     var here = card(), key = cardKey(here);
     if (key) noteResult(key, correct, copiedIt(here));
@@ -13832,6 +13880,7 @@
       state.wrong++; state.roundWrong++; state.streak = 0;
       if (key && state.missed.indexOf(key) === -1) state.missed.push(key);
       if (key && state.roundMissed.indexOf(key) === -1) state.roundMissed.push(key);
+      showMissRule(here);
     }
     paintScore();
     if (hold) return;
@@ -17990,6 +18039,7 @@
     el.doneTime.textContent = 'in ' + m + ':' + (s < 10 ? '0' : '') + s
       + (me.token ? '  ·  🪙 ' + fmt(shop.coins) : '');
     paintMissBox(el.missBox, el.missList, state.missed);
+    paintMissRules(state.missed);
 
     if (!state.caught) sfx.done();
     show('done');
