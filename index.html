@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.91">
+<meta name="x-cards-version" content="5.92">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3212,6 +3212,65 @@
          is stated, nothing asks him to find a word that breaks it. */
     },
     {
+      id: 13, who: 'Seth', unit: 10,
+      /* ⚠️ id 13, not 10: 10 is unit 7. This sheet never came home the week it was
+         given out and arrived 11-06 with the rest of the book. He was sick, so he
+         skips the trial and takes the real test Monday 11-09, see TEST_MOVED. */
+      rule: 'When a ch word makes the k sound, the word is borrowed from the Greek. '
+          + 'When a ch word makes a sh sound, the word is borrowed from the French. '
+          + 'But ch will usually say ch in church.',
+      words: [
+        ['childhood',  'He spent his childhood on a farm.'],
+        ['chapter',    'We read one chapter of the Bible every night.'],
+        ['teacher',    'The teacher wrote our words on the board.'],
+        ['cheerful',   'A cheerful boy helps without being asked.'],
+        ['cheese',     'She put a slice of cheese on the cracker.'],
+        ['sandwich',   'He packed a sandwich for lunch.'],
+        ['chapel',     'The whole school met in the chapel this morning.'],
+        ['chief',      'The fire chief told us how to stay safe.'],
+        ['chef',       'The chef cooked the meal in a tall white hat.'],
+        ['parachute',  'The parachute opened and he floated down slowly.'],
+        ['ache',       'Too much candy will make your teeth ache.'],
+        ['Christian',  'A Christian follows the Lord Jesus.'],
+        ['character',  'Which character in the story did you like best?'],
+        ['anchor',     'The sailors dropped the anchor into the bay.'],
+        ['chorus',     'Everyone sang the chorus together.'],
+        ['stomach',    'His stomach hurt after the big meal.'],
+        ['school',     'We ride the bus to school.'],
+        ['echo',       'We heard an echo in the empty hall.'],
+        ['choir',      'The choir sang a hymn on Sunday.'],
+        ['orchestra',  'The orchestra played while the people found their seats.']
+      ],
+      vocab: [
+        ['chore',    'a small job'],
+        ['approach', 'to come near'],
+        ['scheme',   'a plan or plot']
+      ],
+      /* The ones to watch: a ch he hears as k, so nothing he hears tells him to
+         write the h, and a middle he does not hear at all. */
+      watch: [
+        ['choir',     'it sounds like kwire and looks nothing like it. c-h-o-i-r, sing it in the choir'],
+        ['orchestra', 'or-ches-tra, three beats, and the k sound is written ch'],
+        ['stomach',   'stom-ach, it ends in a-c-h and you only hear a k'],
+        ['character', 'char-ac-ter, starts with ch, then a c in the middle too'],
+        ['Christian', 'Christ + ian. Christ is right there at the front, with the capital C and the h'],
+        ['parachute', 'par-a-chute, from the French, so ch says sh. The quiet a is in the middle'],
+        ['anchor',    'an-chor, ch says k, and it ends in o-r'],
+        ['sandwich',  'sand + wich, the d is quiet and it ends in i-c-h'],
+        ['chorus',    'cho-rus, ch says k, and it ends in u-s'],
+        ['echo',      'ech-o, ch says k, with just an o on the end']
+      ],
+      /* The sheet asks it outright: find the two borrowed from the French. The
+         wrong answers are the other ch words, so he has to say the word. */
+      exceptions: {
+        ask: 'Which word was borrowed from the French, so its ch says sh?',
+        letters: ['ch'],
+        words: ['chef', 'parachute'],
+        why: 'It came into English from the French, so its ch says sh.'
+      }
+      /* No compounds on this sheet. */
+    },
+    {
       id: 12, who: 'Seth', unit: 11, off: true,
       /* 🔴 OFF until Andrew says: the sheet came in 11-04 by mistake, he is still
          on list 9 (trial 11-05). Off and not `opens`, because nobody knows the
@@ -4712,7 +4771,13 @@
     /* List 11, read through by hand like the rest. */
     holidays: ['hol','i','days'], deliveries: ['de','liv','er','ies'],
     libraries: ['li','brar','ies'], families: ['fam','i','lies'],
-    countries: ['coun','tries'], cities: ['cit','ies'], hazard: ['haz','ard']
+    countries: ['coun','tries'], cities: ['cit','ies'], hazard: ['haz','ard'],
+    /* List 10, read through by hand like the rest. */
+    childhood: ['child','hood'], teacher: ['teach','er'], cheerful: ['cheer','ful'],
+    sandwich: ['sand','wich'], chapel: ['chap','el'], parachute: ['par','a','chute'],
+    Christian: ['Chris','tian'], character: ['char','ac','ter'], anchor: ['an','chor'],
+    chorus: ['cho','rus'], stomach: ['stom','ach'], echo: ['ech','o'],
+    orchestra: ['or','ches','tra'], approach: ['ap','proach'], chapter: ['chap','ter']
   };
   function sylParts(c){
     if (!c || !c.w) return [];
@@ -4805,7 +4870,26 @@
     cities:    ['sit','eez'],
     prepare:   ['pre','pair'],
     serene:    ['suh','reen'],
-    hazard:    ['haz','erd']
+    hazard:    ['haz','erd'],
+    /* List 10. ch says three things on this sheet and the voice only guesses one. */
+    teacher:   ['tee','chur'],
+    cheerful:  ['cheer','full'],
+    sandwich:  ['sand','witch'],
+    chapel:    ['chap','ull'],
+    chef:      ['shef'],
+    parachute: ['pair','uh','shoot'],
+    ache:      ['ake'],
+    Christian: ['Chris','chun'],
+    character: ['care','ik','ter'],
+    anchor:    ['ang','ker'],
+    chorus:    ['kor','us'],
+    stomach:   ['stum','uck'],
+    school:    ['skool'],
+    echo:      ['ek','oh'],
+    choir:     ['kwire'],
+    orchestra: ['or','kes','truh'],
+    scheme:    ['skeem'],
+    approach:  ['uh','proach']
   };
   function sayParts(c){
     var parts = sylParts(c);
@@ -5126,6 +5210,7 @@
   }
   // what shows on the chip
   function prettyKey(k){
+    if (/^d:/.test(k)) return k.slice(2) + ', what it means';   // a vocabulary meaning, see cardKey
     if (isMapKey(k)) return k.slice(2);
     if (isMathKey(k)) return MATH_NAMES[k.slice(2)] || k.slice(2);
     if (isTermKey(k) || isAskKey(k)) return k.slice(2);
@@ -5136,6 +5221,7 @@
   }
   // what shows when you tap it open
   function keyAnswer(k){
+    if (/^d:/.test(k)){ var dc = spellByWord(k.slice(2)); return dc ? (dc.m || '') : ''; }
     /* the answer to "where is it" is the map, which does not fit on a chip */
     if (isMapKey(k)){
       var pl = placeByName(k.slice(2));
@@ -5971,8 +6057,20 @@
      or a season is the most particular thing a word on these lists does, so it
      beats every pattern underneath it. */
   var FAM_GENERAL = ['dblle','ible','omni','terr','un','ie','barei','aimid','ayend',
-                     'oimid','oyend','le','ves','ve','dge','ge','dbl','cmp','ysadd','ies'];
+                     'oimid','oyend','le','ves','ve','dge','ge','dbl','cmp','ysadd','ies','chk','chch'];
   var FAMILIES = [
+    /* List 10's two big piles, by the sound, so the words are named: nothing in
+       the letters of school and chief says which is which. chef and parachute
+       are the French pair, too few to be a family, and the sheet asks them as
+       the rule breakers instead. */
+    { id: 'chk', beats: ['dbl','ie'],
+      label: 'ch says k',
+      band: 'Every one of these has a ch that says k, because the word is borrowed from the Greek.',
+      test: function(lw){ return /^(ache|christian|character|anchor|chorus|stomach|school|echo|choir|orchestra|scheme)$/.test(lw); } },
+    { id: 'chch', beats: ['dbl','ie'],
+      label: 'ch says ch, like church',
+      band: 'Every one of these has a ch that says ch, the way it does in church.',
+      test: function(lw){ return /^(childhood|chapter|teacher|cheerful|cheese|sandwich|chapel|chief|chore|approach)$/.test(lw); } },
     /* List 11's two piles. They beat the doubling because the plural is what
        these lists are teaching: valleys and hobbies each carry a doubled letter
        too, and without this neither one could be sorted at all. */
@@ -8512,8 +8610,10 @@
        The wrong answers are the words that carry the SAME letters and obey
        the rule, so it is voyage against spoil and decoy rather than against
        Wednesday, which would give it away without him reading anything. */
+    /* ⚠️ And not on a test: its four buttons print his own list words on the
+       screen in the middle of a sealed test, which is the thing the seal is for. */
     var ex = u.exceptions;
-    if (ex && ex.words && ex.words.length){
+    if (ex && ex.words && ex.words.length && !dealingTest){
       var obeys = plain.filter(function(w){
         var lw = w.toLowerCase();
         if (ex.words.indexOf(w) !== -1) return false;
@@ -15139,8 +15239,9 @@
   var TEST_DAY = { Seth: { trial: 3, real: 4 } };   // 0 Sunday .. 3 Wednesday, 4 Thursday
   /* A week the school moved it. A date here answers before the weekday does.
      11-05 is the real test on list 9, with no trial before it: he was sick and
-     the schedule changed, so the skip-it-if-you-made-100 note must not show. */
-  var TEST_MOVED = { '2026-11-05': 'real' };
+     the schedule changed, so the skip-it-if-you-made-100 note must not show.
+     11-09, a Monday, is the real test on list 10, no trial either: he is catching up. */
+  var TEST_MOVED = { '2026-11-05': 'real', '2026-11-09': 'real' };
   /* ⭐ AND COPY IT, NOT SAY IT, FOR NOW (Andrew, 2 September: "for his test we
      just do the copy, not the speak it for now"). Both ways in read this, the
      arming and the green button, and so does the note that describes them, so

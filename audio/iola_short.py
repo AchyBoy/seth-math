@@ -4,8 +4,9 @@ touched. Run with while-you-live/audio/.venv, python -I."""
 import json, hashlib, pathlib, re
 import numpy as np
 from kokoro import KPipeline
-import soundfile as sf, subprocess
+import soundfile as sf, subprocess, sys, tempfile
 SR = 24000
+TMP = tempfile.mktemp(suffix='.wav')
 out = pathlib.Path(__file__).parent / 'iola'
 man = json.load(open(out / 'clips.json'))
 P = KPipeline(lang_code='a', device='mps')
@@ -31,12 +32,15 @@ rows = []; parts = {}
 def write(text, wav):
     name = hashlib.md5(('v2' + text).encode()).hexdigest()[:10] + '.mp3'
     old = man.get(text)
-    sf.write('/tmp/seth11/t.wav', np.concatenate([wav, np.zeros(int(0.08 * SR))]), SR)
-    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', '/tmp/seth11/t.wav', '-ac', '1', '-b:a', '48k', str(out / name)], check=True)
+    sf.write(TMP, np.concatenate([wav, np.zeros(int(0.08 * SR))]), SR)
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', TMP, '-ac', '1', '-b:a', '48k', str(out / name)], check=True)
     if old and old != name: (out / old).unlink(missing_ok=True)
     man[text] = name; rows.append((round(len(wav) / SR, 2), text))
 
 short = [t for t in man if '.' not in t]
+# A JSON list of texts, to do one list's words and leave the older lists' clips alone.
+if len(sys.argv) > 1:
+    only = set(json.load(open(sys.argv[1]))); short = [t for t in short if t in only]
 for t in [t for t in short if ', ' not in t]:
     parts[t] = cut(t); write(t, parts[t])
 for t in [t for t in short if ', ' in t]:
