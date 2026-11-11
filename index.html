@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flash Cards</title>
 <meta name="description" content="Flash cards for spelling, times tables, scriptures and more. Outrun the cat, one round at a time.">
-<meta name="x-cards-version" content="5.94">
+<meta name="x-cards-version" content="5.95">
 <meta name="theme-color" content="#f7f4ee">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3335,6 +3335,57 @@
       /* No compounds: highways and pathways are the only two and they share an
          ending, so a card has nothing to offer against it. No exceptions block:
          the rule is stated, nothing asks him to find a word that breaks it. */
+    },
+    {
+      id: 14, who: 'Seth', unit: 12,
+      /* ⚠️ id 14, not 12: 12 is unit 11 (still off). Typed off the book photos 11-06;
+         Andrew put it on 11-11 for that night's test (Thursday real, the weekday rule). */
+      rule: 'When a word starts with wr, the w is silent. When a word starts with kn or gn, '
+          + 'the k or the g is silent.',
+      words: [
+        ['wrist',        'She wore a watch on her wrist.'],
+        ['wrapper',      'Put the candy wrapper in the trash.'],
+        ['wrinkle',      'Mom ironed out every wrinkle in my shirt.'],
+        ['wrench',       'Dad used a wrench to tighten the bolt.'],
+        ['wrong',        'He fixed the word he spelled wrong.'],
+        ['written',      'The Bible was written for us to read.'],
+        ['knotted',      'The rope was knotted around the post.'],
+        ['kneel',        'We kneel down to pray before bed.'],
+        ['knit',         'Grandma likes to knit warm socks.'],
+        ['knight',       'The knight rode out on a white horse.'],
+        ['knead',        'She will knead the dough to make bread.'],
+        ['knew',         'He knew every word on the list.'],
+        ['knuckle',      'He scraped his knuckle on the fence.'],
+        ['gnaw',         'The dog likes to gnaw on a bone.'],
+        ['gnash',        'The angry man would gnash his teeth.'],
+        ['gnu',          'A gnu is a large animal that lives in Africa.'],
+        ['waterfall',    'We hiked up to see the tall waterfall.'],
+        ['grandparents', 'My grandparents came for Sunday dinner.'],
+        ['zookeeper',    'The zookeeper fed the lions their lunch.'],
+        ['wildlife',     'We saw lots of wildlife at the park.']
+      ],
+      vocab: [
+        ['scamper', 'to run quickly'],
+        ['wrath',   'anger'],
+        ['knack',   'talent or ability']
+      ],
+      /* The ones to watch: the silent letter at the front is the one thing he will
+         not hear, so every word names it out loud. */
+      watch: [
+        ['knight',       'k-n-i-g-h-t, a quiet k at the front and a quiet gh in the middle'],
+        ['knead',        'k-n-e-a-d, quiet k, and it is the ea of bread, not need'],
+        ['knuckle',      'knuck-le, quiet k, then ck, then le'],
+        ['knotted',      'knot-ted, quiet k, and two t’s before ed'],
+        ['written',      'writ-ten, quiet w, and two t’s in the middle'],
+        ['wrapper',      'wrap-per, quiet w, and two p’s in the middle'],
+        ['wrinkle',      'wrin-kle, quiet w, and it ends in kle'],
+        ['gnash',        'g-n-a-s-h, a quiet g at the front'],
+        ['gnu',          'g-n-u, three letters, the g is quiet'],
+        ['knew',         'k-n-e-w, quiet k, ends in ew']
+      ],
+      compounds: [
+        ['water','fall'], ['grand','parents'], ['zoo','keeper'], ['wild','life']
+      ]
     }
   ];
 
@@ -6075,6 +6126,17 @@
   var FAM_GENERAL = ['dblle','ible','omni','terr','un','ie','barei','aimid','ayend',
                      'oimid','oyend','le','ves','ve','dge','ge','dbl','cmp','ysadd','ies','chk','chch'];
   var FAMILIES = [
+    /* List 12's three silent starts. They beat the doubling: wrapper, written and
+       knotted each carry a doubled letter too. */
+    { id: 'swr', beats: ['dbl', 'le'], label: 'starts with wr, quiet w',
+      band: 'Every one of these starts with wr, and the w is silent.',
+      test: function(lw){ return /^wr/.test(lw); } },
+    { id: 'skn', beats: ['dbl', 'le'], label: 'starts with kn, quiet k',
+      band: 'Every one of these starts with kn, and the k is silent.',
+      test: function(lw){ return /^kn/.test(lw); } },
+    { id: 'sgn', beats: ['dbl'], label: 'starts with gn, quiet g',
+      band: 'Every one of these starts with gn, and the g is silent.',
+      test: function(lw){ return /^gn/.test(lw); } },
     /* List 10's two big piles, by the sound, so the words are named: nothing in
        the letters of school and chief says which is which. chef and parachute
        are the French pair, too few to be a family, and the sheet asks them as
